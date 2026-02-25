@@ -7,12 +7,18 @@ export type StorageUsage = {
 };
 
 export async function getStorageUsage(): Promise<StorageUsage> {
-  // Sum photo blob sizes
+  // Sum photo blob sizes (guard against NaN from corrupted blobs)
   let photosBytes = 0;
   await db.photos.each((photo) => {
-    photosBytes += photo.thumbnailBlob.size;
+    const thumbSize = photo.thumbnailBlob?.size;
+    if (typeof thumbSize === "number" && !Number.isNaN(thumbSize)) {
+      photosBytes += thumbSize;
+    }
     if (photo.displayBlob) {
-      photosBytes += photo.displayBlob.size;
+      const displaySize = photo.displayBlob.size;
+      if (typeof displaySize === "number" && !Number.isNaN(displaySize)) {
+        photosBytes += displaySize;
+      }
     }
   });
 
