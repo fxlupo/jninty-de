@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "Jninty",
   "short_name": "Jninty",
   "description": "A personal garden journal and management PWA",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#2D5016",
   "background_color": "#FDF6EC",
