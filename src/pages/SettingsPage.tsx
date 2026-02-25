@@ -62,8 +62,10 @@ export default function SettingsPage() {
 
   // Action states
   const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [rebuildBusy, setRebuildBusy] = useState(false);
   const [rebuildCount, setRebuildCount] = useState<number | null>(null);
+  const [rebuildError, setRebuildError] = useState<string | null>(null);
 
   // Sync gardenName from settings on load
   useEffect(() => {
@@ -86,10 +88,13 @@ export default function SettingsPage() {
 
   const handleExport = async () => {
     setExportBusy(true);
+    setExportError(null);
     try {
       const blob = await exportAll();
       const date = new Date().toISOString().slice(0, 10);
       triggerDownload(blob, `jninty-export-${date}.zip`);
+    } catch {
+      setExportError("Export failed. Please try again.");
     } finally {
       setExportBusy(false);
     }
@@ -98,9 +103,12 @@ export default function SettingsPage() {
   const handleRebuild = async () => {
     setRebuildBusy(true);
     setRebuildCount(null);
+    setRebuildError(null);
     try {
       const count = await rebuildIndex();
       setRebuildCount(count);
+    } catch {
+      setRebuildError("Rebuild failed. Please try again.");
     } finally {
       setRebuildBusy(false);
     }
@@ -163,9 +171,11 @@ export default function SettingsPage() {
               id="last-frost"
               type="date"
               value={settings.lastFrostDate}
-              onChange={(e) =>
-                void updateSettings({ lastFrostDate: e.target.value })
-              }
+              onChange={(e) => {
+                if (e.target.value) {
+                  void updateSettings({ lastFrostDate: e.target.value });
+                }
+              }}
             />
           </div>
 
@@ -181,9 +191,11 @@ export default function SettingsPage() {
               id="first-frost"
               type="date"
               value={settings.firstFrostDate}
-              onChange={(e) =>
-                void updateSettings({ firstFrostDate: e.target.value })
-              }
+              onChange={(e) => {
+                if (e.target.value) {
+                  void updateSettings({ firstFrostDate: e.target.value });
+                }
+              }}
             />
           </div>
 
@@ -298,6 +310,9 @@ export default function SettingsPage() {
             >
               {exportBusy ? "Exporting…" : "Export All Data"}
             </Button>
+            {exportError && (
+              <p className="mt-1 text-sm text-red-600">{exportError}</p>
+            )}
           </div>
 
           {/* Rebuild search index */}
@@ -309,6 +324,9 @@ export default function SettingsPage() {
             >
               {rebuildBusy ? "Rebuilding…" : "Rebuild Search Index"}
             </Button>
+            {rebuildError && (
+              <p className="mt-1 text-sm text-red-600">{rebuildError}</p>
+            )}
             {rebuildCount != null && (
               <p className="mt-1 text-sm text-soil-600">
                 Indexed {String(rebuildCount)} items.
