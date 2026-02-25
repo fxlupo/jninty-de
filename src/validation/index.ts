@@ -46,6 +46,18 @@ export {
 export type { PlantingOutcome, Planting } from "./planting.schema.ts";
 export { seedSchema, quantityUnitSchema } from "./seed.schema.ts";
 export type { QuantityUnit, Seed } from "./seed.schema.ts";
+export {
+  plantKnowledgeSchema,
+  sunExposureSchema,
+  waterNeedsSchema,
+  growthRateSchema,
+} from "./plantKnowledge.schema.ts";
+export type {
+  PlantKnowledge,
+  SunExposure,
+  WaterNeeds,
+  GrowthRate,
+} from "./plantKnowledge.schema.ts";
 export { validateEntity } from "./helpers.ts";
 export type {
   ValidationResult,
