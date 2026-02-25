@@ -141,6 +141,16 @@ describe("processPhoto", () => {
     expect(display!.height).toBe(1200);
   });
 
+  it("rejects non-image files", async () => {
+    const file = new File(["not an image"], "doc.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(processPhoto(file)).rejects.toThrow(
+      "File is not an image: application/pdf",
+    );
+  });
+
   it("does not upscale images smaller than max width", async () => {
     installImageMock(200, 150);
 

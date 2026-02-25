@@ -56,6 +56,17 @@ describe("PhotoThumbnail", () => {
     });
   });
 
+  it("shows placeholder when DB lookup fails", async () => {
+    const photoRepo = await import("../db/repositories/photoRepository.ts");
+    vi.spyOn(photoRepo, "getById").mockRejectedValue(new Error("DB error"));
+
+    render(<PhotoThumbnail photoId="any-id" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Photo not found")).toBeInTheDocument();
+    });
+  });
+
   it("revokes blob URL on unmount", async () => {
     const blobUrl = "blob:mock-revoke-test";
     globalThis.URL.createObjectURL = vi.fn().mockReturnValue(blobUrl);

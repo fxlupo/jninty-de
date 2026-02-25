@@ -19,14 +19,19 @@ export default function PhotoThumbnail({
     let revoked = false;
     let objectUrl: string | undefined;
 
-    photoRepository.getById(photoId).then((photo) => {
-      if (revoked) return;
-      if (photo) {
-        objectUrl = URL.createObjectURL(photo.thumbnailBlob);
-        setSrc(objectUrl);
-      }
-      setLoading(false);
-    });
+    photoRepository
+      .getById(photoId)
+      .then((photo) => {
+        if (revoked) return;
+        if (photo) {
+          objectUrl = URL.createObjectURL(photo.thumbnailBlob);
+          setSrc(objectUrl);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!revoked) setLoading(false);
+      });
 
     return () => {
       revoked = true;
