@@ -22,6 +22,7 @@ export default function App() {
             <Route path="plants" element={<PlantsListPage />} />
             <Route path="plants/new" element={<PlantFormPage />} />
             <Route path="plants/:id" element={<PlantDetailPage />} />
+            <Route path="plants/:id/edit" element={<PlantFormPage />} />
             <Route path="journal" element={<JournalPage />} />
             <Route path="journal/new" element={<JournalEntryFormPage />} />
             <Route path="tasks" element={<TasksPage />} />

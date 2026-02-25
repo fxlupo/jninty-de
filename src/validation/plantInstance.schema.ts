@@ -40,6 +40,7 @@ export const plantInstanceSchema = baseEntitySchema
     status: plantStatusSchema,
     tags: z.array(z.string().min(1)),
     careNotes: z.string().min(1).optional(),
+    photoIds: z.array(z.string().uuid()).optional(),
   })
   .strict();
 
