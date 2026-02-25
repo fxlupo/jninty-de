@@ -1,14 +1,417 @@
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
+import * as plantRepository from "../db/repositories/plantRepository";
+import {
+  search as searchIndex,
+  loadIndex,
+  rebuildIndex,
+} from "../db/search";
+import type { PlantType, PlantStatus } from "../types";
 import Card from "../components/ui/Card";
+import Badge from "../components/ui/Badge";
+import Input from "../components/ui/Input";
+import PhotoThumbnail from "../components/PhotoThumbnail";
+
+// ─── Label maps ───
+
+const TYPE_LABELS: Record<PlantType, string> = {
+  vegetable: "Vegetable",
+  herb: "Herb",
+  flower: "Flower",
+  ornamental: "Ornamental",
+  fruit_tree: "Fruit Tree",
+  berry: "Berry",
+  other: "Other",
+};
+
+const STATUS_LABELS: Record<PlantStatus, string> = {
+  active: "Active",
+  dormant: "Dormant",
+  harvested: "Harvested",
+  removed: "Removed",
+  dead: "Dead",
+};
+
+const STATUS_VARIANT: Record<
+  PlantStatus,
+  "default" | "success" | "warning" | "danger"
+> = {
+  active: "success",
+  dormant: "warning",
+  harvested: "default",
+  removed: "danger",
+  dead: "danger",
+};
+
+const ALL_TYPES: PlantType[] = [
+  "vegetable",
+  "herb",
+  "flower",
+  "ornamental",
+  "fruit_tree",
+  "berry",
+  "other",
+];
+
+const ALL_STATUSES: PlantStatus[] = [
+  "active",
+  "dormant",
+  "harvested",
+  "removed",
+  "dead",
+];
+
+// ─── Icons ───
+
+function GridIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function ListIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+function PlantPlaceholderIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 20h10" />
+      <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+      <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+      <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+    </svg>
+  );
+}
+
+// ─── Select style (matching Input component) ───
+
+const selectClass =
+  "rounded-lg border border-brown-200 bg-cream-50 px-3 py-2 text-sm text-soil-900 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/25";
+
+// ─── Component ───
 
 export default function PlantsListPage() {
+  const allPlants = useLiveQuery(() => plantRepository.getAll());
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<PlantType | "">("");
+  const [statusFilter, setStatusFilter] = useState<PlantStatus | "">("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [indexReady, setIndexReady] = useState(false);
+
+  // Load or rebuild search index on mount
+  useEffect(() => {
+    void loadIndex().then((loaded) => {
+      if (!loaded) {
+        return rebuildIndex();
+      }
+    }).then(() => {
+      setIndexReady(true);
+    });
+  }, []);
+
+  const filteredPlants = useMemo(() => {
+    if (!allPlants) return [];
+
+    let results = [...allPlants];
+
+    // Search filter using MiniSearch
+    if (query.trim() && indexReady) {
+      const hits = searchIndex(query);
+      const plantHitIds = new Set(
+        hits.filter((h) => h.entityType === "plant").map((h) => h.id),
+      );
+      results = results.filter((p) => plantHitIds.has(p.id));
+    }
+
+    // Type filter
+    if (typeFilter) {
+      results = results.filter((p) => p.type === typeFilter);
+    }
+
+    // Status filter
+    if (statusFilter) {
+      results = results.filter((p) => p.status === statusFilter);
+    }
+
+    return results;
+  }, [allPlants, query, typeFilter, statusFilter, indexReady]);
+
+  if (allPlants === undefined) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <p className="text-soil-600">Loading plants…</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4">
-      <h1 className="font-display text-2xl font-bold text-green-800">
-        Plant Inventory
-      </h1>
-      <Card className="mt-4">
-        <p className="text-soil-700">Your plants will appear here.</p>
-      </Card>
+    <div className="mx-auto max-w-5xl p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold text-green-800">
+          Plant Inventory
+        </h1>
+        <span className="text-sm text-soil-500">
+          {allPlants.length} {allPlants.length === 1 ? "plant" : "plants"}
+        </span>
+      </div>
+
+      {/* Search bar */}
+      <div className="mt-4">
+        <Input
+          type="search"
+          placeholder="Search plants…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search plants"
+        />
+      </div>
+
+      {/* Filters + view toggle */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as PlantType | "")}
+          className={selectClass}
+          aria-label="Filter by type"
+        >
+          <option value="">All types</option>
+          {ALL_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(e) =>
+            setStatusFilter(e.target.value as PlantStatus | "")
+          }
+          className={selectClass}
+          aria-label="Filter by status"
+        >
+          <option value="">All statuses</option>
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+
+        <div className="ml-auto flex overflow-hidden rounded-lg border border-brown-200">
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            aria-label="Grid view"
+            className={`p-2 transition-colors ${
+              viewMode === "grid"
+                ? "bg-green-700 text-cream-50"
+                : "bg-cream-50 text-soil-700 hover:bg-cream-200"
+            }`}
+          >
+            <GridIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            aria-label="List view"
+            className={`p-2 transition-colors ${
+              viewMode === "list"
+                ? "bg-green-700 text-cream-50"
+                : "bg-cream-50 text-soil-700 hover:bg-cream-200"
+            }`}
+          >
+            <ListIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Plant grid/list */}
+      {filteredPlants.length === 0 ? (
+        <div className="mt-12 text-center">
+          {allPlants.length === 0 ? (
+            <>
+              <PlantPlaceholderIcon className="mx-auto h-16 w-16 text-brown-300" />
+              <p className="mt-4 text-lg font-medium text-soil-700">
+                No plants yet
+              </p>
+              <p className="mt-1 text-sm text-soil-500">
+                Add your first plant to get started.
+              </p>
+              <Link
+                to="/plants/new"
+                className="mt-4 inline-flex items-center rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-cream-50 transition-colors hover:bg-green-800"
+              >
+                Add Plant
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-medium text-soil-700">
+                No plants match your filters
+              </p>
+              <p className="mt-1 text-sm text-soil-500">
+                Try adjusting your search or filters.
+              </p>
+            </>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredPlants.map((plant) => {
+            const photoId = plant.photoIds?.[0];
+            const displayName = plant.nickname ?? plant.species;
+
+            return (
+              <Link key={plant.id} to={`/plants/${plant.id}`}>
+                <Card className="overflow-hidden p-0 transition-shadow hover:shadow-md">
+                  {/* Photo area */}
+                  <div className="relative aspect-[3/2] bg-cream-200">
+                    {photoId ? (
+                      <PhotoThumbnail
+                        photoId={photoId}
+                        alt={displayName}
+                        className="h-full w-full"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <PlantPlaceholderIcon className="h-12 w-12 text-brown-300" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info area */}
+                  <div className="p-3">
+                    <p className="font-display font-semibold text-soil-900 truncate">
+                      {displayName}
+                    </p>
+                    {plant.nickname && (
+                      <p className="mt-0.5 text-sm text-soil-600 truncate italic">
+                        {plant.species}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Badge>{TYPE_LABELS[plant.type]}</Badge>
+                      <Badge variant={STATUS_VARIANT[plant.status]}>
+                        {STATUS_LABELS[plant.status]}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {filteredPlants.map((plant) => {
+            const photoId = plant.photoIds?.[0];
+            const displayName = plant.nickname ?? plant.species;
+
+            return (
+              <Link key={plant.id} to={`/plants/${plant.id}`}>
+                <Card className="flex items-center gap-3 p-3 transition-shadow hover:shadow-md">
+                  {/* Thumbnail */}
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-cream-200">
+                    {photoId ? (
+                      <PhotoThumbnail
+                        photoId={photoId}
+                        alt={displayName}
+                        className="h-full w-full"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <PlantPlaceholderIcon className="h-6 w-6 text-brown-300" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display font-semibold text-soil-900 truncate">
+                      {displayName}
+                    </p>
+                    {plant.nickname && (
+                      <p className="text-sm text-soil-600 truncate italic">
+                        {plant.species}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex shrink-0 gap-1.5">
+                    <Badge>{TYPE_LABELS[plant.type]}</Badge>
+                    <Badge variant={STATUS_VARIANT[plant.status]}>
+                      {STATUS_LABELS[plant.status]}
+                    </Badge>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating add button */}
+      <Link
+        to="/plants/new"
+        aria-label="Add plant"
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-cream-50 shadow-lg transition-transform hover:bg-green-800 active:scale-95 md:bottom-6"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-7 w-7"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      </Link>
     </div>
   );
 }
