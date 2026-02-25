@@ -53,6 +53,7 @@ function makeJournalEntry(overrides?: Record<string, unknown>) {
     body: "Watered the tomatoes",
     photoIds: [] as string[],
     isMilestone: false,
+    seasonId: "00000000-0000-0000-0000-000000000099",
     ...overrides,
   };
 }
