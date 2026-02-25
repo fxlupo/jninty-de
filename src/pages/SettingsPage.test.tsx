@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "../db/schema.ts";
 import * as settingsRepo from "../db/repositories/settingsRepository.ts";
 import { SettingsProvider } from "../hooks/useSettings.tsx";
+import { ToastProvider } from "../components/ui/Toast.tsx";
 import SettingsPage from "./SettingsPage.tsx";
 
 // Mock exporter to avoid real ZIP creation
@@ -43,7 +44,9 @@ beforeEach(async () => {
 function renderSettings() {
   return render(
     <SettingsProvider>
-      <SettingsPage />
+      <ToastProvider>
+        <SettingsPage />
+      </ToastProvider>
     </SettingsProvider>,
   );
 }

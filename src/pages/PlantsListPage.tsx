@@ -21,6 +21,7 @@ import Badge from "../components/ui/Badge";
 import Input from "../components/ui/Input";
 import PhotoThumbnail from "../components/PhotoThumbnail";
 import { PlantPlaceholderIcon, PlusIcon } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
 
 // ─── Icons (page-specific) ───
 
@@ -120,8 +121,20 @@ export default function PlantsListPage() {
 
   if (allPlants === undefined) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading plants…</p>
+      <div className="mx-auto max-w-5xl p-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="mt-4 h-10 w-full" />
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="overflow-hidden rounded-xl border border-cream-200 bg-white">
+              <Skeleton className="aspect-[3/2] w-full rounded-none" />
+              <div className="p-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="mt-2 h-4 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

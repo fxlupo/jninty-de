@@ -1,73 +1,77 @@
-# React + TypeScript + Vite
+# Jninty
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A local-first, open-source garden journal and management PWA. All data lives in IndexedDB — no account required, works offline.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Plant Inventory** — Track all your plants with photos, species, care notes, and status
+- **Garden Journal** — Log daily garden activities with photos, linked to specific plants
+- **Quick Log** — 3-tap photo-first logging workflow
+- **Task Management** — Create, prioritize, and track garden tasks with due dates
+- **Full-Text Search** — MiniSearch-powered search across plants and journal entries
+- **Data Export** — Export all data as a ZIP file for backup
+- **PWA** — Install on your device, works offline
+- **No account required** — Everything stays on your device
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
 
-## Expanding the ESLint configuration
+- Node.js 18+
+- npm 9+
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone <repo-url>
+cd jninty
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev          # Start Vite dev server
+npm run build        # TypeScript type-check + production build
+npm run preview      # Preview production build
+npm run lint         # ESLint
+npm run test         # Run tests (single run)
+npm run test:watch   # Run tests (watch mode)
 ```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 18 + TypeScript (strict mode) |
+| Build | Vite |
+| Styling | Tailwind CSS v4 |
+| Database | Dexie.js (IndexedDB) |
+| Routing | React Router DOM v7 |
+| Search | MiniSearch |
+| Validation | Zod |
+| Dates | date-fns |
+| PWA | vite-plugin-pwa + Workbox |
+| Testing | Vitest + Testing Library |
+
+## Architecture
+
+```
+src/
+  pages/           Route-level page components
+  components/      Shared UI components
+  components/ui/   Primitive UI (Button, Card, Input, Badge, Toast, Skeleton)
+  components/layout/  Layout (AppShell — sidebar + bottom nav)
+  db/              Dexie schema, repositories, search index
+  hooks/           Custom React hooks
+  services/        Business logic (exporter, photo processor, storage)
+  validation/      Zod schemas
+  types/           TypeScript type definitions
+  constants/       Label and option constants
+```
+
+All data is stored in IndexedDB via Dexie.js. Entities include `id` (UUID), `version`, `createdAt`, `updatedAt`, and `deletedAt` fields for future sync support.
+
+## License
+
+MIT

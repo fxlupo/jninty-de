@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { SettingsProvider } from "./hooks/useSettings";
+import { ToastProvider } from "./components/ui/Toast";
 import DashboardPage from "./pages/DashboardPage";
 import PlantsListPage from "./pages/PlantsListPage";
 import PlantDetailPage from "./pages/PlantDetailPage";
@@ -15,6 +16,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 export default function App() {
   return (
     <SettingsProvider>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
@@ -32,6 +34,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
     </SettingsProvider>
   );
 }
