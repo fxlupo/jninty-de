@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, formatISO, startOfDay } from "date-fns";
 import * as taskRepository from "../db/repositories/taskRepository";
@@ -17,7 +17,11 @@ import {
   CheckIcon,
   CloseIcon,
   ChevronDownIcon,
+  ClipboardCheckIcon,
 } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
+import { useToast } from "../components/ui/Toast";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 // ─── Constants ───
 
@@ -66,7 +70,7 @@ function TaskItem({
       }`}
     >
       <div className="flex items-start gap-3">
-        {/* Checkbox */}
+        {/* Checkbox — 44px touch target wrapping 20px visual checkbox */}
         <button
           type="button"
           onClick={(e) => {
@@ -74,13 +78,17 @@ function TaskItem({
             onComplete();
           }}
           aria-label={task.isCompleted ? "Mark incomplete" : "Mark complete"}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-            task.isCompleted
-              ? "border-green-600 bg-green-600"
-              : "border-brown-300 hover:border-green-600"
-          }`}
+          className="flex h-11 w-11 -m-3 shrink-0 items-center justify-center"
         >
-          {task.isCompleted && <CheckIcon className="h-3 w-3 text-white" />}
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+              task.isCompleted
+                ? "border-green-600 bg-green-600"
+                : "border-brown-300 hover:border-green-600"
+            }`}
+          >
+            {task.isCompleted && <CheckIcon className="h-3 w-3 text-white" />}
+          </span>
         </button>
 
         {/* Main content — tappable to expand */}
@@ -172,6 +180,8 @@ function TaskFormModal({
   const [plantId, setPlantId] = useState(task?.plantInstanceId ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef);
 
   // Close on Escape
   useEffect(() => {
@@ -238,6 +248,7 @@ function TaskFormModal({
       aria-label={task ? "Edit task" : "New task"}
     >
       <div
+        ref={modalRef}
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -378,6 +389,7 @@ function TaskFormModal({
 // ─── Main page component ───
 
 export default function TasksPage() {
+  const { toast } = useToast();
   const allTasks = useLiveQuery(() => taskRepository.getAll());
   const allPlants = useLiveQuery(() => plantRepository.getAll());
 
@@ -441,17 +453,25 @@ export default function TasksPage() {
   }, [allTasks, sortBy]);
 
   async function handleToggleComplete(task: Task) {
-    if (task.isCompleted) {
-      await taskRepository.uncomplete(task.id);
-    } else {
-      await taskRepository.complete(task.id);
+    try {
+      if (task.isCompleted) {
+        await taskRepository.uncomplete(task.id);
+      } else {
+        await taskRepository.complete(task.id);
+      }
+    } catch {
+      toast("Failed to update task", "error");
     }
   }
 
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this task?")) return;
-    await taskRepository.softDelete(id);
-    setExpandedTaskId(null);
+    try {
+      await taskRepository.softDelete(id);
+      setExpandedTaskId(null);
+    } catch {
+      toast("Failed to delete task", "error");
+    }
   }
 
   function handleEdit(task: Task) {
@@ -468,8 +488,13 @@ export default function TasksPage() {
   // Loading state
   if (allTasks === undefined) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading tasks...</p>
+      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Loading tasks">
+        <Skeleton className="h-8 w-24" />
+        <div className="mt-4 space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -525,7 +550,8 @@ export default function TasksPage() {
       {/* Pending tasks */}
       {pendingTasks.length === 0 && completedTasks.length === 0 ? (
         <div className="mt-12 text-center">
-          <p className="text-lg font-medium text-soil-700">No tasks yet</p>
+          <ClipboardCheckIcon className="mx-auto h-16 w-16 text-brown-300" />
+          <p className="mt-4 text-lg font-medium text-soil-700">No tasks yet</p>
           <p className="mt-1 text-sm text-soil-500">
             Add your first task with the + button below.
           </p>

@@ -22,6 +22,7 @@ import {
   ChevronLeftIcon,
   PlusIcon,
 } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
 
 // ─── Component ───
 
@@ -145,8 +146,14 @@ export default function PlantDetailPage() {
 
   if (plant === undefined) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading…</p>
+      <div className="mx-auto max-w-2xl" role="status" aria-label="Loading plant details">
+        <Skeleton className="aspect-[16/9] w-full rounded-none" />
+        <div className="space-y-4 p-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       </div>
     );
   }

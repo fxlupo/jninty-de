@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
+import Skeleton from "../components/ui/Skeleton";
+import { useToast } from "../components/ui/Toast";
 import { useSettings } from "../hooks/useSettings";
 import {
   getStorageUsage,
@@ -52,6 +54,7 @@ function ToggleGroup<T extends string>({
 // ─── Settings page ───
 
 export default function SettingsPage() {
+  const { toast } = useToast();
   const { settings, loading, updateSettings } = useSettings();
 
   // Local state for text input (saved on blur)
@@ -93,8 +96,10 @@ export default function SettingsPage() {
       const blob = await exportAll();
       const date = new Date().toISOString().slice(0, 10);
       triggerDownload(blob, `jninty-export-${date}.zip`);
+      toast("Export downloaded!", "success");
     } catch {
       setExportError("Export failed. Please try again.");
+      toast("Export failed", "error");
     } finally {
       setExportBusy(false);
     }
@@ -107,8 +112,10 @@ export default function SettingsPage() {
     try {
       const count = await rebuildIndex();
       setRebuildCount(count);
+      toast(`Indexed ${String(count)} items`, "success");
     } catch {
       setRebuildError("Rebuild failed. Please try again.");
+      toast("Rebuild failed", "error");
     } finally {
       setRebuildBusy(false);
     }
@@ -116,8 +123,11 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading settings…</p>
+      <div className="mx-auto max-w-2xl space-y-6 p-4" role="status" aria-label="Loading settings">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full" />
       </div>
     );
   }
