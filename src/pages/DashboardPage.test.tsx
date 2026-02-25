@@ -121,7 +121,9 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Harvest basil")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Basil/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Basil/)).toBeInTheDocument();
+    });
   });
 
   it("has a 'View all' link to /tasks", async () => {

@@ -133,10 +133,10 @@ export async function uncomplete(id: string): Promise<Task> {
     throw new Error(`Task not found: ${id}`);
   }
 
-  const { completedAt: _, ...rest } = existing;
   const updated = taskSchema.parse({
-    ...rest,
+    ...existing,
     isCompleted: false,
+    completedAt: undefined,
     version: existing.version + 1,
     updatedAt: now(),
   });

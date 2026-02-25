@@ -449,6 +449,7 @@ export default function TasksPage() {
   }
 
   async function handleDelete(id: string) {
+    if (!window.confirm("Delete this task?")) return;
     await taskRepository.softDelete(id);
     setExpandedTaskId(null);
   }

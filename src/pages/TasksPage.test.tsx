@@ -207,10 +207,12 @@ describe("TasksPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Water the tomato")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Big Boy/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Big Boy/)).toBeInTheDocument();
+    });
   });
 
-  it("deletes a task when delete action is clicked", async () => {
+  it("deletes a task when delete action is confirmed", async () => {
     await taskRepository.create({
       title: "Task to delete",
       dueDate: futureDate(1),
@@ -218,6 +220,7 @@ describe("TasksPage", () => {
       isCompleted: false,
     });
 
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     renderPage();
 
