@@ -69,10 +69,19 @@ function resizeToBlob(
 
 /**
  * Process a photo file into thumbnail (320px) and display (1600px) variants.
+ *
+ * Note: The design doc (§5.4) envisions staggered processing — show
+ * thumbnail immediately while generating the display size in the background.
+ * Currently both are generated together in a single call. When the journal
+ * quick-entry UI is built, consider splitting into two sequential steps.
  */
 export async function processPhoto(
   file: File | Blob,
 ): Promise<ProcessedPhoto> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error(`File is not an image: ${file.type}`);
+  }
+
   const img = await loadImage(file);
   const width = img.naturalWidth;
   const height = img.naturalHeight;
@@ -86,41 +95,61 @@ export async function processPhoto(
 }
 
 /**
- * Open the device camera via a hidden file input with capture="environment".
- * Returns the captured file. Rejects if the user cancels.
+ * Open a hidden file input, wait for the user to pick a file.
+ * Uses the `cancel` event (Chrome 113+, Safari 16.4+) for reliable
+ * cancellation detection, with no fallback rejection for older browsers
+ * (the promise simply never settles — callers should handle this via
+ * AbortController or UI-level timeouts if needed).
  */
-export function captureFromCamera(): Promise<File> {
+export function openFileInput(options: {
+  capture?: string;
+}): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.capture = "environment";
+    if (options.capture) {
+      input.capture = options.capture;
+    }
 
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (file) {
         resolve(file);
       } else {
-        reject(new Error("No photo captured"));
+        reject(new Error("No file selected"));
       }
     });
 
-    // Handle cancel — the input fires no change event on cancel,
-    // but a focus event returns to the window after the dialog closes.
-    const onFocus = () => {
-      window.removeEventListener("focus", onFocus);
-      // Small delay to let the change event fire first if a file was selected.
-      setTimeout(() => {
-        if (!input.files?.length) {
-          reject(new Error("Camera capture cancelled"));
-        }
-      }, 300);
-    };
-    window.addEventListener("focus", onFocus);
+    // The `cancel` event fires when the user dismisses the file picker.
+    // Supported in Chrome 113+, Safari 16.4+. On older browsers the
+    // promise simply never settles if the user cancels.
+    input.addEventListener("cancel", () => {
+      reject(new Error("File selection cancelled"));
+    });
 
     input.click();
   });
 }
+
+/**
+ * Open the device camera via a hidden file input with capture="environment".
+ * Returns the captured file. Rejects if the user cancels (on supported browsers).
+ */
+export function captureFromCamera(): Promise<File> {
+  return openFileInput({ capture: "environment" });
+}
+
+/**
+ * Open a file picker for selecting an image.
+ * Returns the selected file. Rejects if the user cancels (on supported browsers).
+ */
+export function selectFile(): Promise<File> {
+  return openFileInput({});
+}
+
+// TODO: Add pasteFromClipboard() — design doc §5.4 requires clipboard paste
+// input. Implement using navigator.clipboard.read() or a paste event listener.
 
 /**
  * Estimate storage usage by summing blob sizes from the photos table.
@@ -134,10 +163,11 @@ export async function getStorageUsage(): Promise<{
   const photos = await db.photos.toArray();
   let photosSize = 0;
   for (const photo of photos) {
-    photosSize += photo.thumbnailBlob.size ?? 0;
+    photosSize += photo.thumbnailBlob.size;
     if (photo.displayBlob) {
-      photosSize += photo.displayBlob.size ?? 0;
+      photosSize += photo.displayBlob.size;
     }
+    // TODO: Count originalBlob size when Phase 2 adds original storage.
   }
 
   // Use Storage API estimate when available for total usage.
