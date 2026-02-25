@@ -164,10 +164,12 @@ function TaskItem({
 function TaskFormModal({
   task,
   plants,
+  activeSeasonId,
   onClose,
 }: {
   task: Task | null;
   plants: PlantInstance[];
+  activeSeasonId: string | undefined;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(task?.title ?? "");
@@ -230,7 +232,10 @@ function TaskFormModal({
       if (task) {
         await taskRepository.update(task.id, input);
       } else {
-        await taskRepository.create(input);
+        await taskRepository.create({
+          ...input,
+          ...(activeSeasonId ? { seasonId: activeSeasonId } : {}),
+        });
       }
 
       onClose();
@@ -687,6 +692,7 @@ export default function TasksPage() {
         <TaskFormModal
           task={editingTask}
           plants={allPlants ?? []}
+          activeSeasonId={activeSeason?.id}
           onClose={handleFormClose}
         />
       )}
