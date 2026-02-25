@@ -9,6 +9,7 @@ import * as taskRepository from "../db/repositories/taskRepository.ts";
 import * as plantRepository from "../db/repositories/plantRepository.ts";
 import * as journalRepository from "../db/repositories/journalRepository.ts";
 import { SettingsProvider } from "../hooks/useSettings.tsx";
+import { ToastProvider } from "../components/ui/Toast.tsx";
 import DashboardPage from "./DashboardPage.tsx";
 
 beforeEach(async () => {
@@ -28,9 +29,11 @@ function pastDate(days: number): string {
 function renderPage() {
   return render(
     <SettingsProvider>
-      <MemoryRouter initialEntries={["/"]}>
-        <DashboardPage />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <DashboardPage />
+        </MemoryRouter>
+      </ToastProvider>
     </SettingsProvider>,
   );
 }
@@ -326,10 +329,16 @@ describe("DashboardPage", () => {
   it("shows quick action buttons", async () => {
     renderPage();
 
+    // Wait for loading to finish (skeleton -> real content)
     await waitFor(() => {
-      expect(screen.getByText("Log Entry")).toBeInTheDocument();
+      expect(
+        screen.getByText("What's happening in your garden today?"),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByText("Add Plant")).toBeInTheDocument();
+
+    expect(screen.getByText("Log Entry")).toBeInTheDocument();
+    // "Add Plant" appears in both the welcome card and quick actions when no plants exist
+    expect(screen.getAllByText("Add Plant").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Add Task")).toBeInTheDocument();
   });
 });

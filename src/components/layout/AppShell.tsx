@@ -252,6 +252,14 @@ export default function AppShell() {
 
   return (
     <div className="flex min-h-svh flex-col md:flex-row">
+      {/* Skip to main content — visible only on keyboard focus */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:rounded focus:bg-green-700 focus:px-4 focus:py-2 focus:text-cream-50"
+      >
+        Skip to main content
+      </a>
+
       {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:bg-green-800">
         {/* Brand */}
@@ -305,6 +313,7 @@ export default function AppShell() {
           <div className="flex items-center gap-3">
             <NavLink
               to="/journal"
+              aria-label="Journal"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-green-800" : "text-soil-600 hover:text-green-700"}`
               }
@@ -313,6 +322,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/tasks"
+              aria-label="Tasks"
               className={({ isActive }) =>
                 `relative p-1 ${isActive ? "text-green-800" : "text-soil-600 hover:text-green-700"}`
               }
@@ -326,6 +336,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/settings"
+              aria-label="Settings"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-green-800" : "text-soil-600 hover:text-green-700"}`
               }
@@ -350,7 +361,7 @@ export default function AppShell() {
         )}
 
         {/* Page content */}
-        <main className="flex-1 pb-20 md:pb-0">
+        <main id="main-content" className="flex-1 pb-20 md:pb-0">
           <Outlet />
         </main>
       </div>
