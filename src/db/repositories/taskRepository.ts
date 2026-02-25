@@ -61,12 +61,13 @@ export async function complete(id: string): Promise<Task> {
     throw new Error(`Task not found: ${id}`);
   }
 
+  const timestamp = now();
   const updated: Task = {
     ...existing,
     isCompleted: true,
-    completedAt: now(),
+    completedAt: timestamp,
     version: existing.version + 1,
-    updatedAt: now(),
+    updatedAt: timestamp,
   };
 
   const parsed = taskSchema.parse(updated);
@@ -80,11 +81,14 @@ export async function softDelete(id: string): Promise<void> {
     throw new Error(`Task not found: ${id}`);
   }
 
-  await db.tasks.update(id, {
-    deletedAt: now(),
-    updatedAt: now(),
+  const timestamp = now();
+  const deleted = taskSchema.parse({
+    ...existing,
+    deletedAt: timestamp,
+    updatedAt: timestamp,
     version: existing.version + 1,
   });
+  await db.tasks.put(deleted);
 }
 
 export async function getById(id: string): Promise<Task | undefined> {
@@ -118,6 +122,8 @@ export async function getOverdue(): Promise<Task[]> {
   return records.filter((r) => r.deletedAt == null && !r.isCompleted);
 }
 
+// Full table scan — plantInstanceId is not indexed for tasks per design doc
+// section 5.5. Acceptable for Phase 1 dataset sizes; add an index if needed.
 export async function getByPlantId(
   plantInstanceId: string,
 ): Promise<Task[]> {

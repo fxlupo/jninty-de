@@ -170,6 +170,25 @@ describe("search", () => {
       const loaded = await loadIndex();
       expect(loaded).toBe(false);
     });
+
+    it("addToIndex works after loadIndex without duplicate ID crash", async () => {
+      const plant = makePlant({ nickname: "Persisted Alpha" });
+      // Store the plant in the DB so loadIndex can rebuild docMap
+      await db.plantInstances.add(plant);
+      addToIndex(plant);
+      await serializeIndex();
+
+      // Simulate app restart: reset in-memory state, then load from DB
+      _resetIndex();
+      await loadIndex();
+
+      // Updating the same document should NOT throw "duplicate ID"
+      const updated = { ...plant, nickname: "Persisted Bravo" };
+      addToIndex(updated);
+
+      expect(search("Alpha")).toHaveLength(0);
+      expect(search("Bravo")).toHaveLength(1);
+    });
   });
 
   describe("rebuildIndex", () => {

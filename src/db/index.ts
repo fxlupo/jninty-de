@@ -6,5 +6,6 @@ export {
   journalRepository,
   photoRepository,
   taskRepository,
+  gardenBedRepository,
   settingsRepository,
 } from "./repositories/index.ts";

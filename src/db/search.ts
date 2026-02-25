@@ -139,6 +139,24 @@ export async function loadIndex(): Promise<boolean> {
     fields: [...SEARCH_FIELDS],
     storeFields: [...STORE_FIELDS],
   });
+
+  // Rebuild docMap from DB so addToIndex/removeFromIndex work after load.
+  // Without this, the first addToIndex for an existing doc would throw
+  // "duplicate ID" because docMap wouldn't know to call remove() first.
+  docMap = new Map();
+  const plants = await db.plantInstances.toArray();
+  for (const plant of plants) {
+    if (plant.deletedAt == null) {
+      docMap.set(plant.id, plantToDocument(plant));
+    }
+  }
+  const entries = await db.journalEntries.toArray();
+  for (const entry of entries) {
+    if (entry.deletedAt == null) {
+      docMap.set(entry.id, journalToDocument(entry));
+    }
+  }
+
   return true;
 }
 
