@@ -27,7 +27,9 @@ export type {
   Planting,
 } from "../validation/planting.schema.ts";
 export type { QuantityUnit, Seed } from "../validation/seed.schema.ts";
-
-// SunExposure is not yet used by any Phase 1 entity schema,
-// but exported for Phase 2 readiness.
-export type SunExposure = "full_sun" | "partial_shade" | "full_shade";
+export type {
+  PlantKnowledge,
+  SunExposure,
+  WaterNeeds,
+  GrowthRate,
+} from "../validation/plantKnowledge.schema.ts";
