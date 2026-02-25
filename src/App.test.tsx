@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { db } from "./db/schema.ts";
 import App from "./App.tsx";
@@ -10,11 +10,13 @@ beforeEach(async () => {
 });
 
 describe("App", () => {
-  it("renders the app shell with navigation", () => {
+  it("renders the app shell with navigation", async () => {
     render(<App />);
     expect(screen.getAllByText("Jninty").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("What's happening in your garden today?"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("What's happening in your garden today?"),
+      ).toBeInTheDocument();
+    });
   });
 });

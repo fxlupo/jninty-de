@@ -16,6 +16,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import { ChevronLeftIcon, CloseIcon } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
 
 // ─── Select style ───
 
@@ -257,8 +258,12 @@ export default function PlantFormPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading…</p>
+      <div className="mx-auto max-w-2xl p-4">
+        <Skeleton className="h-8 w-40" />
+        <div className="mt-6 space-y-6">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }

@@ -24,12 +24,15 @@ import {
   ChevronRightIcon,
   ClipboardCheckIcon,
 } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
+import { useToast } from "../components/ui/Toast";
 
 function todayDate(): string {
   return formatISO(startOfDay(new Date()), { representation: "date" });
 }
 
 export default function DashboardPage() {
+  const { toast } = useToast();
   const upcomingTasks = useLiveQuery(() => taskRepository.getUpcoming(7));
   const overdueTasks = useLiveQuery(() => taskRepository.getOverdue());
   const allPlants = useLiveQuery(() => plantRepository.getAll());
@@ -61,8 +64,27 @@ export default function DashboardPage() {
     try {
       await taskRepository.complete(taskId);
     } catch {
-      // Task already completed or deleted; useLiveQuery will reconcile the UI
+      toast("Failed to complete task", "error");
     }
+  }
+
+  // Loading state
+  if (
+    upcomingTasks === undefined ||
+    overdueTasks === undefined ||
+    allPlants === undefined ||
+    recentEntries === undefined
+  ) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 p-4">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
   }
 
   return (
@@ -169,10 +191,12 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => void handleCompleteTask(task.id)}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-green-600 text-transparent transition-colors hover:bg-green-50 hover:text-green-600"
+                      className="flex h-11 w-11 -m-3 shrink-0 items-center justify-center"
                       aria-label={`Complete task: ${task.title}`}
                     >
-                      <CheckIcon className="h-3 w-3" />
+                      <span className="flex h-5 w-5 items-center justify-center rounded border-2 border-green-600 text-transparent transition-colors hover:bg-green-50 hover:text-green-600">
+                        <CheckIcon className="h-3 w-3" />
+                      </span>
                     </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

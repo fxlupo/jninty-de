@@ -20,7 +20,9 @@ import { useDebounce } from "../hooks/useDebounce";
 import Badge from "../components/ui/Badge";
 import Input from "../components/ui/Input";
 import PhotoThumbnail from "../components/PhotoThumbnail";
-import { PlusIcon, CloseIcon } from "../components/icons";
+import { PlusIcon, CloseIcon, ClipboardCheckIcon } from "../components/icons";
+import Skeleton from "../components/ui/Skeleton";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 // ─── Constants ───
 
@@ -113,6 +115,8 @@ function EntryDetail({
   onClose: () => void;
 }) {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef);
 
   useEffect(() => {
     const firstPhotoId = entry.photoIds[0];
@@ -166,6 +170,7 @@ function EntryDetail({
       aria-label="Journal entry detail"
     >
       <div
+        ref={modalRef}
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -415,8 +420,14 @@ export default function JournalPage() {
   // Loading state
   if (allEntries === undefined) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-soil-600">Loading journal...</p>
+      <div className="mx-auto max-w-3xl p-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="mt-4 h-10 w-full" />
+        <div className="mt-4 space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-[92px] w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -509,7 +520,8 @@ export default function JournalPage() {
         <div className="mt-12 text-center">
           {allEntries.length === 0 ? (
             <>
-              <p className="text-lg font-medium text-soil-700">
+              <ClipboardCheckIcon className="mx-auto h-16 w-16 text-brown-300" />
+              <p className="mt-4 text-lg font-medium text-soil-700">
                 No journal entries yet
               </p>
               <p className="mt-1 text-sm text-soil-500">
