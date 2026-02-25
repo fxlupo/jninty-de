@@ -61,11 +61,14 @@ export async function softDelete(id: string): Promise<void> {
     throw new Error(`PlantInstance not found: ${id}`);
   }
 
-  await db.plantInstances.update(id, {
-    deletedAt: now(),
-    updatedAt: now(),
+  const timestamp = now();
+  const deleted = plantInstanceSchema.parse({
+    ...existing,
+    deletedAt: timestamp,
+    updatedAt: timestamp,
     version: existing.version + 1,
   });
+  await db.plantInstances.put(deleted);
 }
 
 export async function getById(

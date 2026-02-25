@@ -62,11 +62,14 @@ export async function softDelete(id: string): Promise<void> {
     throw new Error(`JournalEntry not found: ${id}`);
   }
 
-  await db.journalEntries.update(id, {
-    deletedAt: now(),
-    updatedAt: now(),
+  const timestamp = now();
+  const deleted = journalEntrySchema.parse({
+    ...existing,
+    deletedAt: timestamp,
+    updatedAt: timestamp,
     version: existing.version + 1,
   });
+  await db.journalEntries.put(deleted);
 }
 
 export async function getById(
@@ -88,11 +91,17 @@ export async function getByPlantId(
 }
 
 export async function getRecent(limit: number): Promise<JournalEntry[]> {
-  const records = await db.journalEntries
+  const results: JournalEntry[] = [];
+  await db.journalEntries
     .orderBy("createdAt")
     .reverse()
-    .toArray();
-  return records.filter((r) => r.deletedAt == null).slice(0, limit);
+    .until(() => results.length >= limit)
+    .each((record) => {
+      if (record.deletedAt == null) {
+        results.push(record);
+      }
+    });
+  return results;
 }
 
 export async function getByActivityType(
