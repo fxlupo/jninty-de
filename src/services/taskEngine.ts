@@ -55,29 +55,20 @@ export function computeTriggerDate(
 
   switch (trigger.type) {
     case "relative_to_last_frost": {
-      if (trigger.offsetDays == null) return undefined;
+      if (trigger.offsetDays == null || !settings.lastFrostDate) return undefined;
       const base = parseISO(settings.lastFrostDate);
       return formatISO(addDays(base, trigger.offsetDays), {
         representation: "date",
       });
     }
     case "relative_to_first_frost": {
-      if (trigger.offsetDays == null) return undefined;
+      if (trigger.offsetDays == null || !settings.firstFrostDate) return undefined;
       const base = parseISO(settings.firstFrostDate);
       return formatISO(addDays(base, trigger.offsetDays), {
         representation: "date",
       });
     }
-    case "seasonal": {
-      if (trigger.month == null) return undefined;
-      const y = year ?? new Date().getFullYear();
-      const m = String(trigger.month).padStart(2, "0");
-      const d =
-        trigger.day != null
-          ? String(trigger.day).padStart(2, "0")
-          : "01";
-      return `${String(y)}-${m}-${d}`;
-    }
+    case "seasonal":
     case "fixed_date": {
       if (trigger.month == null) return undefined;
       const y = year ?? new Date().getFullYear();
