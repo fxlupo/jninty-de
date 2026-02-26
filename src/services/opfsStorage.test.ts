@@ -77,18 +77,52 @@ describe("file operations (OPFS unavailable)", () => {
 });
 
 describe("file operations (OPFS mocked)", () => {
-  let mockFiles: Map<string, Blob>;
+  // Shared file storage backing the mock (keyed by full path)
+  let fileStore: Map<string, Blob>;
 
-  function createMockFileHandle(name: string) {
+  type MockFileHandle = {
+    kind: "file";
+    name: string;
+    getFile: () => Promise<Blob>;
+    createWritable: () => Promise<{
+      write: (blob: Blob) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
+  };
+
+  type MockDirHandle = {
+    kind: "directory";
+    getFileHandle: (
+      name: string,
+      opts?: { create?: boolean },
+    ) => Promise<MockFileHandle>;
+    getDirectoryHandle: (
+      name: string,
+      opts?: { create?: boolean },
+    ) => Promise<MockDirHandle>;
+    removeEntry: (name: string, opts?: { recursive?: boolean }) => Promise<void>;
+    entries: () => AsyncIterable<[string, MockFileHandle | MockDirHandle]>;
+  };
+
+  // Track which directories/files exist by prefix
+  function filesUnderDir(dirPath: string): string[] {
+    const prefix = dirPath ? `${dirPath}/` : "";
+    return Array.from(fileStore.keys()).filter((k) => k.startsWith(prefix));
+  }
+
+  function createMockFileHandle(
+    fullPath: string,
+    name: string,
+  ): MockFileHandle {
     return {
-      kind: "file" as const,
+      kind: "file",
       name,
       getFile: () =>
-        Promise.resolve(mockFiles.get(name) ?? new Blob([])),
+        Promise.resolve(fileStore.get(fullPath) ?? new Blob([])),
       createWritable: () =>
         Promise.resolve({
           write: (blob: Blob) => {
-            mockFiles.set(name, blob);
+            fileStore.set(fullPath, blob);
             return Promise.resolve();
           },
           close: () => Promise.resolve(),
@@ -96,54 +130,67 @@ describe("file operations (OPFS mocked)", () => {
     };
   }
 
-  function createMockDirHandle(
-    contents: Map<string, ReturnType<typeof createMockFileHandle>>,
-  ) {
-    const dir = {
-      kind: "directory" as const,
+  function createMockDirHandle(dirPath: string): MockDirHandle {
+    return {
+      kind: "directory",
       getFileHandle: (name: string, opts?: { create?: boolean }) => {
-        if (contents.has(name) || opts?.create) {
-          const handle = contents.get(name) ?? createMockFileHandle(name);
-          contents.set(name, handle);
-          return Promise.resolve(handle);
+        const fullPath = dirPath ? `${dirPath}/${name}` : name;
+        if (fileStore.has(fullPath) || opts?.create) {
+          return Promise.resolve(createMockFileHandle(fullPath, name));
         }
         return Promise.reject(new Error("Not found"));
       },
-      getDirectoryHandle: (
-        _name: string,
-        opts?: { create?: boolean },
-      ) => {
-        if (opts?.create) {
-          const subContents = new Map<
-            string,
-            ReturnType<typeof createMockFileHandle>
-          >();
-          return Promise.resolve(createMockDirHandle(subContents));
+      getDirectoryHandle: (name: string, opts?: { create?: boolean }) => {
+        const subPath = dirPath ? `${dirPath}/${name}` : name;
+        // Directory exists if any files are under it, or if create requested
+        const hasFiles = filesUnderDir(subPath).length > 0;
+        if (hasFiles || opts?.create) {
+          return Promise.resolve(createMockDirHandle(subPath));
         }
         return Promise.reject(new Error("Not found"));
       },
       removeEntry: (name: string) => {
-        contents.delete(name);
+        const fullPath = dirPath ? `${dirPath}/${name}` : name;
+        // Remove file or all files under directory
+        for (const key of Array.from(fileStore.keys())) {
+          if (key === fullPath || key.startsWith(`${fullPath}/`)) {
+            fileStore.delete(key);
+          }
+        }
         return Promise.resolve();
       },
       entries: () => {
-        const entries = Array.from(contents.entries());
+        // Return immediate children (files and subdirectories)
+        const prefix = dirPath ? `${dirPath}/` : "";
+        const childNames = new Set<string>();
+        for (const key of fileStore.keys()) {
+          if (!key.startsWith(prefix)) continue;
+          const rest = key.slice(prefix.length);
+          const firstSlash = rest.indexOf("/");
+          childNames.add(firstSlash === -1 ? rest : rest.slice(0, firstSlash));
+        }
+        const names = Array.from(childNames);
         let i = 0;
         return {
           [Symbol.asyncIterator]() {
             return {
               next: () => {
-                if (i < entries.length) {
-                  const entry = entries[i]!;
+                if (i < names.length) {
+                  const name = names[i]!;
                   i++;
+                  const fullPath = prefix + name;
+                  const isFile = fileStore.has(fullPath);
+                  const handle = isFile
+                    ? createMockFileHandle(fullPath, name)
+                    : createMockDirHandle(fullPath);
                   return Promise.resolve({
-                    value: [entry[0], entry[1]] as const,
-                    done: false,
+                    value: [name, handle] as [string, MockFileHandle | MockDirHandle],
+                    done: false as const,
                   });
                 }
                 return Promise.resolve({
-                  value: undefined as unknown,
-                  done: true,
+                  value: undefined as unknown as [string, MockFileHandle | MockDirHandle],
+                  done: true as const,
                 });
               },
             };
@@ -151,20 +198,15 @@ describe("file operations (OPFS mocked)", () => {
         };
       },
     };
-    return dir;
   }
 
   beforeEach(() => {
-    mockFiles = new Map();
-    const rootContents = new Map<
-      string,
-      ReturnType<typeof createMockFileHandle>
-    >();
+    fileStore = new Map();
+    const rootDir = createMockDirHandle("");
 
     vi.stubGlobal("navigator", {
       storage: {
-        getDirectory: () =>
-          Promise.resolve(createMockDirHandle(rootContents)),
+        getDirectory: () => Promise.resolve(rootDir),
       },
     });
     _resetDetection();
@@ -179,13 +221,53 @@ describe("file operations (OPFS mocked)", () => {
     const data = new Blob(["hello"], { type: "text/plain" });
     await writeFile("test.txt", data);
 
-    // readFile at the root path should find the file
-    // (Note: each getDirectory() call returns a fresh mock, so this tests the no-op behavior)
-    expect(isOpfsAvailable()).toBe(true);
+    const result = await readFile("test.txt");
+    expect(result).toBeDefined();
+    expect(result!.size).toBe(5);
+  });
+
+  it("writeFile + readFile round-trip (nested path)", async () => {
+    const data = new Blob(["photo-data"], { type: "image/jpeg" });
+    await writeFile("photos/display/abc.jpg", data);
+
+    const result = await readFile("photos/display/abc.jpg");
+    expect(result).toBeDefined();
+    expect(result!.size).toBe(10);
+  });
+
+  it("readFile returns undefined for non-existent file", async () => {
+    const result = await readFile("does-not-exist.txt");
+    expect(result).toBeUndefined();
+  });
+
+  it("deleteFile removes a file", async () => {
+    await writeFile("photos/display/to-delete.jpg", new Blob(["data"]));
+    await deleteFile("photos/display/to-delete.jpg");
+
+    const result = await readFile("photos/display/to-delete.jpg");
+    expect(result).toBeUndefined();
+  });
+
+  it("getDirectorySize sums file sizes", async () => {
+    await writeFile("photos/display/a.jpg", new Blob(["aaa"]));
+    await writeFile("photos/display/b.jpg", new Blob(["bbbbb"]));
+
+    const size = await getDirectorySize("photos/display");
+    expect(size).toBe(8); // 3 + 5
   });
 
   it("getDirectorySize returns 0 for non-existent directory", async () => {
     const size = await getDirectorySize("nonexistent/dir");
     expect(size).toBe(0);
+  });
+
+  it("clearDirectory removes all files", async () => {
+    await writeFile("photos/originals/a.jpg", new Blob(["aaa"]));
+    await writeFile("photos/originals/b.jpg", new Blob(["bbb"]));
+
+    await clearDirectory("photos/originals");
+
+    const sizeAfter = await getDirectorySize("photos/originals");
+    expect(sizeAfter).toBe(0);
   });
 });

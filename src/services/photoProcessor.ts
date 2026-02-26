@@ -1,5 +1,3 @@
-import { db } from "../db/schema.ts";
-
 export interface ProcessedPhoto {
   thumbnailBlob: Blob;
   displayBlob: Blob;
@@ -167,38 +165,3 @@ export function selectFile(): Promise<File> {
 
 // TODO: Add pasteFromClipboard() — design doc §5.4 requires clipboard paste
 // input. Implement using navigator.clipboard.read() or a paste event listener.
-
-/**
- * Estimate storage usage by summing blob sizes from the photos table.
- * Returns sizes in bytes.
- */
-export async function getStorageUsage(): Promise<{
-  photos: number;
-  data: number;
-  total: number;
-}> {
-  const photos = await db.photos.toArray();
-  let photosSize = 0;
-  for (const photo of photos) {
-    photosSize += photo.thumbnailBlob.size;
-    if (photo.displayBlob) {
-      photosSize += photo.displayBlob.size;
-    }
-    // TODO: Count originalBlob size when Phase 2 adds original storage.
-  }
-
-  // Use Storage API estimate when available for total usage.
-  let total = photosSize;
-  if (navigator.storage?.estimate) {
-    const estimate = await navigator.storage.estimate();
-    if (estimate.usage != null && estimate.usage > photosSize) {
-      total = estimate.usage;
-    }
-  }
-
-  return {
-    photos: photosSize,
-    data: Math.max(0, total - photosSize),
-    total,
-  };
-}

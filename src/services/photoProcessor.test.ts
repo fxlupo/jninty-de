@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { db } from "../db/schema.ts";
-import { processPhoto, getStorageUsage } from "./photoProcessor.ts";
+import { processPhoto } from "./photoProcessor.ts";
 
 // ─── Canvas / Image mocks for jsdom ───
 
@@ -168,64 +168,3 @@ describe("processPhoto", () => {
   });
 });
 
-// ─── getStorageUsage ───
-// fake-indexeddb doesn't preserve Blob objects through structured clone,
-// so we mock db.photos.toArray() to return objects with real Blobs.
-
-describe("getStorageUsage", () => {
-  it("returns zero when no photos exist", async () => {
-    const usage = await getStorageUsage();
-    expect(usage.photos).toBe(0);
-    expect(usage.total).toBe(0);
-  });
-
-  it("sums blob sizes from all photos", async () => {
-    const thumb1 = new Blob([new Uint8Array(1000)], { type: "image/jpeg" });
-    const display1 = new Blob([new Uint8Array(5000)], { type: "image/jpeg" });
-    const thumb2 = new Blob([new Uint8Array(800)], { type: "image/jpeg" });
-
-    vi.spyOn(db.photos, "toArray").mockResolvedValue([
-      {
-        id: "a",
-        version: 1,
-        createdAt: "",
-        updatedAt: "",
-        thumbnailBlob: thumb1,
-        displayBlob: display1,
-        originalStored: false,
-      },
-      {
-        id: "b",
-        version: 1,
-        createdAt: "",
-        updatedAt: "",
-        thumbnailBlob: thumb2,
-        originalStored: false,
-      },
-    ]);
-
-    const usage = await getStorageUsage();
-
-    // 1000 + 5000 + 800 = 6800
-    expect(usage.photos).toBe(6800);
-    expect(usage.total).toBeGreaterThanOrEqual(6800);
-  });
-
-  it("counts only thumbnail when displayBlob is absent", async () => {
-    const thumb = new Blob([new Uint8Array(2000)], { type: "image/jpeg" });
-
-    vi.spyOn(db.photos, "toArray").mockResolvedValue([
-      {
-        id: "c",
-        version: 1,
-        createdAt: "",
-        updatedAt: "",
-        thumbnailBlob: thumb,
-        originalStored: false,
-      },
-    ]);
-
-    const usage = await getStorageUsage();
-    expect(usage.photos).toBe(2000);
-  });
-});
