@@ -100,24 +100,34 @@ describe("computeDueDate", () => {
     expect(result).toBe("2026-10-01"); // Oct 15 - 14 days = Oct 1
   });
 
-  it("computes seasonal date (15th of the month)", () => {
+  it("computes seasonal date (nearest future 15th of the month)", () => {
     const rule = makeRule({
       id: RULE_3,
       trigger: { type: "seasonal", month: 3 },
     });
     const result = taskEngine.computeDueDate(rule, frostSettings);
-    const year = new Date().getFullYear();
-    expect(result).toBe(`${year}-03-15`);
+    const now = new Date();
+    const thisYearDate = new Date(now.getFullYear(), 2, 15); // March 15
+    const expectedYear =
+      thisYearDate >= startOfDay(now)
+        ? now.getFullYear()
+        : now.getFullYear() + 1;
+    expect(result).toBe(`${expectedYear}-03-15`);
   });
 
-  it("computes fixed_date", () => {
+  it("computes fixed_date (nearest future occurrence)", () => {
     const rule = makeRule({
       id: RULE_4,
       trigger: { type: "fixed_date", month: 6, day: 21 },
     });
     const result = taskEngine.computeDueDate(rule, frostSettings);
-    const year = new Date().getFullYear();
-    expect(result).toBe(`${year}-06-21`);
+    const now = new Date();
+    const thisYearDate = new Date(now.getFullYear(), 5, 21); // June 21
+    const expectedYear =
+      thisYearDate >= startOfDay(now)
+        ? now.getFullYear()
+        : now.getFullYear() + 1;
+    expect(result).toBe(`${expectedYear}-06-21`);
   });
 
   it("returns null when offsetDays is missing for frost-relative trigger", () => {

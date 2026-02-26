@@ -26,7 +26,21 @@ export const taskRuleTriggerSchema = z
     month: z.number().int().min(1).max(12).optional(),
     day: z.number().int().min(1).max(31).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (t) => {
+      if (
+        t.type === "relative_to_last_frost" ||
+        t.type === "relative_to_first_frost"
+      ) {
+        return t.offsetDays != null;
+      }
+      if (t.type === "seasonal") return t.month != null;
+      if (t.type === "fixed_date") return t.month != null && t.day != null;
+      return true;
+    },
+    { message: "Trigger fields must match trigger type" },
+  );
 
 export const taskRuleTaskSchema = z
   .object({

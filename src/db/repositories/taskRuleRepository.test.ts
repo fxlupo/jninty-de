@@ -49,7 +49,6 @@ describe("taskRuleRepository", () => {
         appliesTo: { species: "Rosa" },
         trigger: { type: "seasonal", month: 11 },
         task: { title: "Winterize roses" },
-        isBuiltIn: false,
       });
 
       expect(rule.id).toBeDefined();
@@ -64,7 +63,6 @@ describe("taskRuleRepository", () => {
         appliesTo: { species: "Rosa" },
         trigger: { type: "seasonal", month: 11 },
         task: { title: "Winterize roses" },
-        isBuiltIn: false,
       });
 
       const userRules = await taskRuleRepo.getUserRules();
@@ -77,7 +75,6 @@ describe("taskRuleRepository", () => {
         appliesTo: { species: "Rosa" },
         trigger: { type: "seasonal", month: 11 },
         task: { title: "Winterize roses" },
-        isBuiltIn: false,
       });
       await taskRuleRepo.softDelete(rule.id);
 
@@ -92,7 +89,6 @@ describe("taskRuleRepository", () => {
         appliesTo: { species: "Rosa" },
         trigger: { type: "seasonal", month: 11 },
         task: { title: "Winterize roses" },
-        isBuiltIn: false,
       });
 
       const allRules = await taskRuleRepo.getAll();
@@ -107,7 +103,6 @@ describe("taskRuleRepository", () => {
         appliesTo: { species: "Rosa" },
         trigger: { type: "seasonal", month: 11 },
         task: { title: "Winterize roses" },
-        isBuiltIn: false,
       });
 
       await taskRuleRepo.softDelete(rule.id);

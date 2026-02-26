@@ -53,16 +53,23 @@ export function computeDueDate(
 
     case "seasonal": {
       if (trigger.month == null) return null;
-      // Use the 15th of the specified month in the current year
-      const year = new Date().getFullYear();
-      const date = new Date(year, trigger.month - 1, 15);
+      // Use the 15th of the specified month. If that date is in the past,
+      // use next year so fall/winter planning surfaces spring suggestions.
+      const now = new Date();
+      const thisYear = new Date(now.getFullYear(), trigger.month - 1, 15);
+      const date = thisYear >= startOfDay(now)
+        ? thisYear
+        : new Date(now.getFullYear() + 1, trigger.month - 1, 15);
       return formatISO(startOfDay(date), { representation: "date" });
     }
 
     case "fixed_date": {
       if (trigger.month == null || trigger.day == null) return null;
-      const year = new Date().getFullYear();
-      const date = new Date(year, trigger.month - 1, trigger.day);
+      const now = new Date();
+      const thisYear = new Date(now.getFullYear(), trigger.month - 1, trigger.day);
+      const date = thisYear >= startOfDay(now)
+        ? thisYear
+        : new Date(now.getFullYear() + 1, trigger.month - 1, trigger.day);
       return formatISO(startOfDay(date), { representation: "date" });
     }
 

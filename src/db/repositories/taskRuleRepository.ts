@@ -43,7 +43,7 @@ export async function getAll(): Promise<TaskRule[]> {
 
 type CreateTaskRuleInput = Omit<
   TaskRule,
-  "id" | "version" | "createdAt" | "updatedAt" | "deletedAt"
+  "id" | "version" | "createdAt" | "updatedAt" | "deletedAt" | "isBuiltIn"
 >;
 
 export async function create(input: CreateTaskRuleInput): Promise<TaskRule> {

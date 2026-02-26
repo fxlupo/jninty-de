@@ -144,4 +144,45 @@ describe("taskRuleSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // Trigger refinement tests
+  it("rejects frost-relative trigger without offsetDays", () => {
+    const result = taskRuleSchema.safeParse({
+      ...validRule,
+      trigger: { type: "relative_to_last_frost" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects first-frost trigger without offsetDays", () => {
+    const result = taskRuleSchema.safeParse({
+      ...validRule,
+      trigger: { type: "relative_to_first_frost" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects seasonal trigger without month", () => {
+    const result = taskRuleSchema.safeParse({
+      ...validRule,
+      trigger: { type: "seasonal" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects fixed_date trigger without day", () => {
+    const result = taskRuleSchema.safeParse({
+      ...validRule,
+      trigger: { type: "fixed_date", month: 6 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts fixed_date trigger with month and day", () => {
+    const result = taskRuleSchema.safeParse({
+      ...validRule,
+      trigger: { type: "fixed_date", month: 6, day: 21 },
+    });
+    expect(result.success).toBe(true);
+  });
 });
