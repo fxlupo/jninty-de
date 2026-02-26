@@ -25,9 +25,12 @@ vi.mock("../services/storageUsage.ts", async (importOriginal) => {
   return {
     ...actual,
     getStorageUsage: vi.fn().mockResolvedValue({
-      photosBytes: 1024,
+      thumbnailBytes: 512,
+      displayBytes: 1024,
+      originalBytes: 0,
       dataBytes: 2048,
-      totalBytes: 3072,
+      totalBytes: 3584,
+      quotaBytes: 100_000_000,
     }),
   };
 });
@@ -111,9 +114,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Photos:/)).toBeInTheDocument();
+      expect(screen.getByText(/Thumbnails:/)).toBeInTheDocument();
     });
 
+    expect(screen.getByText(/Display:/)).toBeInTheDocument();
     expect(screen.getByText(/Data:/)).toBeInTheDocument();
     expect(screen.getByText(/Total:/)).toBeInTheDocument();
   });

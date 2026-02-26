@@ -136,9 +136,8 @@ function EntryDetail({
     let url: string | undefined;
     let cancelled = false;
 
-    void photoRepository.getById(firstPhotoId).then((photo) => {
+    void photoRepository.getDisplayBlob(firstPhotoId).then((blob) => {
       if (cancelled) return;
-      const blob = photo?.displayBlob ?? photo?.thumbnailBlob;
       if (blob) {
         url = URL.createObjectURL(blob);
         setDisplayUrl(url);
