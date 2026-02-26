@@ -86,9 +86,8 @@ export default function PlantDetailPage() {
         return;
       }
 
-      const photo = await photoRepository.getById(photoId);
+      const blob = await photoRepository.getDisplayBlob(photoId);
       if (revoked) return;
-      const blob = photo?.displayBlob ?? photo?.thumbnailBlob;
       if (blob) {
         objectUrl = URL.createObjectURL(blob);
         setHeroUrl(objectUrl);

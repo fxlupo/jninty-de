@@ -53,25 +53,34 @@ export async function createWithFiles(
 ): Promise<Photo> {
   const timestamp = now();
   const id = crypto.randomUUID();
-  const useOpfs = isOpfsAvailable();
+  let displayInOpfs = false;
+  let originalStored = false;
 
-  // Write display to OPFS if available
-  if (useOpfs) {
-    await writeFile(displayPath(id), input.displayBlob);
+  // Try OPFS for display blob, fall back to IndexedDB on failure
+  if (isOpfsAvailable()) {
+    try {
+      await writeFile(displayPath(id), input.displayBlob);
+      displayInOpfs = true;
+    } catch {
+      // OPFS write failed (e.g. quota) — fall back to IndexedDB
+    }
   }
 
-  // Write original to OPFS if provided and OPFS is available
-  let originalStored = false;
-  if (useOpfs && input.originalFile) {
-    await writeFile(originalPath(id), input.originalFile);
-    originalStored = true;
+  // Write original to OPFS if provided and display succeeded in OPFS
+  if (displayInOpfs && input.originalFile) {
+    try {
+      await writeFile(originalPath(id), input.originalFile);
+      originalStored = true;
+    } catch {
+      // Original write failed — continue without it
+    }
   }
 
   const record: Photo = {
     thumbnailBlob: input.thumbnailBlob,
     // Store display in IndexedDB only when OPFS is unavailable
-    ...(useOpfs ? {} : { displayBlob: input.displayBlob }),
-    ...(useOpfs ? { displayStoredInOpfs: true } : {}),
+    ...(displayInOpfs ? {} : { displayBlob: input.displayBlob }),
+    ...(displayInOpfs ? { displayStoredInOpfs: true } : {}),
     originalStored,
     ...(input.width > 0 ? { width: input.width } : {}),
     ...(input.height > 0 ? { height: input.height } : {}),
