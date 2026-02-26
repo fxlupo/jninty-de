@@ -4,7 +4,8 @@ import { format, parseISO, formatISO, startOfDay } from "date-fns";
 import * as taskRepository from "../db/repositories/taskRepository";
 import * as plantRepository from "../db/repositories/plantRepository";
 import * as seasonRepository from "../db/repositories/seasonRepository";
-import type { Task, TaskPriority, PlantInstance } from "../types";
+import * as taskEngine from "../services/taskEngine";
+import type { Task, TaskPriority, RecurrenceType, PlantInstance } from "../types";
 import {
   PRIORITY_LABELS,
   PRIORITY_VARIANT,
@@ -19,6 +20,7 @@ import {
   CloseIcon,
   ChevronDownIcon,
   ClipboardCheckIcon,
+  RepeatIcon,
 } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
@@ -108,6 +110,9 @@ function TaskItem({
             >
               {task.title}
             </span>
+            {task.recurrence && (
+              <RepeatIcon className="h-3.5 w-3.5 shrink-0 text-brown-400" />
+            )}
             <Badge variant={PRIORITY_VARIANT[task.priority]}>
               {PRIORITY_LABELS[task.priority]}
             </Badge>
@@ -181,6 +186,12 @@ function TaskFormModal({
     task?.priority ?? "normal",
   );
   const [plantId, setPlantId] = useState(task?.plantInstanceId ?? "");
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType | "">(
+    task?.recurrence?.type ?? "",
+  );
+  const [recurrenceInterval, setRecurrenceInterval] = useState(
+    task?.recurrence?.interval ?? 1,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const modalRef = useRef<HTMLDivElement>(null);
@@ -227,6 +238,14 @@ function TaskFormModal({
         isCompleted: task?.isCompleted ?? false,
         ...(plantId ? { plantInstanceId: plantId } : {}),
         ...(task?.completedAt ? { completedAt: task.completedAt } : {}),
+        ...(recurrenceType
+          ? {
+              recurrence: {
+                type: recurrenceType as RecurrenceType,
+                interval: recurrenceInterval,
+              },
+            }
+          : {}),
       };
 
       if (task) {
@@ -377,6 +396,57 @@ function TaskFormModal({
             </select>
           </div>
 
+          {/* Recurrence */}
+          <div>
+            <label
+              htmlFor="task-recurrence"
+              className="block text-sm font-medium text-soil-700"
+            >
+              Repeat
+            </label>
+            <select
+              id="task-recurrence"
+              value={recurrenceType}
+              onChange={(e) =>
+                setRecurrenceType(e.target.value as RecurrenceType | "")
+              }
+              className={`mt-1 ${selectClass}`}
+            >
+              <option value="">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Every N days</option>
+            </select>
+          </div>
+
+          {recurrenceType && (
+            <div>
+              <label
+                htmlFor="task-interval"
+                className="block text-sm font-medium text-soil-700"
+              >
+                {recurrenceType === "daily"
+                  ? "Every N days"
+                  : recurrenceType === "weekly"
+                    ? "Every N weeks"
+                    : recurrenceType === "monthly"
+                      ? "Every N months"
+                      : "Every N days"}
+              </label>
+              <Input
+                id="task-interval"
+                type="number"
+                min={1}
+                value={recurrenceInterval}
+                onChange={(e) =>
+                  setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                className="mt-1"
+              />
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={saving}>
@@ -475,7 +545,15 @@ export default function TasksPage() {
       if (task.isCompleted) {
         await taskRepository.uncomplete(task.id);
       } else {
-        await taskRepository.complete(task.id);
+        const completed = await taskRepository.complete(task.id);
+        // Auto-create next occurrence for recurring tasks
+        if (completed.recurrence) {
+          await taskEngine.createNextRecurrence(
+            completed,
+            activeSeason?.id,
+          );
+          toast("Next occurrence created", "success");
+        }
       }
     } catch {
       toast("Failed to update task", "error");

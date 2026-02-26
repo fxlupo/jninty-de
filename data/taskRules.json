@@ -1,0 +1,177 @@
+[
+  {
+    "id": "10000000-0000-0000-0000-000000000001",
+    "appliesTo": { "species": "Solanum lycopersicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -42 },
+    "task": { "title": "Start tomato seeds indoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000002",
+    "appliesTo": { "species": "Capsicum annuum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -56 },
+    "task": { "title": "Start pepper seeds indoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000003",
+    "appliesTo": { "plantType": "vegetable" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -7 },
+    "task": { "title": "Harden off seedlings", "activityType": "general", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000004",
+    "appliesTo": { "species": "Rosa" },
+    "trigger": { "type": "seasonal", "month": 2 },
+    "task": { "title": "Prune roses", "activityType": "pruning", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000005",
+    "appliesTo": { "plantType": "vegetable" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -14 },
+    "task": { "title": "Mulch beds for winter", "activityType": "general", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000006",
+    "appliesTo": { "species": "Allium sativum" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -28 },
+    "task": { "title": "Plant garlic cloves", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000007",
+    "appliesTo": { "species": "Zea mays" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 42 },
+    "task": { "title": "Side-dress corn with nitrogen", "activityType": "fertilizing", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000008",
+    "appliesTo": { "plantType": "fruit_tree" },
+    "trigger": { "type": "seasonal", "month": 2 },
+    "task": { "title": "Prune fruit trees while dormant", "activityType": "pruning", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000009",
+    "appliesTo": { "species": "Citrus" },
+    "trigger": { "type": "seasonal", "month": 3 },
+    "task": { "title": "Fertilize citrus trees", "activityType": "fertilizing", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000010",
+    "appliesTo": { "species": "Brassica oleracea" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -42 },
+    "task": { "title": "Start brassica seeds indoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000011",
+    "appliesTo": { "species": "Phaseolus vulgaris" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 7 },
+    "task": { "title": "Direct sow beans outdoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000012",
+    "appliesTo": { "species": "Lactuca sativa" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -28 },
+    "task": { "title": "Direct sow lettuce outdoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000013",
+    "appliesTo": { "plantType": "flower" },
+    "trigger": { "type": "seasonal", "month": 3 },
+    "task": { "title": "Divide perennial flowers", "activityType": "general", "defaultPriority": "low" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000014",
+    "appliesTo": { "plantType": "herb" },
+    "trigger": { "type": "seasonal", "month": 4 },
+    "task": { "title": "Fertilize herbs for the growing season", "activityType": "fertilizing", "defaultPriority": "low" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000015",
+    "appliesTo": { "plantType": "berry" },
+    "trigger": { "type": "seasonal", "month": 5 },
+    "task": { "title": "Install bird netting on berry bushes", "activityType": "general", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000016",
+    "appliesTo": { "species": "Cucurbita" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -21 },
+    "task": { "title": "Start squash seeds indoors", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000017",
+    "appliesTo": { "species": "Solanum lycopersicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 14 },
+    "task": { "title": "Transplant tomatoes outdoors", "activityType": "transplant", "defaultPriority": "urgent" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000018",
+    "appliesTo": { "species": "Allium sativum" },
+    "trigger": { "type": "seasonal", "month": 7 },
+    "task": { "title": "Harvest garlic when lower leaves brown", "activityType": "harvest", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000019",
+    "appliesTo": { "plantType": "vegetable" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -42 },
+    "task": { "title": "Plant fall cover crops", "activityType": "transplant", "defaultPriority": "low" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000020",
+    "appliesTo": { "plantType": "herb" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -7 },
+    "task": { "title": "Bring tender herbs indoors or mulch heavily", "activityType": "general", "defaultPriority": "urgent" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000021",
+    "appliesTo": { "species": "Daucus carota" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -21 },
+    "task": { "title": "Direct sow carrot seeds", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000022",
+    "appliesTo": { "species": "Solanum lycopersicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 28 },
+    "task": { "title": "Stake or cage tomato plants", "activityType": "general", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000023",
+    "appliesTo": { "plantType": "flower" },
+    "trigger": { "type": "seasonal", "month": 6 },
+    "task": { "title": "Deadhead spent flowers to encourage reblooming", "activityType": "pruning", "defaultPriority": "low" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000024",
+    "appliesTo": { "species": "Cucumis sativus" },
+    "trigger": { "type": "seasonal", "month": 6 },
+    "task": { "title": "Check cucumbers for squash vine borers", "activityType": "pest", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  },
+  {
+    "id": "10000000-0000-0000-0000-000000000025",
+    "appliesTo": { "plantType": "flower" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -21 },
+    "task": { "title": "Plant spring-flowering bulbs", "activityType": "transplant", "defaultPriority": "normal" },
+    "isBuiltIn": true
+  }
+]

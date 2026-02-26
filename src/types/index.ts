@@ -38,3 +38,10 @@ export type {
   WaterNeeds,
   GrowthRate,
 } from "../validation/plantKnowledge.schema.ts";
+export type {
+  TaskTriggerType,
+  TaskRuleAppliesTo,
+  TaskRuleTrigger,
+  TaskRuleTask,
+  TaskRule,
+} from "../validation/taskRule.schema.ts";

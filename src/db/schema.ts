@@ -8,9 +8,18 @@ import type { Settings } from "../validation/settings.schema.ts";
 import type { Season } from "../validation/season.schema.ts";
 import type { Planting } from "../validation/planting.schema.ts";
 import type { Seed } from "../validation/seed.schema.ts";
+import type { TaskRule } from "../validation/taskRule.schema.ts";
 
 // Settings doesn't extend BaseEntity — wrap it with an id for Dexie.
 export type SettingsRecord = { id: string } & Settings;
+
+// Tracks which rule+plant combinations the user has dismissed.
+export type DismissedSuggestion = {
+  id: string; // composite: `${ruleId}::${plantInstanceId}`
+  ruleId: string;
+  plantInstanceId: string;
+  dismissedAt: string; // ISO timestamp
+};
 
 // Serialized MiniSearch index stored as a JSON string.
 export type SearchIndexRecord = { id: string; data: string };
@@ -26,6 +35,8 @@ export class JnintyDB extends Dexie {
   seasons!: Table<Season, string>;
   plantings!: Table<Planting, string>;
   seeds!: Table<Seed, string>;
+  taskRules!: Table<TaskRule, string>;
+  dismissedSuggestions!: Table<DismissedSuggestion, string>;
 
   constructor(name = "jninty") {
     super(name);
@@ -142,6 +153,13 @@ export class JnintyDB extends Dexie {
             }
           });
       });
+    // ─── Version 5: Phase 2 — Task Rules engine ───
+    // Adds taskRules store for auto-generated task suggestions
+    // and dismissedSuggestions to track user dismissals.
+    this.version(5).stores({
+      taskRules: "id, isBuiltIn",
+      dismissedSuggestions: "id, ruleId, plantInstanceId",
+    });
   }
 }
 

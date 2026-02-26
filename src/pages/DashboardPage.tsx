@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
@@ -12,6 +12,11 @@ import * as taskRepository from "../db/repositories/taskRepository";
 import * as plantRepository from "../db/repositories/plantRepository";
 import * as journalRepository from "../db/repositories/journalRepository";
 import * as seedRepository from "../db/repositories/seedRepository";
+import * as seasonRepository from "../db/repositories/seasonRepository";
+import * as taskRuleRepository from "../db/repositories/taskRuleRepository";
+import * as taskEngine from "../services/taskEngine";
+import type { TaskSuggestion } from "../services/taskEngine";
+import { useSettings } from "../hooks/useSettings";
 import { PRIORITY_VARIANT, PRIORITY_LABELS } from "../constants/taskLabels";
 import { ACTIVITY_LABELS } from "../constants/plantLabels";
 import Card from "../components/ui/Card";
@@ -25,6 +30,8 @@ import {
   ChevronRightIcon,
   ClipboardCheckIcon,
   SeedIcon,
+  SparklesIcon,
+  BanIcon,
 } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
@@ -35,6 +42,7 @@ function todayDate(): string {
 
 export default function DashboardPage() {
   const { toast } = useToast();
+  const { settings } = useSettings();
   const upcomingTasks = useLiveQuery(() => taskRepository.getUpcoming(7));
   const overdueTasks = useLiveQuery(() => taskRepository.getOverdue());
   const allPlants = useLiveQuery(() => plantRepository.getAll());
@@ -42,6 +50,48 @@ export default function DashboardPage() {
   const expiringSoonSeeds = useLiveQuery(() =>
     seedRepository.getExpiringSoon(30),
   );
+  const activeSeason = useLiveQuery(() => seasonRepository.getActive());
+
+  // Task suggestions — computed via useLiveQuery so they react to DB changes.
+  // We wrap the async generation in useLiveQuery because it reads from
+  // IndexedDB (tasks + dismissedSuggestions), making it reactive.
+  const [suggestionVersion, setSuggestionVersion] = useState(0);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+
+  const suggestions = useLiveQuery(
+    async () => {
+      // Access suggestionVersion to trigger re-query on accept/dismiss
+      void suggestionVersion;
+      if (!allPlants || !settings) return [];
+      try {
+        const rules = await taskRuleRepository.getAll();
+        return taskEngine.generateTaskSuggestions(allPlants, settings, rules);
+      } catch {
+        return [];
+      }
+    },
+    [allPlants, settings, suggestionVersion],
+    [] as TaskSuggestion[],
+  );
+
+  async function handleAcceptSuggestion(suggestion: TaskSuggestion) {
+    try {
+      await taskEngine.acceptSuggestion(suggestion, activeSeason?.id);
+      toast("Task created", "success");
+      setSuggestionVersion((v) => v + 1);
+    } catch {
+      toast("Failed to create task", "error");
+    }
+  }
+
+  async function handleDismissSuggestion(suggestion: TaskSuggestion) {
+    try {
+      await taskEngine.dismissSuggestion(suggestion);
+      setSuggestionVersion((v) => v + 1);
+    } catch {
+      toast("Failed to dismiss suggestion", "error");
+    }
+  }
 
   const plantNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -67,7 +117,12 @@ export default function DashboardPage() {
 
   async function handleCompleteTask(taskId: string) {
     try {
-      await taskRepository.complete(taskId);
+      const completed = await taskRepository.complete(taskId);
+      // Auto-create next occurrence for recurring tasks
+      if (completed.recurrence) {
+        await taskEngine.createNextRecurrence(completed, activeSeason?.id);
+        toast("Next occurrence created", "success");
+      }
     } catch {
       toast("Failed to complete task", "error");
     }
@@ -184,6 +239,81 @@ export default function DashboardPage() {
               </div>
             </Card>
           </Link>
+        </section>
+      )}
+
+      {/* Suggested Tasks */}
+      {suggestions.length > 0 && (
+        <section className="mt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <SparklesIcon className="h-5 w-5 text-terracotta-500" />
+              <h2 className="font-display text-lg font-semibold text-green-800">
+                Suggested Tasks
+              </h2>
+            </div>
+            {suggestions.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setShowAllSuggestions(!showAllSuggestions)}
+                className="text-sm font-medium text-green-700 hover:underline"
+              >
+                {showAllSuggestions
+                  ? "Show less"
+                  : `See all ${suggestions.length} \u2192`}
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2 space-y-2">
+            {(showAllSuggestions ? suggestions : suggestions.slice(0, 3)).map(
+              (suggestion) => (
+                <Card
+                  key={suggestion.suggestionId}
+                  className="border-terracotta-200/50 bg-terracotta-400/5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-soil-900">
+                          {suggestion.title}
+                        </span>
+                        <Badge variant={PRIORITY_VARIANT[suggestion.priority]}>
+                          {PRIORITY_LABELS[suggestion.priority]}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-xs text-soil-500">
+                          {format(parseISO(suggestion.dueDate), "MMM d")}
+                        </span>
+                        <span className="truncate text-xs text-soil-400">
+                          &middot; {suggestion.plantName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void handleAcceptSuggestion(suggestion)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-green-700 transition-colors hover:bg-green-100"
+                        aria-label={`Accept: ${suggestion.title}`}
+                      >
+                        <CheckIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDismissSuggestion(suggestion)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-soil-400 transition-colors hover:bg-cream-200 hover:text-soil-600"
+                        aria-label={`Dismiss: ${suggestion.title}`}
+                      >
+                        <BanIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              ),
+            )}
+          </div>
         </section>
       )}
 
