@@ -1,0 +1,24 @@
+[
+  {
+    "id": "a0000002-0000-4000-8000-000000000001",
+    "appliesTo": { "plantType": "herb", "species": "Ocimum basilicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -28 },
+    "task": {
+      "title": "Start basil seeds indoors",
+      "activityType": "general",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000002-0000-4000-8000-000000000002",
+    "appliesTo": { "plantType": "herb" },
+    "trigger": { "type": "seasonal", "month": 6 },
+    "task": {
+      "title": "Harvest and dry herbs for preservation",
+      "activityType": "harvest",
+      "defaultPriority": "low"
+    },
+    "isBuiltIn": true
+  }
+]
