@@ -8,6 +8,7 @@ import type { Settings } from "../validation/settings.schema.ts";
 import type { Season } from "../validation/season.schema.ts";
 import type { Planting } from "../validation/planting.schema.ts";
 import type { Seed } from "../validation/seed.schema.ts";
+import type { TaskRule } from "../validation/taskRule.schema.ts";
 
 // Settings doesn't extend BaseEntity — wrap it with an id for Dexie.
 export type SettingsRecord = { id: string } & Settings;
@@ -30,6 +31,7 @@ export class JnintyDB extends Dexie {
   plantings!: Table<Planting, string>;
   seeds!: Table<Seed, string>;
   weatherCache!: Table<WeatherCacheRecord, string>;
+  taskRules!: Table<TaskRule, string>;
 
   constructor(name = "jninty") {
     super(name);
@@ -151,6 +153,12 @@ export class JnintyDB extends Dexie {
     // Stores cached Open-Meteo API responses with freshness timestamps.
     this.version(5).stores({
       weatherCache: "id",
+    });
+
+    // ─── Version 6: Phase 2 — Task Rules ───
+    // Adds taskRules store for automated task suggestion engine.
+    this.version(6).stores({
+      taskRules: "id, isBuiltIn",
     });
   }
 }
