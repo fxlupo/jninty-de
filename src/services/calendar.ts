@@ -23,7 +23,7 @@ const BUFFER_DAYS = 7;
  */
 export function computePlantingWindows(
   plant: PlantKnowledge,
-  settings: Pick<Settings, "lastFrostDate" | "firstFrostDate">,
+  settings: Pick<Settings, "lastFrostDate">,
 ): PlantingWindows {
   const lastFrost = parseISO(settings.lastFrostDate);
   const windows: PlantingWindows = {};

@@ -3,11 +3,10 @@ import { computePlantingWindows } from "./calendar.ts";
 import type { PlantKnowledge } from "../validation/plantKnowledge.schema.ts";
 import type { Settings } from "../validation/settings.schema.ts";
 
-type FrostSettings = Pick<Settings, "lastFrostDate" | "firstFrostDate">;
+type FrostSettings = Pick<Settings, "lastFrostDate">;
 
 const defaultSettings: FrostSettings = {
   lastFrostDate: "2026-04-15",
-  firstFrostDate: "2026-10-15",
 };
 
 // Cherry Tomato: indoor 6 weeks before, transplant 2 weeks after, 65 days to maturity
@@ -158,13 +157,12 @@ describe("computePlantingWindows", () => {
       expect(windows.directSow!.end).toEqual(new Date(2026, 4, 6));
     });
 
-    it("merges before and after offsets into one window (Kale)", () => {
+    it("computes direct sow from before-frost offset (Kale)", () => {
       const windows = computePlantingWindows(kale, defaultSettings);
       expect(windows.directSow).toBeDefined();
-      // before: lastFrost - 4 weeks = March 18
+      // Kale has directSowWeeksBeforeLastFrost: 4 only
+      // lastFrost - 4 weeks = March 18
       expect(windows.directSow!.start).toEqual(new Date(2026, 2, 18));
-      // Kale only has directSowWeeksBeforeLastFrost, no after
-      // Actually Kale has directSowWeeksBeforeLastFrost: 4 only
       expect(windows.directSow!.end).toEqual(new Date(2026, 2, 25));
     });
 
@@ -231,10 +229,9 @@ describe("computePlantingWindows", () => {
   });
 
   describe("edge cases", () => {
-    it("handles frost dates very close together", () => {
+    it("handles a late last frost date", () => {
       const tightSettings: FrostSettings = {
         lastFrostDate: "2026-06-01",
-        firstFrostDate: "2026-08-01", // only 2 months apart
       };
       const windows = computePlantingWindows(cherryTomato, tightSettings);
       expect(windows.indoorStart).toBeDefined();
@@ -245,10 +242,9 @@ describe("computePlantingWindows", () => {
       expect(windows.transplant!.start).toEqual(new Date(2026, 5, 15));
     });
 
-    it("handles frost dates very far apart", () => {
+    it("handles an early last frost date (year boundary)", () => {
       const wideSettings: FrostSettings = {
         lastFrostDate: "2026-02-01",
-        firstFrostDate: "2026-12-15", // very long season
       };
       const windows = computePlantingWindows(cherryTomato, wideSettings);
       expect(windows.indoorStart).toBeDefined();

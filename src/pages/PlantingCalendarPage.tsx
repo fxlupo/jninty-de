@@ -74,6 +74,8 @@ const WINDOW_TYPES: WindowType[] = [
   },
 ];
 
+const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 // ─── Types ───
 
 interface CalendarPlant {
@@ -245,7 +247,6 @@ export default function PlantingCalendarPage() {
 
   const noPlantings = calendarPlants.length === 0;
   const today = new Date();
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div className="mx-auto max-w-2xl p-4">
@@ -297,7 +298,7 @@ export default function PlantingCalendarPage() {
       <div className="mt-3 overflow-hidden rounded-xl border border-cream-200 bg-white shadow-sm">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-cream-200 bg-cream-50">
-          {weekDays.map((day) => (
+          {WEEK_DAYS.map((day) => (
             <div
               key={day}
               className="py-2 text-center text-xs font-medium text-soil-500"
