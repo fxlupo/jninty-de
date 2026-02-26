@@ -1,8 +1,7 @@
-import { db } from "../db/schema.ts";
-
 export interface ProcessedPhoto {
   thumbnailBlob: Blob;
   displayBlob: Blob;
+  originalFile?: Blob;
   width: number;
   height: number;
 }
@@ -95,6 +94,22 @@ export async function processPhoto(
 }
 
 /**
+ * Process a photo, optionally preserving the original file in memory.
+ * The original file is kept as a reference for later OPFS storage
+ * when `keepOriginal` is true.
+ */
+export async function processPhotoWithOriginal(
+  file: File | Blob,
+  options: { keepOriginal: boolean },
+): Promise<ProcessedPhoto> {
+  const result = await processPhoto(file);
+  if (options.keepOriginal) {
+    return { ...result, originalFile: file };
+  }
+  return result;
+}
+
+/**
  * Open a hidden file input, wait for the user to pick a file.
  * Uses the `cancel` event (Chrome 113+, Safari 16.4+) for reliable
  * cancellation detection, with no fallback rejection for older browsers
@@ -150,38 +165,3 @@ export function selectFile(): Promise<File> {
 
 // TODO: Add pasteFromClipboard() — design doc §5.4 requires clipboard paste
 // input. Implement using navigator.clipboard.read() or a paste event listener.
-
-/**
- * Estimate storage usage by summing blob sizes from the photos table.
- * Returns sizes in bytes.
- */
-export async function getStorageUsage(): Promise<{
-  photos: number;
-  data: number;
-  total: number;
-}> {
-  const photos = await db.photos.toArray();
-  let photosSize = 0;
-  for (const photo of photos) {
-    photosSize += photo.thumbnailBlob.size;
-    if (photo.displayBlob) {
-      photosSize += photo.displayBlob.size;
-    }
-    // TODO: Count originalBlob size when Phase 2 adds original storage.
-  }
-
-  // Use Storage API estimate when available for total usage.
-  let total = photosSize;
-  if (navigator.storage?.estimate) {
-    const estimate = await navigator.storage.estimate();
-    if (estimate.usage != null && estimate.usage > photosSize) {
-      total = estimate.usage;
-    }
-  }
-
-  return {
-    photos: photosSize,
-    data: Math.max(0, total - photosSize),
-    total,
-  };
-}
