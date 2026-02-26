@@ -205,6 +205,7 @@ function BedDetailPanel({
   onQuickLog,
   onAssignPlant,
   onRemovePlant,
+  onUpdate,
 }: {
   bed: GardenBed;
   plantings: Planting[];
@@ -216,8 +217,56 @@ function BedDetailPanel({
   onQuickLog: () => void;
   onAssignPlant: () => void;
   onRemovePlant: (plantingId: string) => void;
+  onUpdate: (changes: {
+    name: string;
+    type: BedType;
+    color: string;
+    sunExposure?: BedSunExposure;
+    notes?: string;
+  }) => void;
 }) {
   const bedPlantings = plantings.filter((p) => p.bedId === bed.id);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState<BedType>("vegetable_bed");
+  const [editColor, setEditColor] = useState(BED_COLORS[0]!);
+  const [editSunExposure, setEditSunExposure] = useState<
+    BedSunExposure | ""
+  >("");
+  const [editNotes, setEditNotes] = useState("");
+
+  const enterEditMode = () => {
+    setEditName(bed.name);
+    setEditType(bed.type);
+    setEditColor(bed.color);
+    setEditSunExposure(bed.sunExposure ?? "");
+    setEditNotes(bed.notes ?? "");
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    if (!editName.trim()) return;
+    const changes: {
+      name: string;
+      type: BedType;
+      color: string;
+      sunExposure?: BedSunExposure;
+      notes?: string;
+    } = {
+      name: editName.trim(),
+      type: editType,
+      color: editColor,
+    };
+    if (editSunExposure) {
+      changes.sunExposure = editSunExposure;
+    }
+    if (editNotes.trim()) {
+      changes.notes = editNotes.trim();
+    }
+    onUpdate(changes);
+    setIsEditing(false);
+  };
 
   return (
     <div className="absolute right-0 top-0 z-20 flex h-full w-72 flex-col border-l border-cream-200 bg-white shadow-lg">
@@ -225,134 +274,274 @@ function BedDetailPanel({
         <h3 className="font-display text-lg font-bold text-green-800">
           {bed.name}
         </h3>
-        <button
-          onClick={onClose}
-          className="rounded p-1 text-soil-400 hover:bg-cream-100 hover:text-soil-700"
-          aria-label="Close panel"
-        >
-          <svg
-            className="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
-        <dl className="space-y-3 text-sm">
-          <div>
-            <dt className="font-medium text-soil-600">Type</dt>
-            <dd className="text-soil-900">
-              {BED_TYPE_LABELS[bed.type] ?? bed.type}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium text-soil-600">Size</dt>
-            <dd className="text-soil-900">
-              {bed.gridWidth} x {bed.gridHeight} {unit}
-            </dd>
-          </div>
-          {bed.sunExposure && (
-            <div>
-              <dt className="font-medium text-soil-600">Sun Exposure</dt>
-              <dd className="text-soil-900">
-                {SUN_LABELS[bed.sunExposure] ?? bed.sunExposure}
-              </dd>
-            </div>
-          )}
-          {bed.notes && (
-            <div>
-              <dt className="font-medium text-soil-600">Notes</dt>
-              <dd className="text-soil-900">{bed.notes}</dd>
-            </div>
-          )}
-        </dl>
-
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-medium text-soil-600">
-              Plants ({bedPlantings.length})
-            </h4>
-            {hasActiveSeason && (
-              <button
-                onClick={onAssignPlant}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 transition-colors"
+        <div className="flex items-center gap-1">
+          {!isEditing && (
+            <button
+              onClick={enterEditMode}
+              className="rounded p-1 text-soil-400 hover:bg-cream-100 hover:text-soil-700"
+              aria-label="Edit bed"
+            >
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
               >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Assign Plant
-              </button>
-            )}
-          </div>
-          {!hasActiveSeason && (
-            <p className="mb-2 text-xs text-terracotta-500">
-              Create an active season in Settings to assign plants.
-            </p>
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
           )}
-          {bedPlantings.length === 0 ? (
-            <p className="text-sm text-soil-400">No plants assigned yet.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {bedPlantings.map((planting) => {
-                const plant = plants.get(planting.plantInstanceId);
-                return (
-                  <li
-                    key={planting.id}
-                    className="group flex items-center gap-2 rounded-md bg-cream-50 px-2.5 py-1.5 text-sm"
-                  >
-                    <span
-                      className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: plant
-                          ? PLANT_TOKEN_COLORS[plant.type] ??
-                            PLANT_TOKEN_COLORS["other"]
-                          : PLANT_TOKEN_COLORS["other"],
-                      }}
-                    />
-                    <span className="flex-1 text-soil-900">
-                      {plant?.nickname ?? plant?.species ?? "Unknown plant"}
-                    </span>
-                    <button
-                      onClick={() => onRemovePlant(planting.id)}
-                      className="rounded p-0.5 text-soil-300 opacity-0 transition-opacity hover:text-terracotta-500 group-hover:opacity-100"
-                      aria-label={`Remove ${plant?.nickname ?? plant?.species ?? "plant"} from bed`}
-                    >
-                      <svg
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-soil-400 hover:bg-cream-100 hover:text-soil-700"
+            aria-label="Close panel"
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto p-4">
+        {isEditing ? (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-soil-700">
+                Name
+              </span>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+                autoFocus
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-soil-700">
+                Type
+              </span>
+              <select
+                value={editType}
+                onChange={(e) => setEditType(e.target.value as BedType)}
+                className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              >
+                {Object.entries(BED_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-soil-700">
+                Sun Exposure
+              </span>
+              <select
+                value={editSunExposure}
+                onChange={(e) =>
+                  setEditSunExposure(e.target.value as BedSunExposure | "")
+                }
+                className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              >
+                <option value="">Not specified</option>
+                {Object.entries(SUN_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium text-soil-700">
+                Color
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {BED_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setEditColor(c)}
+                    className={`h-8 w-8 rounded-full border-2 transition-transform ${
+                      editColor === c
+                        ? "scale-110 border-green-800"
+                        : "border-transparent hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    aria-label={`Color ${c}`}
+                  />
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-soil-700">
+                Notes
+              </span>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+                placeholder="Optional notes..."
+              />
+            </label>
+          </div>
+        ) : (
+          <>
+            <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="font-medium text-soil-600">Type</dt>
+                <dd className="text-soil-900">
+                  {BED_TYPE_LABELS[bed.type] ?? bed.type}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-soil-600">Size</dt>
+                <dd className="text-soil-900">
+                  {bed.gridWidth} x {bed.gridHeight} {unit}
+                </dd>
+              </div>
+              {bed.sunExposure && (
+                <div>
+                  <dt className="font-medium text-soil-600">Sun Exposure</dt>
+                  <dd className="text-soil-900">
+                    {SUN_LABELS[bed.sunExposure] ?? bed.sunExposure}
+                  </dd>
+                </div>
+              )}
+              {bed.notes && (
+                <div>
+                  <dt className="font-medium text-soil-600">Notes</dt>
+                  <dd className="text-soil-900">{bed.notes}</dd>
+                </div>
+              )}
+            </dl>
+
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-sm font-medium text-soil-600">
+                  Plants ({bedPlantings.length})
+                </h4>
+                {hasActiveSeason && (
+                  <button
+                    onClick={onAssignPlant}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 transition-colors"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Assign Plant
+                  </button>
+                )}
+              </div>
+              {!hasActiveSeason && (
+                <p className="mb-2 text-xs text-terracotta-500">
+                  Create an active season in Settings to assign plants.
+                </p>
+              )}
+              {bedPlantings.length === 0 ? (
+                <p className="text-sm text-soil-400">
+                  No plants assigned yet.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {bedPlantings.map((planting) => {
+                    const plant = plants.get(planting.plantInstanceId);
+                    return (
+                      <li
+                        key={planting.id}
+                        className="group flex items-center gap-2 rounded-md bg-cream-50 px-2.5 py-1.5 text-sm"
+                      >
+                        <span
+                          className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                          style={{
+                            backgroundColor: plant
+                              ? PLANT_TOKEN_COLORS[plant.type] ??
+                                PLANT_TOKEN_COLORS["other"]
+                              : PLANT_TOKEN_COLORS["other"],
+                          }}
+                        />
+                        <span className="flex-1 text-soil-900">
+                          {plant?.nickname ??
+                            plant?.species ??
+                            "Unknown plant"}
+                        </span>
+                        <button
+                          onClick={() => onRemovePlant(planting.id)}
+                          className="rounded p-0.5 text-soil-300 opacity-0 transition-opacity hover:text-terracotta-500 group-hover:opacity-100"
+                          aria-label={`Remove ${plant?.nickname ?? plant?.species ?? "plant"} from bed`}
+                        >
+                          <svg
+                            className="h-3.5 w-3.5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="flex flex-col gap-2 border-t border-cream-200 p-4">
-        <Button onClick={onQuickLog} className="w-full">
-          Quick Log
-        </Button>
-        <Button variant="ghost" onClick={onDelete} className="w-full text-terracotta-500 hover:text-terracotta-600 hover:bg-terracotta-500/10">
-          Delete Bed
-        </Button>
+        {isEditing ? (
+          <>
+            <Button
+              onClick={handleSave}
+              disabled={!editName.trim()}
+              className="w-full"
+            >
+              Save
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsEditing(false)}
+              className="w-full"
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={onQuickLog} className="w-full">
+              Quick Log
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onDelete}
+              className="w-full text-terracotta-500 hover:text-terracotta-600 hover:bg-terracotta-500/10"
+            >
+              Delete Bed
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -811,6 +1000,26 @@ export default function GardenMapPage() {
     await plantingRepository.softDelete(plantingId);
   }, []);
 
+  const handleUpdateBed = useCallback(
+    async (changes: {
+      name: string;
+      type: BedType;
+      color: string;
+      sunExposure?: BedSunExposure;
+      notes?: string;
+    }) => {
+      if (!selectedBedId) return;
+      await gardenBedRepository.update(selectedBedId, {
+        name: changes.name,
+        type: changes.type,
+        color: changes.color,
+        sunExposure: changes.sunExposure,
+        notes: changes.notes,
+      });
+    },
+    [selectedBedId],
+  );
+
   // ── Transformer / resize ──
 
   const handleTransformEnd = useCallback(
@@ -1065,6 +1274,7 @@ export default function GardenMapPage() {
             }
             onAssignPlant={() => setShowAssignPlant(true)}
             onRemovePlant={(id) => void handleRemovePlant(id)}
+            onUpdate={(changes) => void handleUpdateBed(changes)}
           />
         )}
       </div>
