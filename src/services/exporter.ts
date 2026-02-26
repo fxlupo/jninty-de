@@ -10,12 +10,13 @@ import { settingsSchema } from "../validation/settings.schema.ts";
 import { seasonSchema } from "../validation/season.schema.ts";
 import { plantingSchema } from "../validation/planting.schema.ts";
 import { seedSchema } from "../validation/seed.schema.ts";
+import { taskRuleSchema } from "../validation/taskRule.schema.ts";
 import { z } from "zod";
 
 // ─── Constants ───
 
 const EXPORT_VERSION = 1;
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 // ─── Manifest schema ───
 
@@ -45,6 +46,7 @@ export type ImportResult = {
     seasons: number;
     plantings: number;
     seeds: number;
+    taskRules: number;
   };
 };
 
@@ -110,6 +112,7 @@ export async function exportAll(): Promise<Blob> {
     seasons,
     plantings,
     seeds,
+    taskRules,
   ] = await Promise.all([
     db.plantInstances
       .toArray()
@@ -135,6 +138,9 @@ export async function exportAll(): Promise<Blob> {
     db.seeds
       .toArray()
       .then((rows) => rows.filter((r) => r.deletedAt == null)),
+    db.taskRules
+      .toArray()
+      .then((rows) => rows.filter((r) => r.deletedAt == null && !r.isBuiltIn)),
   ]);
 
   // Settings (single record, id = "singleton") — strip Dexie wrapper `id`
@@ -155,6 +161,7 @@ export async function exportAll(): Promise<Blob> {
   dataFolder.file("seasons.json", JSON.stringify(seasons));
   dataFolder.file("plantings.json", JSON.stringify(plantings));
   dataFolder.file("seeds.json", JSON.stringify(seeds));
+  dataFolder.file("taskRules.json", JSON.stringify(taskRules));
   dataFolder.file("settings.json", JSON.stringify(settingsArray));
 
   // Photos: store metadata JSON + blob files
@@ -218,6 +225,7 @@ export async function importFromZip(file: File): Promise<ImportResult> {
     seasons: 0,
     plantings: 0,
     seeds: 0,
+    taskRules: 0,
   };
 
   let zip: JSZip;
@@ -305,6 +313,11 @@ export async function importFromZip(file: File): Promise<ImportResult> {
       filename: "data/seeds.json",
       schema: seedSchema,
       countKey: "seeds",
+    },
+    {
+      filename: "data/taskRules.json",
+      schema: taskRuleSchema,
+      countKey: "taskRules",
     },
   ];
 

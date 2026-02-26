@@ -21,8 +21,10 @@ import {
   ClipboardCheckIcon,
 } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
+import SuggestionsList from "../components/SuggestionsList";
 import { useToast } from "../components/ui/Toast";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useTaskSuggestions } from "../hooks/useTaskSuggestions.ts";
 
 // ─── Constants ───
 
@@ -400,6 +402,8 @@ export default function TasksPage() {
   const allPlants = useLiveQuery(() => plantRepository.getAll());
   const allSeasons = useLiveQuery(() => seasonRepository.getAll());
   const activeSeason = useLiveQuery(() => seasonRepository.getActive());
+  const { suggestions, acceptSuggestion, dismissSuggestion } =
+    useTaskSuggestions();
 
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -585,6 +589,24 @@ export default function TasksPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Suggested Tasks */}
+      {suggestions && suggestions.length > 0 && (
+        <section className="mt-4">
+          <h2 className="font-display text-base font-semibold text-green-700">
+            Suggested ({suggestions.length})
+          </h2>
+          <div className="mt-2">
+            <SuggestionsList
+              suggestions={suggestions}
+              plantNames={plantNames}
+              onAccept={acceptSuggestion}
+              onDismiss={dismissSuggestion}
+              showBadge
+            />
+          </div>
+        </section>
       )}
 
       {/* Pending tasks */}

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "a0000003-0000-4000-8000-000000000001",
+    "appliesTo": { "tagsAny": ["container"] },
+    "trigger": { "type": "seasonal", "month": 4 },
+    "task": {
+      "title": "Refresh potting soil in containers",
+      "activityType": "general",
+      "defaultPriority": "low"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000003-0000-4000-8000-000000000003",
+    "appliesTo": { "plantType": "fruit_tree" },
+    "trigger": { "type": "seasonal", "month": 2 },
+    "task": {
+      "title": "Prune fruit trees while dormant",
+      "activityType": "pruning",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  }
+]

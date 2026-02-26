@@ -7,3 +7,4 @@ export * as settingsRepository from "./settingsRepository.ts";
 export * as seasonRepository from "./seasonRepository.ts";
 export * as plantingRepository from "./plantingRepository.ts";
 export * as seedRepository from "./seedRepository.ts";
+export * as taskRuleRepository from "./taskRuleRepository.ts";

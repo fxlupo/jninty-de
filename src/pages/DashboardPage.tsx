@@ -27,10 +27,12 @@ import {
   SeedIcon,
 } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
+import SuggestionsList from "../components/SuggestionsList";
 import WeatherWidget from "../components/WeatherWidget";
 import { useSettings } from "../hooks/useSettings";
 import { formatTemp } from "../services/weather";
 import { useToast } from "../components/ui/Toast";
+import { useTaskSuggestions } from "../hooks/useTaskSuggestions.ts";
 
 function todayDate(): string {
   return formatISO(startOfDay(new Date()), { representation: "date" });
@@ -46,6 +48,8 @@ export default function DashboardPage() {
   const expiringSoonSeeds = useLiveQuery(() =>
     seedRepository.getExpiringSoon(30),
   );
+  const { suggestions, acceptSuggestion, dismissSuggestion } =
+    useTaskSuggestions();
 
   const plantNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -169,6 +173,23 @@ export default function DashboardPage() {
       <section className="mt-4">
         <WeatherWidget />
       </section>
+
+      {/* Suggested Tasks */}
+      {suggestions && suggestions.length > 0 && (
+        <section className="mt-6">
+          <h2 className="font-display text-lg font-semibold text-green-800">
+            Suggested Tasks
+          </h2>
+          <div className="mt-2">
+            <SuggestionsList
+              suggestions={suggestions}
+              plantNames={plantNames}
+              onAccept={acceptSuggestion}
+              onDismiss={dismissSuggestion}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Seeds Expiring Soon */}
       {expiringSoonSeeds && expiringSoonSeeds.length > 0 && (

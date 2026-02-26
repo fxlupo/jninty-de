@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { SettingsProvider } from "./hooks/useSettings";
@@ -17,11 +17,16 @@ import SeedFormPage from "./pages/SeedFormPage";
 import QuickLogPage from "./pages/QuickLogPage";
 import PlantingCalendarPage from "./pages/PlantingCalendarPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import { loadBuiltInRules } from "./services/taskRuleLoader.ts";
 
 // Lazy-load the map page to code-split the Konva.js bundle
 const GardenMapPage = lazy(() => import("./pages/GardenMapPage"));
 
 export default function App() {
+  useEffect(() => {
+    loadBuiltInRules().catch(console.error);
+  }, []);
+
   return (
     <SettingsProvider>
       <ToastProvider>

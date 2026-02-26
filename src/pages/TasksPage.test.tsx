@@ -7,6 +7,7 @@ import { formatISO, addDays, subDays } from "date-fns";
 import { db } from "../db/schema.ts";
 import * as taskRepository from "../db/repositories/taskRepository.ts";
 import * as plantRepository from "../db/repositories/plantRepository.ts";
+import { SettingsProvider } from "../hooks/useSettings.tsx";
 import { ToastProvider } from "../components/ui/Toast.tsx";
 import TasksPage from "./TasksPage.tsx";
 
@@ -26,11 +27,13 @@ function pastDate(days: number): string {
 
 function renderPage() {
   return render(
-    <ToastProvider>
-      <MemoryRouter initialEntries={["/tasks"]}>
-        <TasksPage />
-      </MemoryRouter>
-    </ToastProvider>,
+    <SettingsProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/tasks"]}>
+          <TasksPage />
+        </MemoryRouter>
+      </ToastProvider>
+    </SettingsProvider>,
   );
 }
 

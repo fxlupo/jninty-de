@@ -1,0 +1,57 @@
+[
+  {
+    "id": "a0000001-0000-4000-8000-000000000001",
+    "appliesTo": { "plantType": "vegetable", "species": "Solanum lycopersicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -42 },
+    "task": {
+      "title": "Start tomato seeds indoors",
+      "activityType": "general",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000001-0000-4000-8000-000000000002",
+    "appliesTo": { "plantType": "vegetable", "species": "Solanum lycopersicum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 14 },
+    "task": {
+      "title": "Transplant tomatoes outdoors",
+      "activityType": "transplant",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000001-0000-4000-8000-000000000003",
+    "appliesTo": { "plantType": "vegetable", "species": "Capsicum annuum" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": -56 },
+    "task": {
+      "title": "Start pepper seeds indoors",
+      "activityType": "general",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000001-0000-4000-8000-000000000004",
+    "appliesTo": { "plantType": "vegetable", "species": "Cucumis sativus" },
+    "trigger": { "type": "relative_to_last_frost", "offsetDays": 14 },
+    "task": {
+      "title": "Direct sow cucumbers",
+      "activityType": "general",
+      "defaultPriority": "normal"
+    },
+    "isBuiltIn": true
+  },
+  {
+    "id": "a0000001-0000-4000-8000-000000000005",
+    "appliesTo": { "plantType": "vegetable" },
+    "trigger": { "type": "relative_to_first_frost", "offsetDays": -14 },
+    "task": {
+      "title": "Prepare frost protection for vegetables",
+      "activityType": "general",
+      "defaultPriority": "urgent"
+    },
+    "isBuiltIn": true
+  }
+]
