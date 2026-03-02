@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { SettingsProvider } from "./hooks/useSettings";
+import { SyncProvider } from "./hooks/useSync";
 import { ToastProvider } from "./components/ui/Toast";
 import DashboardPage from "./pages/DashboardPage";
 import PlantsListPage from "./pages/PlantsListPage";
@@ -75,8 +76,9 @@ export default function App() {
 
   return (
     <SettingsProvider>
-      <ToastProvider>
-        <BrowserRouter>
+      <SyncProvider>
+        <ToastProvider>
+          <BrowserRouter>
           <Routes>
             <Route element={<AppShell />}>
               <Route index element={<DashboardPage />} />
@@ -115,8 +117,9 @@ export default function App() {
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
-        </BrowserRouter>
-      </ToastProvider>
+          </BrowserRouter>
+        </ToastProvider>
+      </SyncProvider>
     </SettingsProvider>
   );
 }
