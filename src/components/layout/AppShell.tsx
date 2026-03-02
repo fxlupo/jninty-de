@@ -7,6 +7,7 @@ import { useSettings } from "../../hooks/useSettings";
 import { getBySpecies } from "../../services/knowledgeBase";
 import { computePlantingWindows } from "../../services/calendar";
 import useOnlineStatus from "../../hooks/useOnlineStatus";
+import { useSync } from "../../hooks/useSync";
 
 // SVG icon components — inline to avoid extra dependencies
 
@@ -294,6 +295,41 @@ function SidebarLink({ item }: { item: NavItem }) {
   );
 }
 
+function SyncStatusDot() {
+  const { status, isConfigured } = useSync();
+  const navigate = useNavigate();
+
+  if (!isConfigured && status === "disabled") return null;
+
+  const colorMap: Record<string, string> = {
+    syncing: "bg-blue-500 animate-pulse",
+    paused: "bg-green-500",
+    error: "bg-red-500",
+    offline: "bg-amber-500",
+    disabled: "bg-soil-400",
+  };
+
+  const labelMap: Record<string, string> = {
+    syncing: "Syncing",
+    paused: "Synced",
+    error: "Sync error",
+    offline: "Offline",
+    disabled: "Sync off",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/settings")}
+      className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors hover:bg-green-700/50"
+      title={labelMap[status] ?? "Sync"}
+    >
+      <span className={`inline-block h-2 w-2 rounded-full ${colorMap[status] ?? "bg-soil-400"}`} />
+      <span className="text-xs">{labelMap[status] ?? "Sync"}</span>
+    </button>
+  );
+}
+
 export default function AppShell() {
   const isOnline = useOnlineStatus();
   const navigate = useNavigate();
@@ -353,6 +389,9 @@ export default function AppShell() {
           <span className="font-display text-xl font-bold text-cream-50">
             Jninty
           </span>
+          <span className="text-cream-200">
+            <SyncStatusDot />
+          </span>
         </div>
 
         {/* Primary nav */}
@@ -392,9 +431,14 @@ export default function AppShell() {
       <div className="flex flex-1 flex-col">
         {/* Mobile header */}
         <header className="flex items-center justify-between border-b border-cream-200 bg-white px-4 py-3 md:hidden">
-          <span className="font-display text-lg font-bold text-green-800">
-            Jninty
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-display text-lg font-bold text-green-800">
+              Jninty
+            </span>
+            <span className="text-soil-600">
+              <SyncStatusDot />
+            </span>
+          </div>
           {/* Secondary nav links for mobile — accessible via header */}
           <div className="flex items-center gap-3">
             <NavLink

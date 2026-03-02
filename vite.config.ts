@@ -8,6 +8,19 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  resolve: {
+    alias: {
+      events: "events",
+    },
+  },
+  optimizeDeps: {
+    include: [
+      "pouchdb",
+      "pouchdb-find",
+      "pouchdb-adapter-indexeddb",
+      "events",
+    ],
+  },
   plugins: [
     react(),
     tailwindcss(),

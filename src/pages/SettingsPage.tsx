@@ -8,6 +8,12 @@ import Badge from "../components/ui/Badge";
 import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
 import { useSettings } from "../hooks/useSettings";
+import { useSync } from "../hooks/useSync";
+import {
+  getSyncConfig,
+  clearSyncConfig,
+  type SyncConfig,
+} from "../services/syncConfigStore";
 import { settingsRepository, seasonRepository, plantingRepository, plantRepository } from "../db/index.ts";
 import type { PlantingOutcome } from "../validation/planting.schema";
 import type { Planting } from "../validation/planting.schema";
@@ -82,6 +88,97 @@ export default function SettingsPage() {
   const [rebuildCount, setRebuildCount] = useState<number | null>(null);
   const [rebuildError, setRebuildError] = useState<string | null>(null);
   const [clearingOriginals, setClearingOriginals] = useState(false);
+
+  // Sync
+  const {
+    status: syncStatus,
+    lastSynced,
+    isConfigured: syncConfigured,
+    startSync,
+    stopSync,
+    testConnection,
+  } = useSync();
+
+  const [syncUrl, setSyncUrl] = useState("");
+  const [syncUsername, setSyncUsername] = useState("");
+  const [syncPassword, setSyncPassword] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    dbName: string;
+    docCount: number;
+  } | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  // Load sync config from localStorage on mount
+  useEffect(() => {
+    const cfg = getSyncConfig();
+    if (cfg) {
+      setSyncUrl(cfg.remoteUrl);
+      setSyncUsername(cfg.username);
+      setSyncPassword(cfg.password);
+    }
+  }, []);
+
+  const handleTestConnection = async () => {
+    if (!syncUrl.trim()) return;
+    setTestBusy(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      const creds =
+        syncUsername && syncPassword
+          ? { username: syncUsername, password: syncPassword }
+          : undefined;
+      const info = await testConnection(syncUrl.trim(), creds);
+      setTestResult({ dbName: info.dbName, docCount: info.docCount });
+      toast("Connection successful!", "success");
+    } catch {
+      setTestError("Connection failed. Check URL and credentials.");
+      toast("Connection failed", "error");
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
+  const handleStartSync = () => {
+    const cfg: SyncConfig = {
+      remoteUrl: syncUrl.trim(),
+      username: syncUsername,
+      password: syncPassword,
+      enabled: true,
+      lastSynced: null,
+    };
+    startSync(cfg);
+    toast("Sync started", "success");
+  };
+
+  const handleStopSync = () => {
+    stopSync();
+    toast("Sync stopped", "success");
+  };
+
+  const handleSyncNow = () => {
+    // Restart sync to trigger a fresh replication cycle
+    const cfg: SyncConfig = {
+      remoteUrl: syncUrl.trim(),
+      username: syncUsername,
+      password: syncPassword,
+      enabled: true,
+      lastSynced: lastSynced,
+    };
+    startSync(cfg);
+  };
+
+  const handleClearSync = () => {
+    stopSync();
+    clearSyncConfig();
+    setSyncUrl("");
+    setSyncUsername("");
+    setSyncPassword("");
+    setTestResult(null);
+    setTestError(null);
+    toast("Sync configuration cleared", "success");
+  };
 
   // Location search state
   const [locationQuery, setLocationQuery] = useState("");
@@ -781,6 +878,149 @@ export default function SettingsPage() {
               </div>
             ))
           )}
+        </div>
+      </Card>
+
+      {/* ── Multi-Device Sync ── */}
+      <Card>
+        <h2 className="font-display text-lg font-semibold text-green-800">
+          Multi-Device Sync
+        </h2>
+        <p className="mt-1 text-xs text-soil-500">
+          Sync your garden data across devices via CouchDB
+        </p>
+
+        <div className="mt-4 space-y-4">
+          {/* Status row */}
+          <div className="flex items-center justify-between rounded-lg border border-cream-200 bg-cream-50 p-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                  syncStatus === "syncing"
+                    ? "bg-blue-500 animate-pulse"
+                    : syncStatus === "paused"
+                      ? "bg-green-500"
+                      : syncStatus === "error"
+                        ? "bg-red-500"
+                        : syncStatus === "offline"
+                          ? "bg-amber-500"
+                          : "bg-soil-400"
+                }`}
+              />
+              <span className="text-sm font-medium text-soil-800">
+                {syncStatus === "syncing"
+                  ? "Syncing..."
+                  : syncStatus === "paused"
+                    ? "Connected"
+                    : syncStatus === "error"
+                      ? "Error"
+                      : syncStatus === "offline"
+                        ? "Offline"
+                        : "Disabled"}
+              </span>
+            </div>
+            {lastSynced && (
+              <span className="text-xs text-soil-500">
+                Last synced: {new Date(lastSynced).toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          {/* CouchDB URL */}
+          <div>
+            <label
+              htmlFor="sync-url"
+              className="mb-1 block text-sm font-medium text-soil-700"
+            >
+              CouchDB Server URL
+            </label>
+            <Input
+              id="sync-url"
+              type="url"
+              placeholder="http://192.168.1.50:5984/jninty"
+              value={syncUrl}
+              onChange={(e) => setSyncUrl(e.target.value)}
+            />
+          </div>
+
+          {/* Credentials */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="sync-username"
+                className="mb-1 block text-sm font-medium text-soil-700"
+              >
+                Username
+              </label>
+              <Input
+                id="sync-username"
+                type="text"
+                placeholder="admin"
+                value={syncUsername}
+                onChange={(e) => setSyncUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="sync-password"
+                className="mb-1 block text-sm font-medium text-soil-700"
+              >
+                Password
+              </label>
+              <Input
+                id="sync-password"
+                type="password"
+                placeholder="password"
+                value={syncPassword}
+                onChange={(e) => setSyncPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Test connection */}
+          <div>
+            <Button
+              variant="secondary"
+              onClick={() => void handleTestConnection()}
+              disabled={testBusy || !syncUrl.trim()}
+            >
+              {testBusy ? "Testing..." : "Test Connection"}
+            </Button>
+            {testResult && (
+              <p className="mt-1 text-sm text-green-700">
+                Connected to <strong>{testResult.dbName}</strong> ({String(testResult.docCount)} docs)
+              </p>
+            )}
+            {testError && (
+              <p className="mt-1 text-sm text-red-600">{testError}</p>
+            )}
+          </div>
+
+          {/* Start / Stop / Sync Now buttons */}
+          <div className="flex flex-wrap gap-2">
+            {syncStatus === "disabled" || !syncConfigured ? (
+              <Button
+                onClick={handleStartSync}
+                disabled={!syncUrl.trim()}
+              >
+                Start Sync
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={handleStopSync}>
+                Stop Sync
+              </Button>
+            )}
+            {syncStatus === "paused" && (
+              <Button variant="ghost" onClick={handleSyncNow}>
+                Sync Now
+              </Button>
+            )}
+            {(syncConfigured || syncUrl.trim()) && (
+              <Button variant="ghost" onClick={handleClearSync}>
+                Clear Config
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 

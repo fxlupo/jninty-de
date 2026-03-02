@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { clearPouchDB } from "../db/pouchdb/testUtils.ts";
 import { settingsRepository as settingsRepo } from "../db/index.ts";
 import { SettingsProvider } from "../hooks/useSettings.tsx";
+import { SyncProvider } from "../hooks/useSync.tsx";
 import { ToastProvider } from "../components/ui/Toast.tsx";
 import SettingsPage from "./SettingsPage.tsx";
 
@@ -46,9 +47,11 @@ beforeEach(async () => {
 function renderSettings() {
   return render(
     <SettingsProvider>
-      <ToastProvider>
-        <SettingsPage />
-      </ToastProvider>
+      <SyncProvider>
+        <ToastProvider>
+          <SettingsPage />
+        </ToastProvider>
+      </SyncProvider>
     </SettingsProvider>,
   );
 }

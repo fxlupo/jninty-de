@@ -27,10 +27,55 @@ export function resetLocalDB(): void {
   resetIndexState();
 }
 
-type SyncStatus = "syncing" | "paused" | "error" | "offline" | "disabled";
+export type SyncStatus = "syncing" | "paused" | "error" | "offline" | "disabled";
 
 let activeSyncHandler: PouchDB.Replication.Sync<object> | null = null;
 let currentSyncStatus: SyncStatus = "disabled";
+let lastSyncedAt: string | null = null;
+
+// ─── Subscriber pattern for useSyncExternalStore ───
+
+const syncStatusListeners = new Set<() => void>();
+
+function notifySyncStatusListeners() {
+  for (const listener of syncStatusListeners) {
+    listener();
+  }
+}
+
+export function subscribeSyncStatus(listener: () => void): () => void {
+  syncStatusListeners.add(listener);
+  return () => {
+    syncStatusListeners.delete(listener);
+  };
+}
+
+export function getLastSyncedAt(): string | null {
+  return lastSyncedAt;
+}
+
+export async function testConnection(
+  url: string,
+  credentials?: { username: string; password: string },
+): Promise<{ dbName: string; docCount: number; diskSize: number }> {
+  const opts: PouchDB.Configuration.RemoteDatabaseConfiguration = {};
+  if (credentials) {
+    opts.auth = { username: credentials.username, password: credentials.password };
+  }
+  const tempDB = new PouchDB(url, opts);
+  try {
+    const info = await tempDB.info();
+    return {
+      dbName: info.db_name,
+      docCount: info.doc_count,
+      diskSize: ((info as unknown as Record<string, unknown>)["disk_size"] as number) ?? 0,
+    };
+  } finally {
+    await tempDB.close();
+  }
+}
+
+// ─── Sync lifecycle ───
 
 export function setupSync(
   remoteUrl: string,
@@ -54,22 +99,28 @@ export function setupSync(
 
   sync.on("change", () => {
     currentSyncStatus = "syncing";
+    notifySyncStatusListeners();
   });
 
   sync.on("paused", () => {
     currentSyncStatus = "paused";
+    lastSyncedAt = new Date().toISOString();
+    notifySyncStatusListeners();
   });
 
   sync.on("active", () => {
     currentSyncStatus = "syncing";
+    notifySyncStatusListeners();
   });
 
   sync.on("error", () => {
     currentSyncStatus = "error";
+    notifySyncStatusListeners();
   });
 
   activeSyncHandler = sync;
   currentSyncStatus = "syncing";
+  notifySyncStatusListeners();
 
   return sync;
 }
@@ -80,6 +131,7 @@ export function stopSync(): void {
     activeSyncHandler = null;
   }
   currentSyncStatus = "disabled";
+  notifySyncStatusListeners();
 }
 
 export function getSyncStatus(): SyncStatus {

@@ -18,4 +18,13 @@ export * as expenseRepository from "./pouchdb/repositories/expenseRepository.ts"
 export * as search from "./pouchdb/search.ts";
 
 // ─── Sync ───
-export { localDB, setupSync, stopSync, getSyncStatus } from "./pouchdb/client.ts";
+export {
+  localDB,
+  setupSync,
+  stopSync,
+  getSyncStatus,
+  subscribeSyncStatus,
+  getLastSyncedAt,
+  testConnection,
+} from "./pouchdb/client.ts";
+export type { SyncStatus } from "./pouchdb/client.ts";
