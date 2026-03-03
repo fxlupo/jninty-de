@@ -23,6 +23,8 @@ import SuggestionsList from "../components/SuggestionsList";
 import { useToast } from "../components/ui/Toast";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useTaskSuggestions } from "../hooks/useTaskSuggestions.ts";
+import { useNotifications } from "../hooks/useNotifications.ts";
+import NotificationPrompt from "../components/NotificationPrompt.tsx";
 
 // ─── Constants ───
 
@@ -166,11 +168,13 @@ function TaskFormModal({
   plants,
   activeSeasonId,
   onClose,
+  onCreated,
 }: {
   task: Task | null;
   plants: PlantInstance[];
   activeSeasonId: string | undefined;
   onClose: () => void;
+  onCreated?: () => void;
 }) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -236,6 +240,7 @@ function TaskFormModal({
           ...input,
           ...(activeSeasonId ? { seasonId: activeSeasonId } : {}),
         });
+        onCreated?.();
       }
 
       onClose();
@@ -402,6 +407,8 @@ export default function TasksPage() {
   const activeSeason = usePouchQuery(() => seasonRepository.getActive());
   const { suggestions, acceptSuggestion, dismissSuggestion } =
     useTaskSuggestions();
+  const notifications = useNotifications();
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -714,6 +721,29 @@ export default function TasksPage() {
           plants={allPlants ?? []}
           activeSeasonId={activeSeason?.id}
           onClose={handleFormClose}
+          onCreated={() => {
+            if (
+              !notifications.enabled &&
+              !notifications.dismissed &&
+              notifications.supported
+            ) {
+              setShowNotifPrompt(true);
+            }
+          }}
+        />
+      )}
+
+      {/* Notification prompt */}
+      {showNotifPrompt && (
+        <NotificationPrompt
+          onEnable={() => {
+            void notifications.enable();
+            setShowNotifPrompt(false);
+          }}
+          onDismiss={() => {
+            notifications.dismissPrompt();
+            setShowNotifPrompt(false);
+          }}
         />
       )}
     </div>

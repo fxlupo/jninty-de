@@ -31,6 +31,7 @@ import { useSettings } from "../hooks/useSettings";
 import { formatTemp } from "../services/weather";
 import { useToast } from "../components/ui/Toast";
 import { useTaskSuggestions } from "../hooks/useTaskSuggestions.ts";
+import { useNotifications } from "../hooks/useNotifications.ts";
 
 function todayDate(): string {
   return formatISO(startOfDay(new Date()), { representation: "date" });
@@ -48,6 +49,7 @@ export default function DashboardPage() {
   );
   const { suggestions, acceptSuggestion, dismissSuggestion } =
     useTaskSuggestions();
+  const notifications = useNotifications();
 
   const plantNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -70,6 +72,13 @@ export default function DashboardPage() {
   const today = todayDate();
   const isFirstTime = allPlants != null && allPlants.length === 0;
   const lastLoggedEntry = recentEntries?.[0];
+
+  const tasksDueToday = useMemo(() => {
+    if (!upcomingTasks) return 0;
+    return upcomingTasks.filter((t) => t.dueDate === today).length;
+  }, [upcomingTasks, today]);
+  const showTasksFallback =
+    (!notifications.supported || !notifications.enabled) && tasksDueToday > 0;
 
   async function handleCompleteTask(taskId: string) {
     try {
@@ -166,6 +175,29 @@ export default function DashboardPage() {
           </div>
         </Card>
       </Link>
+
+      {/* Tasks-due-today fallback (shown when notifications unavailable/disabled) */}
+      {showTasksFallback && (
+        <Link to="/tasks" className="mt-4 block">
+          <Card className="border-green-300 bg-green-50/50 transition-shadow hover:shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                <ClipboardCheckIcon className="h-5 w-5 text-green-700" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-green-800">
+                  Today in your garden
+                </p>
+                <p className="mt-0.5 text-xs text-soil-600">
+                  You have {tasksDueToday}{" "}
+                  {tasksDueToday === 1 ? "task" : "tasks"} due today
+                </p>
+              </div>
+              <ChevronRightIcon className="h-5 w-5 shrink-0 text-green-400" />
+            </div>
+          </Card>
+        </Link>
+      )}
 
       {/* Weather */}
       <section className="mt-4">

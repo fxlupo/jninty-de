@@ -33,6 +33,7 @@ import {
 } from "../services/weather";
 import { localDB, getRemoteInfo, type RemoteDBInfo } from "../db/pouchdb/client.ts";
 import { clearAllOriginals } from "../db/pouchdb/originalsStore.ts";
+import { useNotifications } from "../hooks/useNotifications.ts";
 
 // ─── Growing zones (USDA 1a–13b) ───
 
@@ -77,6 +78,7 @@ function ToggleGroup<T extends string>({
 export default function SettingsPage() {
   const { toast } = useToast();
   const { settings, loading, updateSettings } = useSettings();
+  const notifications = useNotifications();
 
   // Local state for text input (saved on blur)
   const [gardenName, setGardenName] = useState("");
@@ -796,6 +798,86 @@ export default function SettingsPage() {
               />
             </button>
           </div>
+        </div>
+      </Card>
+
+      {/* ── Notifications ── */}
+      <Card>
+        <h2 className="font-display text-lg font-semibold text-green-800">
+          Notifications
+        </h2>
+        <div className="mt-3 space-y-4">
+          {/* Enable/disable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-soil-700">
+                Enable Notifications
+              </span>
+              <p className="text-xs text-soil-500">
+                Get reminders for tasks and frost warnings
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notifications.enabled}
+              onClick={() => {
+                if (notifications.enabled) {
+                  notifications.disable();
+                } else {
+                  void notifications.enable().then((ok) => {
+                    if (!ok) toast("Notification permission denied by browser", "error");
+                  });
+                }
+              }}
+              disabled={!notifications.supported}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:cursor-not-allowed disabled:opacity-50 ${
+                notifications.enabled ? "bg-green-600" : "bg-brown-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                  notifications.enabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Permission status */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-soil-500">Status:</span>
+            {!notifications.supported ? (
+              <Badge>Not Supported</Badge>
+            ) : notifications.permitted ? (
+              <Badge variant="success">Granted</Badge>
+            ) : (
+              <Badge variant="warning">Not Granted</Badge>
+            )}
+          </div>
+
+          {/* iOS info */}
+          {notifications.isIOS && (
+            <div className="rounded-lg border border-brown-200 bg-brown-50/30 p-3">
+              <p className="text-xs text-soil-600">
+                iOS does not support web notifications. You&apos;ll see
+                in-app reminders on your dashboard instead.
+              </p>
+            </div>
+          )}
+
+          {/* Reset prompt */}
+          {notifications.dismissed && !notifications.enabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                notifications.resetPrompt();
+                toast("Notification prompt reset", "success");
+              }}
+            >
+              Reset notification prompt
+            </Button>
+          )}
         </div>
       </Card>
 
