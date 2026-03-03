@@ -623,6 +623,38 @@ describe("importPlantsFromCsv", () => {
     expect(doc["purchasePrice"]).toBe(12.5);
   });
 
+  it("strips currency symbols from purchasePrice", async () => {
+    const rows = [
+      {
+        Name: "Orchid",
+        Type: "flower",
+        Source: "nursery",
+        Status: "active",
+        Price: "$24.99",
+      },
+    ];
+
+    const columnMap = {
+      Name: "species",
+      Type: "type",
+      Source: "source",
+      Status: "status",
+      Price: "purchasePrice",
+    };
+
+    const result = await importPlantsFromCsv(rows, columnMap);
+
+    expect(result.inserted).toBe(1);
+
+    const allDocs = await testDB.allDocs({
+      startkey: "plant:",
+      endkey: "plant:\uffff",
+      include_docs: true,
+    });
+    const doc = allDocs.rows[0]!.doc as unknown as Record<string, unknown>;
+    expect(doc["purchasePrice"]).toBe(24.99);
+  });
+
   it("handles tags as comma-separated values", async () => {
     const rows = [
       {

@@ -45,6 +45,9 @@ export type ProgressCallback = (step: string, done: number, total: number) => vo
 
 // ─── Parse ZIP ───
 
+const MAX_ZIP_SIZE = 500 * 1024 * 1024; // 500 MB
+const MAX_CSV_SIZE = 50 * 1024 * 1024; // 50 MB
+
 export async function parseZip(file: File): Promise<ParsedImport> {
   const errors: string[] = [];
   const counts: ImportResult["counts"] = {
@@ -60,6 +63,16 @@ export async function parseZip(file: File): Promise<ParsedImport> {
     taskRules: 0,
     userPlantKnowledge: 0,
   };
+
+  if (file.size > MAX_ZIP_SIZE) {
+    return {
+      valid: false,
+      errors: [`File too large (${String(Math.round(file.size / 1024 / 1024))} MB). Maximum is 500 MB.`],
+      counts,
+      data: null,
+      zip: null,
+    };
+  }
 
   let zip: JSZip;
   try {
@@ -495,6 +508,11 @@ export function autoMapColumns(
 export function parseCsvFile(
   file: File,
 ): Promise<{ headers: string[]; rows: Array<Record<string, string>> }> {
+  if (file.size > MAX_CSV_SIZE) {
+    return Promise.reject(
+      new Error(`File too large (${String(Math.round(file.size / 1024 / 1024))} MB). Maximum is 50 MB.`),
+    );
+  }
   return new Promise((resolve, reject) => {
     Papa.parse<Record<string, string>>(file, {
       header: true,
@@ -512,6 +530,45 @@ export function parseCsvFile(
   });
 }
 
+/**
+ * Apply a column mapping to a single CSV row, coercing field types.
+ * Shared between the import service and the preview in CsvImportDialog.
+ */
+export function mapCsvRow(
+  row: Record<string, string>,
+  columnMap: Record<string, string>,
+): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+
+  for (const [csvCol, field] of Object.entries(columnMap)) {
+    if (!field || field === "-- Skip --") continue;
+    const value = row[csvCol];
+    if (value == null || value === "") continue;
+
+    switch (field) {
+      case "isPerennial":
+        mapped[field] = /^(true|yes|1|y)$/i.test(value.trim());
+        break;
+      case "purchasePrice": {
+        const cleaned = value.replace(/[^0-9.,-]/g, "");
+        const num = parseFloat(cleaned);
+        if (!Number.isNaN(num)) mapped[field] = num;
+        break;
+      }
+      case "tags":
+        mapped[field] = value
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0);
+        break;
+      default:
+        mapped[field] = value.trim();
+    }
+  }
+
+  return mapped;
+}
+
 export async function importPlantsFromCsv(
   rows: Array<Record<string, string>>,
   columnMap: Record<string, string>,
@@ -523,30 +580,7 @@ export async function importPlantsFromCsv(
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
-    const mapped: Record<string, unknown> = {};
-
-    for (const [csvCol, field] of Object.entries(columnMap)) {
-      if (!field || field === "-- Skip --") continue;
-      const value = row[csvCol];
-      if (value == null || value === "") continue;
-
-      switch (field) {
-        case "isPerennial":
-          mapped[field] = /^(true|yes|1|y)$/i.test(value.trim());
-          break;
-        case "purchasePrice":
-          mapped[field] = parseFloat(value);
-          break;
-        case "tags":
-          mapped[field] = value
-            .split(",")
-            .map((t) => t.trim())
-            .filter((t) => t.length > 0);
-          break;
-        default:
-          mapped[field] = value.trim();
-      }
-    }
+    const mapped = mapCsvRow(row, columnMap);
 
     // Fill defaults
     const plant = {

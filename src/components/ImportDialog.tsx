@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Button from "./ui/Button";
 import type { ImportResult } from "../services/exporter";
 import {
@@ -112,6 +112,15 @@ export default function ImportDialog({ open, onClose }: ImportDialogProps) {
     if (fileRef.current) fileRef.current.value = "";
     onClose();
   }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && step !== "importing") handleClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, step, handleClose]);
 
   if (!open) return null;
 

@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import Button from "./ui/Button";
 import {
   parseCsvFile,
   autoMapColumns,
   importPlantsFromCsv,
+  mapCsvRow,
   CSV_FIELD_OPTIONS,
   type CsvImportResult,
 } from "../services/importer";
@@ -45,45 +46,28 @@ export default function CsvImportDialog({
   const [result, setResult] = useState<CsvImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Preview validation: apply mapping to first 10 rows
-  const previewRows = useMemo(() => {
-    const now = new Date().toISOString();
-    return rows.slice(0, 10).map((row, i) => {
-      const mapped: Record<string, unknown> = {};
-      for (const [csvCol, field] of Object.entries(columnMap)) {
-        if (!field || field === "-- Skip --") continue;
-        const value = row[csvCol];
-        if (value == null || value === "") continue;
-
-        switch (field) {
-          case "isPerennial":
-            mapped[field] = /^(true|yes|1|y)$/i.test(value.trim());
-            break;
-          case "purchasePrice":
-            mapped[field] = parseFloat(value);
-            break;
-          case "tags":
-            mapped[field] = value
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t.length > 0);
-            break;
-          default:
-            mapped[field] = value.trim();
-        }
-      }
-
+  // Build a validated plant candidate from a CSV row
+  const validateRow = useCallback(
+    (row: Record<string, string>) => {
+      const mapped = mapCsvRow(row, columnMap);
       const plant = {
         id: crypto.randomUUID(),
         version: 1,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         isPerennial: false,
         tags: [],
         ...mapped,
       };
+      return { mapped, result: plantInstanceSchema.safeParse(plant) };
+    },
+    [columnMap],
+  );
 
-      const result = plantInstanceSchema.safeParse(plant);
+  // Preview validation: apply mapping to first 10 rows
+  const previewRows = useMemo(() => {
+    return rows.slice(0, 10).map((row, i) => {
+      const { mapped, result } = validateRow(row);
       return {
         rowNum: i + 1,
         valid: result.success,
@@ -94,47 +78,16 @@ export default function CsvImportDialog({
         type: (mapped["type"] as string) ?? "",
       };
     });
-  }, [rows, columnMap]);
+  }, [rows, validateRow]);
 
   const totalValid = useMemo(() => {
-    const now = new Date().toISOString();
     let count = 0;
     for (const row of rows) {
-      const mapped: Record<string, unknown> = {};
-      for (const [csvCol, field] of Object.entries(columnMap)) {
-        if (!field || field === "-- Skip --") continue;
-        const value = row[csvCol];
-        if (value == null || value === "") continue;
-        switch (field) {
-          case "isPerennial":
-            mapped[field] = /^(true|yes|1|y)$/i.test(value.trim());
-            break;
-          case "purchasePrice":
-            mapped[field] = parseFloat(value);
-            break;
-          case "tags":
-            mapped[field] = value
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t.length > 0);
-            break;
-          default:
-            mapped[field] = value.trim();
-        }
-      }
-      const plant = {
-        id: crypto.randomUUID(),
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
-        isPerennial: false,
-        tags: [],
-        ...mapped,
-      };
-      if (plantInstanceSchema.safeParse(plant).success) count++;
+      const { result } = validateRow(row);
+      if (result.success) count++;
     }
     return count;
-  }, [rows, columnMap]);
+  }, [rows, validateRow]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +152,15 @@ export default function CsvImportDialog({
     if (fileRef.current) fileRef.current.value = "";
     onClose();
   }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !importing) handleClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, importing, handleClose]);
 
   if (!open) return null;
 
