@@ -262,6 +262,10 @@ describe("JournalPage", () => {
     });
 
     const plantFilter = screen.getByLabelText("Filter by plant");
+    // Wait for plant options to populate (async via usePouchQuery)
+    await waitFor(() => {
+      expect(plantFilter.querySelectorAll("option").length).toBeGreaterThan(1);
+    });
     await user.selectOptions(plantFilter, tomato.id);
 
     await waitFor(() => {
