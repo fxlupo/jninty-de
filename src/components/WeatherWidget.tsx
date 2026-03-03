@@ -7,6 +7,7 @@ import {
   getConditionEmoji,
   type WeatherData,
 } from "../services/weather";
+import { checkAndNotifyFrost } from "../services/notifications.ts";
 import Card from "./ui/Card";
 import Skeleton from "./ui/Skeleton";
 
@@ -30,6 +31,7 @@ function WeatherFetcher({
       if (cancelled) return;
       if (data) {
         setWeather(data);
+        checkAndNotifyFrost(data.frostWarning);
       } else {
         setUnavailable(true);
       }

@@ -27,6 +27,11 @@ import NotFoundPage from "./pages/NotFoundPage";
 import InstallPrompt from "./components/InstallPrompt";
 import { loadBuiltInRules } from "./services/taskRuleLoader.ts";
 import { rebuildIndex, startListening } from "./db/search.ts";
+import { checkAndNotifyTasks } from "./services/notifications.ts";
+import {
+  startNotificationListening,
+  stopNotificationListening,
+} from "./services/notificationListener.ts";
 
 // Lazy-load the map page to code-split the Konva.js bundle
 const GardenMapPage = lazy(() => import("./pages/GardenMapPage"));
@@ -41,6 +46,20 @@ export default function App() {
     rebuildIndex()
       .then(() => startListening())
       .catch(console.error);
+  }, []);
+
+  // Check for due/overdue tasks on mount and window focus
+  useEffect(() => {
+    void checkAndNotifyTasks();
+    const handleFocus = () => void checkAndNotifyTasks();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  // Listen to PouchDB changes for incoming tasks (via sync)
+  useEffect(() => {
+    startNotificationListening();
+    return () => stopNotificationListening();
   }, []);
 
   return (
