@@ -1,37 +1,50 @@
+<!-- Project logo placeholder — replace with actual logo when ready -->
+
 # Jninty
 
-A local-first, open-source garden journal and management PWA. All data lives in IndexedDB — no account required, works offline.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/HapiCreative/jninty/actions/workflows/ci.yml/badge.svg)](https://github.com/HapiCreative/jninty/actions/workflows/ci.yml)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-offline--ready-5A0FC8?logo=pwa&logoColor=white)
+
+**A local-first, open-source garden journal and management PWA.** All data lives on your device in IndexedDB — no account required, works offline, with optional multi-device sync via CouchDB.
 
 ## Features
 
-- **Plant Inventory** — Track all your plants with photos, species, care notes, and status
-- **Garden Journal** — Log daily garden activities with photos, linked to specific plants
-- **Quick Log** — 3-tap photo-first logging workflow
+- **Plant Inventory** — Track plants with photos, species, care notes, and lifecycle status
+- **Garden Journal** — Log daily activities with photos, linked to specific plants
+- **Quick Log** — 3-tap photo-first workflow for fast field notes
 - **Task Management** — Create, prioritize, and track garden tasks with due dates
-- **Full-Text Search** — MiniSearch-powered search across plants and journal entries
-- **Data Export** — Export all data as a ZIP file for backup
-- **PWA** — Install on your device, works offline
-- **No account required** — Everything stays on your device
+- **Task Rules** — Automated task generation from plant care schedules
+- **Garden Map** — Visual garden bed layout editor
+- **Seed Bank** — Track seed inventory with sow-by dates and germination rates
+- **Seasons** — Season-based planting records with frost date awareness
+- **Full-Text Search** — Instant search across plants and journal entries
+- **Data Export/Import** — ZIP backup and restore
+- **Dark Mode** — System-aware and manual theme switching
+- **Accessibility** — High contrast mode, adjustable font size, keyboard shortcuts
+- **Push Notifications** — Task reminders and frost alerts
+- **Multi-Device Sync** — Optional CouchDB replication (see below)
+- **PWA** — Install on any device, full offline support
+- **No Account Required** — Everything stays on your device
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm 9+
-
-### Installation
+## Quick Start
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/HapiCreative/jninty.git
 cd jninty
 npm install
+npm run dev
 ```
 
-### Development
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Commands
 
 ```bash
-npm run dev          # Start Vite dev server
+npm run dev          # Vite dev server
 npm run build        # TypeScript type-check + production build
 npm run preview      # Preview production build
 npm run lint         # ESLint
@@ -51,6 +64,7 @@ npm run test:watch   # Run tests (watch mode)
 | Search | MiniSearch |
 | Validation | Zod |
 | Dates | date-fns |
+| Canvas | Konva.js (garden map) |
 | PWA | vite-plugin-pwa + Workbox |
 | Testing | Vitest + Testing Library |
 
@@ -58,24 +72,83 @@ npm run test:watch   # Run tests (watch mode)
 
 ```
 src/
-  pages/           Route-level page components
-  components/      Shared UI components
-  components/ui/   Primitive UI (Button, Card, Input, Badge, Toast, Skeleton)
+  pages/              Route-level page components
+  components/         Shared UI components
+  components/ui/      Primitives (Button, Card, Input, Badge, Toast, Skeleton)
   components/layout/  Layout (AppShell — sidebar + bottom nav)
-  db/              PouchDB client, repositories, search index
-  hooks/           Custom React hooks
-  services/        Business logic (exporter, photo processor, storage)
-  validation/      Zod schemas
-  types/           TypeScript type definitions
-  constants/       Label and option constants
+  db/pouchdb/         PouchDB client, repositories, search index
+  hooks/              Custom React hooks
+  services/           Business logic (calendar, taskEngine, photoProcessor, exporter)
+  validation/         Zod schemas for all entities
+  types/              TypeScript type definitions
+  constants/          Label and option constants
+data/
+  plants/             Community-contributed plant knowledge JSON (vegetables, herbs, fruits, flowers)
+sync/
+  docker-compose.yml  CouchDB setup for multi-device sync
+  setup.sh            One-command sync server setup
 ```
 
-All data is stored in IndexedDB via PouchDB, with optional CouchDB replication for multi-device sync. Entities include `id` (UUID), `version`, `createdAt`, `updatedAt`, and `deletedAt` fields.
+All data is stored in IndexedDB via PouchDB. Documents are prefixed with a `docType` (e.g. `plant:uuid`) for type isolation in the single-database model. Every entity includes `id`, `version`, `createdAt`, `updatedAt`, and `deletedAt` fields.
 
-## Multi-Device Sync (Optional)
+## Multi-Device Sync
 
-Want to sync between your phone and desktop? See [sync/README.md](sync/README.md) — it's one command: `cd sync && ./setup.sh`
+Want to sync your garden journal between your phone and desktop? Jninty supports optional CouchDB replication over your local network.
+
+### Setup
+
+1. **Install Docker** if you don't have it already
+2. **Start the sync server:**
+   ```bash
+   cd sync
+   cp .env.example .env    # Edit credentials if desired
+   ./setup.sh              # Starts CouchDB + configures CORS
+   ```
+3. **Connect from the app:** Go to Settings > Multi-Device Sync, paste the URL printed by the setup script, and tap "Start Sync"
+
+### How It Works
+
+- CouchDB runs in Docker on your machine, listening on port 5984
+- The setup script configures CORS so the browser can talk to CouchDB directly
+- Jninty auto-detects your LAN IP so other devices on the same network can connect
+- Sync is bidirectional — changes on any device propagate to all others
+
+### Connecting Your Phone
+
+1. Make sure your phone is on the same Wi-Fi network as your desktop
+2. Open Jninty on your phone's browser
+3. In Settings > Multi-Device Sync, enter the sync URL using your desktop's LAN IP (e.g. `http://192.168.1.100:5984/jninty`)
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Phone can't reach sync server | Check that both devices are on the same network. Ensure your firewall allows port 5984 |
+| Mixed content error (HTTPS) | The Vite dev server proxies CouchDB requests to avoid mixed-content issues. In production, serve the app over HTTP, or set up HTTPS on CouchDB |
+| Wrong LAN IP detected | Manually enter the correct IP. Find it with `ifconfig` (macOS/Linux) or `ipconfig` (Windows) |
+| Sync conflicts | Jninty uses PouchDB's automatic conflict resolution. The most recent write wins |
+
+For more details, see [sync/README.md](sync/README.md).
+
+## Cloud Sync (Optional)
+
+For syncing across networks (not just LAN), you can host CouchDB on a remote server:
+
+1. **Set up a VPS** with Docker and run the same `sync/docker-compose.yml`
+2. **Enable HTTPS** — CouchDB must be behind a reverse proxy (nginx, Caddy) with a valid TLS certificate, since browsers block mixed HTTP/HTTPS content
+3. **Update credentials** — Change the default admin password in `.env` before exposing to the internet
+4. **Point Jninty at the remote URL** — e.g. `https://couch.yourdomain.com/jninty`
+
+## Design Document
+
+The full project design, architecture decisions, data model, and phased roadmap are documented in [`docs/plans/Jninty-Design-v1.md`](docs/plans/Jninty-Design-v1.md).
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code guidelines, and how to submit changes.
+
+Plant data contributions are especially appreciated — you can add new species to the knowledge base without writing any application code.
 
 ## License
 
-MIT
+[MIT](LICENSE)
