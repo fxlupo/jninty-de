@@ -3,6 +3,27 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HapiCreative/jninty.git"
+  },
+  "homepage": "https://github.com/HapiCreative/jninty#readme",
+  "bugs": {
+    "url": "https://github.com/HapiCreative/jninty/issues"
+  },
+  "keywords": [
+    "garden",
+    "journal",
+    "plants",
+    "gardening",
+    "pwa",
+    "offline-first",
+    "local-first",
+    "pouchdb",
+    "react",
+    "typescript"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
