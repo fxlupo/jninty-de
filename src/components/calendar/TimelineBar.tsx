@@ -47,7 +47,12 @@ export default function TimelineBarComponent({ bar }: TimelineBarProps) {
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide opacity-80">
         {label}
       </span>
-      <span className="truncate">{task.cropName}</span>
+      <span className="truncate">
+        {task.cropName}
+        {span >= 4 && task.varietyName && (
+          <span className="ml-1 opacity-70">({task.varietyName})</span>
+        )}
+      </span>
       {task.bedName && (
         <span className="ml-auto shrink-0 truncate text-[10px] opacity-70">
           {task.bedName}

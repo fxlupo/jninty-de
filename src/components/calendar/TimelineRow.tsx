@@ -210,22 +210,47 @@ export default function TimelineRow({
           })}
 
           {/* Bar rows — one row per schedule group */}
-          {[...scheduleGroups.entries()].map(([scheduleId, groupBars]) => (
-            <div
-              key={scheduleId}
-              className="col-span-full grid"
-              style={{
-                gridTemplateColumns: `repeat(${daysInMonth}, minmax(28px, 1fr))`,
-              }}
-            >
-              {groupBars.map((bar) => (
-                <TimelineBarComponent
-                  key={bar.task.id}
-                  bar={bar}
-                />
-              ))}
-            </div>
-          ))}
+          {[...scheduleGroups.entries()].map(([scheduleId, groupBars]) => {
+            const sorted = [...groupBars].sort((a, b) => a.startDay - b.startDay);
+
+            return (
+              <div
+                key={scheduleId}
+                className="relative col-span-full grid items-center"
+                style={{
+                  gridTemplateColumns: `repeat(${daysInMonth}, minmax(28px, 1fr))`,
+                }}
+              >
+                {/* Connector lines between consecutive bars */}
+                {sorted.length > 1 &&
+                  sorted.slice(0, -1).map((bar, i) => {
+                    const nextBar = sorted[i + 1]!;
+                    const gapStart = bar.endDay + 1;
+                    const gapEnd = nextBar.startDay - 1;
+                    if (gapEnd < gapStart) return null;
+                    return (
+                      <div
+                        key={`conn-${bar.task.id}`}
+                        className="pointer-events-none flex items-center justify-center"
+                        style={{
+                          gridColumn: `${gapStart} / ${gapEnd + 1}`,
+                        }}
+                      >
+                        <div className="h-px w-full border-t border-dashed border-brown-300/60" />
+                      </div>
+                    );
+                  })}
+
+                {/* Task bars */}
+                {sorted.map((bar) => (
+                  <TimelineBarComponent
+                    key={bar.task.id}
+                    bar={bar}
+                  />
+                ))}
+              </div>
+            );
+          })}
 
           {/* Empty state for months with no visible bars */}
           {scheduleGroups.size === 0 && (
