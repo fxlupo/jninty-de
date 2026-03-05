@@ -548,7 +548,7 @@ export default function AppShell() {
       </div>
 
       {/* ── Mobile bottom tab bar ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-around border-t border-surface-nav bg-surface-nav pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-around border-t border-surface-nav bg-surface-nav pt-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] md:hidden">
         {/* Home & Plants */}
         <TabBarLink item={getPrimaryNav(calendarBadge)[0]!} />
         <TabBarLink item={getPrimaryNav(calendarBadge)[1]!} />
