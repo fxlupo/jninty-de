@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import { format, getDay } from "date-fns";
+import { format, getDay, parseISO, isSameMonth, getDate } from "date-fns";
 import { useDroppable } from "@dnd-kit/core";
 import TimelineBarComponent from "./TimelineBar.tsx";
 import { groupBarsBySchedule } from "../../hooks/useTimelineData.ts";
@@ -11,6 +11,8 @@ interface TimelineRowProps {
   filter: TaskFilterState;
   placementMode?: boolean;
   onDayClick?: (date: string) => void;
+  lastFrostDate: string;
+  firstFrostDate: string;
 }
 
 /** Returns true if the given day (1-based) in the month is a Saturday or Sunday */
@@ -26,6 +28,7 @@ function DroppableDayCell({
   isToday,
   isEven,
   isWeekendDay,
+  isFrostDate,
   placementMode,
   onDayClick,
 }: {
@@ -34,6 +37,7 @@ function DroppableDayCell({
   isToday: boolean;
   isEven: boolean;
   isWeekendDay: boolean;
+  isFrostDate: boolean;
   placementMode: boolean;
   onDayClick: (date: string) => void;
 }) {
@@ -73,6 +77,9 @@ function DroppableDayCell({
       {isToday && (
         <div className="absolute inset-x-0 bottom-0 h-0.5 bg-green-500" />
       )}
+      {isFrostDate && (
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 w-0 -translate-x-1/2 border-l-2 border-dashed border-terracotta-500/60" />
+      )}
     </div>
   );
 }
@@ -82,8 +89,21 @@ export default function TimelineRow({
   filter,
   placementMode,
   onDayClick,
+  lastFrostDate,
+  firstFrostDate,
 }: TimelineRowProps) {
   const { monthDate, label, daysInMonth, bars, hasToday, todayDay } = row;
+
+  // Compute which days (if any) are frost dates for this month
+  const lastFrostDay = useMemo(() => {
+    const d = parseISO(lastFrostDate);
+    return isSameMonth(d, monthDate) ? getDate(d) : null;
+  }, [lastFrostDate, monthDate]);
+
+  const firstFrostDay = useMemo(() => {
+    const d = parseISO(firstFrostDate);
+    return isSameMonth(d, monthDate) ? getDate(d) : null;
+  }, [firstFrostDate, monthDate]);
 
   // Filter bars by task type visibility
   const visibleBars = useMemo(
@@ -158,6 +178,7 @@ export default function TimelineRow({
                 isToday={hasToday && todayDay === d}
                 isEven={d % 2 === 0}
                 isWeekendDay={isWeekend(monthDate, d)}
+                isFrostDate={d === lastFrostDay || d === firstFrostDay}
                 placementMode={placementMode ?? false}
                 onDayClick={handleDayClick}
               />

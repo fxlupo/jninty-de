@@ -26,6 +26,7 @@ import DirectionPicker from "../scheduling/DirectionPicker.tsx";
 import Skeleton from "../ui/Skeleton.tsx";
 import type { ScheduleDirection } from "../../validation/plantingSchedule.schema.ts";
 import StartingFlowWizard from "../startingFlow/StartingFlowWizard.tsx";
+import { useSettings } from "../../hooks/useSettings.tsx";
 import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
 import type { TimelineBar } from "../../hooks/useTimelineData.ts";
 
@@ -82,6 +83,7 @@ export default function TimelineView() {
   const { createSchedule } = useScheduling();
   const { rescheduleGroup, rescheduleSingleTask } = useRescheduling();
   const { toast } = useToast();
+  const { settings } = useSettings();
 
   // Crop picker state
   const [showPicker, setShowPicker] = useState(false);
@@ -391,6 +393,8 @@ export default function TimelineView() {
                 filter={filter}
                 placementMode={placement !== null}
                 onDayClick={handleDayClick}
+                lastFrostDate={settings.lastFrostDate}
+                firstFrostDate={settings.firstFrostDate}
               />
             ))}
           </div>
