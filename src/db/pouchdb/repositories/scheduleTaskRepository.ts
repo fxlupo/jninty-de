@@ -187,9 +187,26 @@ export async function softDeleteByScheduleId(
   plantingScheduleId: string,
 ): Promise<void> {
   const tasks = await getByScheduleId(plantingScheduleId);
+  if (tasks.length === 0) return;
+
+  const timestamp = now();
+  const docs: PouchDoc<ScheduleTask>[] = [];
+
   for (const task of tasks) {
-    await softDelete(task.id);
+    const docId = `${DOC_TYPE}:${task.id}`;
+    const existing = await localDB.get<PouchDoc<ScheduleTask>>(docId);
+    const deleted = scheduleTaskSchema.parse({
+      ...task,
+      deletedAt: timestamp,
+      updatedAt: timestamp,
+      version: task.version + 1,
+    });
+    const doc = toPouchDoc(deleted, DOC_TYPE);
+    doc._rev = existing._rev;
+    docs.push(doc);
   }
+
+  await localDB.bulkDocs(docs);
 }
 
 export async function getById(

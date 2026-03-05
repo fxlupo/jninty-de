@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+import { useModalA11y } from "../../hooks/useModalA11y.ts";
 import type { ScheduleDirection } from "../../validation/plantingSchedule.schema.ts";
 
 interface DirectionPickerProps {
@@ -19,10 +20,16 @@ export default function DirectionPicker({
 }: DirectionPickerProps) {
   const [direction, setDirection] = useState<ScheduleDirection>("forward");
   const displayDate = format(parseISO(date), "MMMM d, yyyy");
+  useModalA11y(onCancel);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl border border-border-default bg-surface-elevated p-5 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Schedule direction"
+        className="w-full max-w-sm rounded-xl border border-border-default bg-surface-elevated p-5 shadow-xl"
+      >
         <h3 className="font-display text-base font-semibold text-text-heading">
           Schedule {cropName} — {varietyName}
         </h3>

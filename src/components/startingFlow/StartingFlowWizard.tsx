@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import StepSelectCrop, { type CropChoice } from "./StepSelectCrop.tsx";
 import StepSelectVariety from "./StepSelectVariety.tsx";
@@ -8,6 +8,8 @@ import StepSelectBed from "./StepSelectBed.tsx";
 import StepConfirm from "./StepConfirm.tsx";
 import { useScheduling } from "../../hooks/useScheduling.ts";
 import { useToast } from "../ui/Toast.tsx";
+import { useModalA11y } from "../../hooks/useModalA11y.ts";
+import { useFocusTrap } from "../../hooks/useFocusTrap.ts";
 import { getVarietyById } from "../../data/cropdb/index.ts";
 import {
   computeTaskDates,
@@ -71,10 +73,13 @@ export default function StartingFlowWizard({
   const [step, setStep] = useState<WizardStep>("crop");
   const [state, setState] = useState<WizardState>(initialState);
   const [saving, setSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const { createSchedule } = useScheduling();
   const { toast } = useToast();
   const navigate = useNavigate();
+  useModalA11y(onClose);
+  useFocusTrap(dialogRef);
 
   const currentStepIndex = STEP_ORDER.indexOf(step);
 
@@ -173,7 +178,13 @@ export default function StartingFlowWizard({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New planting wizard"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl"
+      >
         {/* Header with step dots */}
         <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
           <div className="flex gap-1.5">

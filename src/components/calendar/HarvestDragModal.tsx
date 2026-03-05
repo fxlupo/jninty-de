@@ -1,3 +1,5 @@
+import { useModalA11y } from "../../hooks/useModalA11y.ts";
+
 interface HarvestDragModalProps {
   cropName: string;
   onShiftAll: () => void;
@@ -11,9 +13,16 @@ export default function HarvestDragModal({
   onHarvestOnly,
   onCancel,
 }: HarvestDragModalProps) {
+  useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 w-full max-w-sm rounded-xl bg-surface-elevated p-5 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Move harvest options"
+        className="mx-4 w-full max-w-sm rounded-xl bg-surface-elevated p-5 shadow-xl"
+      >
         <h3 className="text-sm font-semibold text-text-heading">
           Move harvest for {cropName}
         </h3>

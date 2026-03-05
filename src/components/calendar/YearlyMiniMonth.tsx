@@ -30,7 +30,7 @@ export default function YearlyMiniMonth({
   onMonthClick,
 }: YearlyMiniMonthProps) {
   const monthDate = useMemo(() => new Date(year, month, 1), [year, month]);
-  const today = useMemo(() => new Date(), []);
+  const today = new Date();
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(monthDate);

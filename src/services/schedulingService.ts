@@ -258,10 +258,8 @@ export function computeDownstreamUpdates(
 
 export function computeScheduleDateUpdates(
   tasks: Array<{ taskType: ScheduleTaskType; scheduledDate: string }>,
-): Partial<ComputedDates> & {
-  harvestStartDate: string;
-  harvestEndDate: string;
-} {
+  harvestWindowDays: number,
+): Partial<ComputedDates> {
   const result: Record<string, string> = {};
 
   for (const task of tasks) {
@@ -280,15 +278,13 @@ export function computeScheduleDateUpdates(
         break;
       case "harvest":
         result["harvestStartDate"] = task.scheduledDate;
+        result["harvestEndDate"] = formatISO(
+          addDays(parseISO(task.scheduledDate), harvestWindowDays),
+          { representation: "date" },
+        );
         break;
     }
   }
 
-  // If we don't have harvestStartDate and harvestEndDate, return the tasks as-is
-  // The caller must handle the harvestEndDate separately since harvest tasks
-  // represent start date, not end date
-  return result as Partial<ComputedDates> & {
-    harvestStartDate: string;
-    harvestEndDate: string;
-  };
+  return result as Partial<ComputedDates>;
 }

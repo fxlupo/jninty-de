@@ -100,9 +100,14 @@ interface DayEvent {
 
 // ─── Component ───
 
-export default function PlantingCalendarPage() {
+interface PlantingCalendarPageProps {
+  /** Optional initial month to display (e.g. from yearly view drill-down) */
+  initialMonth?: Date | undefined;
+}
+
+export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarPageProps) {
   const { settings, loading: settingsLoading } = useSettings();
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(initialMonth ?? new Date()));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const filter = useTaskFilter();
   const { completeWithPropagation } = useRescheduling();
@@ -286,13 +291,13 @@ export default function PlantingCalendarPage() {
   }, [selectedDay, monthScheduleTasks]);
 
   // Handle schedule task completion
-  async function handleCompleteScheduleTask(task: ScheduleTask) {
+  const handleCompleteScheduleTask = useCallback(async (task: ScheduleTask) => {
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const todayStr = format(new Date(), "yyyy-MM-dd");
       if (task.isCompleted) {
         await scheduleTaskRepository.uncomplete(task.id);
       } else {
-        const result = await completeWithPropagation(task.id, today);
+        const result = await completeWithPropagation(task.id, todayStr);
         if (result) {
           toast(
             `Downstream tasks shifted by +${result.daysDelta} day${result.daysDelta === 1 ? "" : "s"}`,
@@ -303,7 +308,7 @@ export default function PlantingCalendarPage() {
     } catch {
       toast("Failed to update task", "error");
     }
-  }
+  }, [completeWithPropagation, toast]);
 
   // Loading
   if (

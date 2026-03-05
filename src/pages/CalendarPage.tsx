@@ -8,11 +8,11 @@ import PlantingCalendarPage from "./PlantingCalendarPage.tsx";
 
 export default function CalendarPage() {
   const [activeView, setActiveView] = useState<CalendarView>("timeline");
+  const [drillMonth, setDrillMonth] = useState<Date | undefined>(undefined);
 
   // When drilling from yearly view into a specific month
-  const handleDrillToMonth = useCallback((_year: number, _month: number) => {
-    // Switch to monthly view — PlantingCalendarPage manages its own month state
-    // so we just switch the tab; a future enhancement could pass the target month
+  const handleDrillToMonth = useCallback((year: number, month: number) => {
+    setDrillMonth(new Date(year, month, 1));
     setActiveView("monthly");
   }, []);
 
@@ -32,7 +32,9 @@ export default function CalendarPage() {
       {/* View content */}
       <div className="mt-3">
         {activeView === "timeline" && <TimelineView />}
-        {activeView === "monthly" && <PlantingCalendarPage />}
+        {activeView === "monthly" && (
+          <PlantingCalendarPage initialMonth={drillMonth} />
+        )}
         {activeView === "yearly" && (
           <YearlyView onDrillToMonth={handleDrillToMonth} />
         )}

@@ -3,6 +3,7 @@ import { startOfMonth, addMonths, subMonths, differenceInCalendarDays, parseISO 
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -19,6 +20,7 @@ import { useTaskFilter } from "../../hooks/useTaskFilter.ts";
 import { useScheduling } from "../../hooks/useScheduling.ts";
 import { useRescheduling } from "../../hooks/useRescheduling.ts";
 import { useToast } from "../ui/Toast.tsx";
+import { useModalA11y } from "../../hooks/useModalA11y.ts";
 import CropPicker, { type CropSelection } from "../scheduling/CropPicker.tsx";
 import DirectionPicker from "../scheduling/DirectionPicker.tsx";
 import Skeleton from "../ui/Skeleton.tsx";
@@ -40,6 +42,36 @@ interface HarvestDragState {
   task: ScheduleTask;
   targetDate: string;
   daysDelta: number;
+}
+
+/** Slide-in panel wrapper with proper modal a11y */
+function CropPickerPanel({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (selection: CropSelection) => void;
+  onClose: () => void;
+}) {
+  useModalA11y(onClose);
+
+  return (
+    <div className="fixed inset-0 z-40 flex">
+      {/* Backdrop */}
+      <div
+        className="flex-1 bg-black/30"
+        onClick={onClose}
+        role="presentation"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Select crop"
+        className="h-full w-80 max-w-[85vw] bg-surface-elevated shadow-xl"
+      >
+        <CropPicker onSelect={onSelect} onClose={onClose} />
+      </div>
+    </div>
+  );
 }
 
 export default function TimelineView() {
@@ -70,14 +102,15 @@ export default function TimelineView() {
 
   const { monthRows, loading } = useTimelineData(startDate, monthRange);
 
-  // Sensors: PointerSensor with 8px distance activation, TouchSensor with 250ms delay
+  // Sensors: PointerSensor with 8px distance, TouchSensor with 250ms delay, KeyboardSensor for a11y
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
   });
   const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { delay: 250, tolerance: 5 },
   });
-  const sensors = useSensors(pointerSensor, touchSensor);
+  const keyboardSensor = useSensor(KeyboardSensor);
+  const sensors = useSensors(pointerSensor, touchSensor, keyboardSensor);
 
   const handleToday = useCallback(() => {
     setStartDate(startOfMonth(new Date()));
@@ -385,24 +418,10 @@ export default function TimelineView() {
 
       {/* CropPicker slide-in panel */}
       {showPicker && (
-        <div className="fixed inset-0 z-40 flex">
-          <div
-            className="flex-1 bg-black/30"
-            onClick={handlePickerClose}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") handlePickerClose();
-            }}
-            role="button"
-            tabIndex={-1}
-            aria-label="Close crop picker"
-          />
-          <div className="h-full w-80 max-w-[85vw] bg-surface-elevated shadow-xl">
-            <CropPicker
-              onSelect={handleCropSelect}
-              onClose={handlePickerClose}
-            />
-          </div>
-        </div>
+        <CropPickerPanel
+          onSelect={handleCropSelect}
+          onClose={handlePickerClose}
+        />
       )}
 
       {/* Direction picker modal */}
