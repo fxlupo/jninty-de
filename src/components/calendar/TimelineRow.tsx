@@ -13,6 +13,7 @@ interface TimelineRowProps {
   onDayClick?: (date: string) => void;
   lastFrostDate: string;
   firstFrostDate: string;
+  onToggleComplete: (taskId: string) => void;
 }
 
 /** Returns true if the given day (1-based) in the month is a Saturday or Sunday */
@@ -115,6 +116,7 @@ export default function TimelineRow({
   onDayClick,
   lastFrostDate,
   firstFrostDate,
+  onToggleComplete,
 }: TimelineRowProps) {
   const { monthDate, label, daysInMonth, bars, hasToday, todayDay } = row;
 
@@ -246,6 +248,7 @@ export default function TimelineRow({
                   <TimelineBarComponent
                     key={bar.task.id}
                     bar={bar}
+                    onToggleComplete={onToggleComplete}
                   />
                 ))}
               </div>

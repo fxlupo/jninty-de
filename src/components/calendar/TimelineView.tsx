@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { startOfMonth, addMonths, subMonths, differenceInCalendarDays, parseISO } from "date-fns";
+import { startOfMonth, addMonths, subMonths, differenceInCalendarDays, parseISO, format } from "date-fns";
 import {
   DndContext,
   DragOverlay,
@@ -27,6 +27,7 @@ import Skeleton from "../ui/Skeleton.tsx";
 import type { ScheduleDirection } from "../../validation/plantingSchedule.schema.ts";
 import StartingFlowWizard from "../startingFlow/StartingFlowWizard.tsx";
 import { useSettings } from "../../hooks/useSettings.tsx";
+import { scheduleTaskRepository } from "../../db/index.ts";
 import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
 import type { TimelineBar } from "../../hooks/useTimelineData.ts";
 
@@ -228,6 +229,31 @@ export default function TimelineView() {
     setHarvestDrag(null);
   }, []);
 
+  // --- Task completion toggle ---
+  const handleToggleComplete = useCallback(
+    async (taskId: string) => {
+      try {
+        const task = await scheduleTaskRepository.getById(taskId);
+        if (!task) return;
+        const changes: Parameters<typeof scheduleTaskRepository.update>[1] = task.isCompleted
+          ? { isCompleted: false }
+          : {
+              isCompleted: true,
+              completedDate: format(new Date(), "yyyy-MM-dd"),
+              completedAt: new Date().toISOString(),
+            };
+        await scheduleTaskRepository.update(taskId, changes);
+        toast(
+          task.isCompleted ? "Task marked incomplete" : "Task completed!",
+          "success",
+        );
+      } catch {
+        toast("Failed to update task", "error");
+      }
+    },
+    [toast],
+  );
+
   // --- Crop picker handlers ---
   const handleCropSelect = useCallback((selection: CropSelection) => {
     setShowPicker(false);
@@ -395,6 +421,7 @@ export default function TimelineView() {
                 onDayClick={handleDayClick}
                 lastFrostDate={settings.lastFrostDate}
                 firstFrostDate={settings.firstFrostDate}
+                onToggleComplete={handleToggleComplete}
               />
             ))}
           </div>
