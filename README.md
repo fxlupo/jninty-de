@@ -16,11 +16,14 @@
 - **Plant Inventory** — Track plants with photos, species, care notes, and lifecycle status
 - **Garden Journal** — Log daily activities with photos, linked to specific plants
 - **Quick Log** — 3-tap photo-first workflow for fast field notes
+- **Plant Knowledge Base** — Built-in growing guides for vegetables, herbs, fruits, and flowers with scheduling, spacing, and companion info — plus user-contributed entries
+- **Planting Calendar** — Timeline, yearly, and monthly views for crop scheduling and season planning
 - **Task Management** — Create, prioritize, and track garden tasks with due dates
 - **Task Rules** — Automated task generation from plant care schedules
 - **Garden Map** — Visual garden bed layout editor
 - **Seed Bank** — Track seed inventory with sow-by dates and germination rates
-- **Seasons** — Season-based planting records with frost date awareness
+- **Seasons & Plantings** — Season-based planting records with frost date awareness and year-over-year comparison
+- **Expense Tracking** — Track garden spending by category and store with per-season filtering
 - **Full-Text Search** — Instant search across plants and journal entries
 - **Data Export/Import** — ZIP backup and restore
 - **Dark Mode** — System-aware and manual theme switching
@@ -78,12 +81,12 @@ src/
   components/layout/  Layout (AppShell — sidebar + bottom nav)
   db/pouchdb/         PouchDB client, repositories, search index
   hooks/              Custom React hooks
-  services/           Business logic (calendar, taskEngine, photoProcessor, exporter)
+  services/           Business logic (calendar, taskEngine, knowledgeBase, photoProcessor, exporter)
   validation/         Zod schemas for all entities
   types/              TypeScript type definitions
   constants/          Label and option constants
 data/
-  plants/             Community-contributed plant knowledge JSON (vegetables, herbs, fruits, flowers)
+  plants/             Built-in plant knowledge base JSON (vegetables, herbs, fruits, flowers)
 sync/
   docker-compose.yml  CouchDB setup for multi-device sync
   setup.sh            One-command sync server setup
