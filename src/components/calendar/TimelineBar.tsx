@@ -65,10 +65,8 @@ export default function TimelineBarComponent({ bar, onToggleComplete }: Timeline
     };
   }, [showPopover]);
 
-  // Close popover when drag starts
-  useEffect(() => {
-    if (isDragging) setShowPopover(false);
-  }, [isDragging]);
+  // Hide popover while dragging without an effect — derived state
+  const popoverVisible = showPopover && !isDragging;
 
   // CSS Grid positioning: 1-based column start, spanning the correct number of days
   const gridColumn = `${startDay} / span ${span}`;
@@ -138,7 +136,7 @@ export default function TimelineBarComponent({ bar, onToggleComplete }: Timeline
       </button>
 
       {/* Popover — rendered via portal to escape overflow clipping */}
-      {showPopover && anchorRect && (
+      {popoverVisible && anchorRect && (
         <TimelineBarPopover
           ref={popoverRef}
           task={task}
