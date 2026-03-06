@@ -32,8 +32,10 @@ function getSeasonTint(
   firstFrostDate: string,
 ): SeasonTint {
   const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
-  const lastFrost = parseISO(lastFrostDate);
-  const firstFrost = parseISO(firstFrostDate);
+  const year = monthDate.getFullYear();
+  // Normalize frost dates to the row's year for multi-year views
+  const lastFrost = parseISO(lastFrostDate.replace(/^\d{4}/, String(year)));
+  const firstFrost = parseISO(firstFrostDate.replace(/^\d{4}/, String(year)));
 
   if (isBefore(date, lastFrost)) return "winter";
   if (isAfter(date, firstFrost)) return "fall";
@@ -121,13 +123,16 @@ export default function TimelineRow({
   const { monthDate, label, daysInMonth, bars, hasToday, todayDay } = row;
 
   // Compute which days (if any) are frost dates for this month
+  // Normalize frost date year to match this row for multi-year views
   const lastFrostDay = useMemo(() => {
-    const d = parseISO(lastFrostDate);
+    const normalized = lastFrostDate.replace(/^\d{4}/, String(monthDate.getFullYear()));
+    const d = parseISO(normalized);
     return isSameMonth(d, monthDate) ? getDate(d) : null;
   }, [lastFrostDate, monthDate]);
 
   const firstFrostDay = useMemo(() => {
-    const d = parseISO(firstFrostDate);
+    const normalized = firstFrostDate.replace(/^\d{4}/, String(monthDate.getFullYear()));
+    const d = parseISO(normalized);
     return isSameMonth(d, monthDate) ? getDate(d) : null;
   }, [firstFrostDate, monthDate]);
 

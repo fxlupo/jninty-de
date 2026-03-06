@@ -36,7 +36,7 @@ export default function TimelineBarComponent({ bar, onToggleComplete }: Timeline
     });
   }, []);
 
-  // Close popover on outside click (check both wrapper and portal popover)
+  // Close popover on outside click, Escape key, or scroll
   useEffect(() => {
     if (!showPopover) return;
     function handleOutsideClick(e: MouseEvent) {
@@ -47,8 +47,22 @@ export default function TimelineBarComponent({ bar, onToggleComplete }: Timeline
         setShowPopover(false);
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowPopover(false);
+    }
+    function handleScroll() {
+      setShowPopover(false);
+    }
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    // Close on any scroll in the timeline container
+    const scrollContainer = wrapperRef.current?.closest(".overflow-x-auto");
+    scrollContainer?.addEventListener("scroll", handleScroll);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+      scrollContainer?.removeEventListener("scroll", handleScroll);
+    };
   }, [showPopover]);
 
   // Close popover when drag starts
