@@ -10,6 +10,9 @@ import useOnlineStatus from "../../hooks/useOnlineStatus";
 import { useSync } from "../../hooks/useSync";
 import { useKeyboardShortcuts, useShortcutsHelpState } from "../../hooks/useKeyboardShortcuts";
 import KeyboardShortcutsHelp from "../KeyboardShortcutsHelp";
+import SyncStatusBadge from "../cloud/SyncStatusBadge";
+import { useAuth } from "../../store/authStore";
+import { stopCloudSync } from "../../lib/cloudSync";
 
 // SVG icon components — inline to avoid extra dependencies
 
@@ -194,6 +197,24 @@ function ExpenseIcon({ className }: { className?: string }) {
   );
 }
 
+function LogOutIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -356,6 +377,7 @@ export default function AppShell() {
   const isOnline = useOnlineStatus();
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { state: authState, dispatch: authDispatch } = useAuth();
   const shortcutsHelp = useShortcutsHelpState();
   useKeyboardShortcuts(shortcutsHelp.show);
   const overdueTasks = usePouchQuery(() => taskRepository.getOverdue());
@@ -415,7 +437,22 @@ export default function AppShell() {
           </span>
           <span className="text-text-on-nav">
             <SyncStatusDot />
+            <SyncStatusBadge />
           </span>
+          {authState.isAuthenticated && (
+            <button
+              type="button"
+              aria-label="Sign Out"
+              onClick={() => {
+                stopCloudSync();
+                authDispatch({ type: "LOGOUT" });
+              }}
+              className="ml-auto p-1 text-text-on-nav hover:text-text-on-primary transition-colors"
+              title="Sign Out"
+            >
+              <LogOutIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Primary nav */}
@@ -461,7 +498,21 @@ export default function AppShell() {
             </span>
             <span className="text-text-secondary">
               <SyncStatusDot />
+              <SyncStatusBadge />
             </span>
+            {authState.isAuthenticated && (
+              <button
+                type="button"
+                aria-label="Sign Out"
+                onClick={() => {
+                  stopCloudSync();
+                  authDispatch({ type: "LOGOUT" });
+                }}
+                className="p-1 text-text-secondary hover:text-text-heading"
+              >
+                <LogOutIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
           {/* Secondary nav links for mobile — accessible via header */}
           <div className="flex items-center gap-3">

@@ -34,6 +34,8 @@ import {
 import { localDB, getRemoteInfo, type RemoteDBInfo } from "../db/pouchdb/client.ts";
 import { clearAllOriginals } from "../db/pouchdb/originalsStore.ts";
 import { useNotifications } from "../hooks/useNotifications.ts";
+import CloudSyncSettings from "../components/cloud/CloudSyncSettings";
+import { useIsAuthenticated } from "../store/authStore";
 
 // ─── Growing zones (USDA 1a–13b) ───
 
@@ -79,6 +81,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { settings, loading, updateSettings } = useSettings();
   const notifications = useNotifications();
+  const isCloudUser = useIsAuthenticated();
 
   // Local state for text input (saved on blur)
   const [gardenName, setGardenName] = useState("");
@@ -1156,8 +1159,11 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* ── Multi-Device Sync ── */}
-      <Card>
+      {/* ── Jninty Cloud Sync (SaaS) ── */}
+      <CloudSyncSettings />
+
+      {/* ── Multi-Device Sync (hidden for cloud users) ── */}
+      {!isCloudUser && <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
           Multi-Device Sync
         </h2>
@@ -1297,7 +1303,7 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
-      </Card>
+      </Card>}
 
       {/* ── Data Management ── */}
       <Card>
