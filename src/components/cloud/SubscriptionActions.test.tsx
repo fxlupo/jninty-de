@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SubscriptionActions from "./SubscriptionActions";
 import type { AuthUser } from "../../types/auth";
+import {
+  cancelSubscription,
+  reactivateSubscription,
+  changePlan,
+} from "../../lib/apiClient";
 
 // Mock API client
 vi.mock("../../lib/apiClient", () => ({
@@ -90,5 +95,92 @@ describe("SubscriptionActions", () => {
     );
 
     expect(screen.getByText("Payment & Invoices ↗")).toBeInTheDocument();
+  });
+
+  // --- Integration tests: confirm -> API -> state update ---
+
+  it("cancel flow: confirm modal -> API call -> onUserUpdated", async () => {
+    const cancelledUser: AuthUser = {
+      ...baseUser,
+      subscriptionStatus: "cancelled",
+      subscriptionEndsAt: "2026-04-10",
+    };
+    vi.mocked(cancelSubscription).mockResolvedValueOnce(cancelledUser);
+
+    const user = userEvent.setup();
+    render(
+      <SubscriptionActions user={baseUser} onUserUpdated={onUserUpdated} />,
+    );
+
+    await user.click(screen.getByText("Cancel Subscription"));
+    await user.click(screen.getByText("Yes, Cancel"));
+
+    await waitFor(() => {
+      expect(cancelSubscription).toHaveBeenCalledOnce();
+      expect(onUserUpdated).toHaveBeenCalledWith(cancelledUser);
+    });
+  });
+
+  it("change plan flow: confirm modal -> API call -> onUserUpdated", async () => {
+    const updatedUser: AuthUser = {
+      ...baseUser,
+      plan: "annual",
+      subscriptionEndsAt: "2027-04-10",
+    };
+    vi.mocked(changePlan).mockResolvedValueOnce(updatedUser);
+
+    const user = userEvent.setup();
+    render(
+      <SubscriptionActions user={baseUser} onUserUpdated={onUserUpdated} />,
+    );
+
+    await user.click(screen.getByText(/Switch to Annual/));
+    await user.click(screen.getByText("Switch Plan"));
+
+    await waitFor(() => {
+      expect(changePlan).toHaveBeenCalledWith("price_annual");
+      expect(onUserUpdated).toHaveBeenCalledWith(updatedUser);
+    });
+  });
+
+  it("reactivate flow: button click -> API call -> onUserUpdated", async () => {
+    const cancelledUser: AuthUser = {
+      ...baseUser,
+      subscriptionStatus: "cancelled",
+    };
+    const reactivatedUser: AuthUser = {
+      ...baseUser,
+      subscriptionStatus: "active",
+    };
+    vi.mocked(reactivateSubscription).mockResolvedValueOnce(reactivatedUser);
+
+    const user = userEvent.setup();
+    render(
+      <SubscriptionActions user={cancelledUser} onUserUpdated={onUserUpdated} />,
+    );
+
+    await user.click(screen.getByText("Reactivate Subscription"));
+
+    await waitFor(() => {
+      expect(reactivateSubscription).toHaveBeenCalledOnce();
+      expect(onUserUpdated).toHaveBeenCalledWith(reactivatedUser);
+    });
+  });
+
+  it("shows error message when cancel API fails", async () => {
+    vi.mocked(cancelSubscription).mockRejectedValueOnce(new Error("Network error"));
+
+    const user = userEvent.setup();
+    render(
+      <SubscriptionActions user={baseUser} onUserUpdated={onUserUpdated} />,
+    );
+
+    await user.click(screen.getByText("Cancel Subscription"));
+    await user.click(screen.getByText("Yes, Cancel"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+    });
+    expect(onUserUpdated).not.toHaveBeenCalled();
   });
 });

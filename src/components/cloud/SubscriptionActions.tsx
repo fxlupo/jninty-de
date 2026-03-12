@@ -78,10 +78,13 @@ export default function SubscriptionActions({ user, onUserUpdated }: Props) {
 
   async function handleOpenPortal() {
     setPortalLoading(true);
+    setError(null);
     try {
       const { url } = await getSubscriptionPortalUrl();
       window.location.href = url;
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to open billing portal");
+    } finally {
       setPortalLoading(false);
     }
   }
