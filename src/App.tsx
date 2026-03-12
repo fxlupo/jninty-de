@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { SettingsProvider, useSettings } from "./hooks/useSettings";
@@ -35,6 +35,11 @@ import {
   startNotificationListening,
   stopNotificationListening,
 } from "./services/notificationListener.ts";
+import { isCloudEnabled, apiUrl } from "./config/cloud";
+import { useAuth } from "./store/authStore";
+import { startCloudSync } from "./lib/cloudSync";
+import { normalizeUser } from "./lib/apiClient";
+import CloudGate from "./components/cloud/CloudGate";
 
 // Lazy-load the map page to code-split the Konva.js bundle
 const GardenMapPage = lazy(() => import("./pages/GardenMapPage"));
@@ -77,11 +82,45 @@ export default function App() {
     return () => stopNotificationListening();
   }, []);
 
+  // Stripe redirect handler — activates account after checkout
+  const { state: authState, dispatch: authDispatch } = useAuth();
+  const activatingRef = useRef(false);
+  useEffect(() => {
+    if (!isCloudEnabled || !apiUrl) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+
+    if (sessionId && !authState.isAuthenticated && !activatingRef.current) {
+      activatingRef.current = true;
+      fetch(`${apiUrl}/auth/activate?session_id=${sessionId}`, {
+        method: "POST",
+      })
+        .then((res) => res.json())
+        .then((data: { token?: string; user?: Record<string, unknown> }) => {
+          if (data.token && data.user) {
+            const user = normalizeUser(data.user);
+            authDispatch({
+              type: "LOGIN",
+              payload: { user, token: data.token },
+            });
+            startCloudSync(user.id, data.token);
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        })
+        .catch(() => {
+          // Payment verification failed — user can retry from settings
+          activatingRef.current = false;
+        });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <SettingsProvider>
       <ThemeApplicator />
       <SyncProvider>
         <ToastProvider>
+          <CloudGate>
           <BrowserRouter>
           <Routes>
             <Route element={<AppShell />}>
@@ -128,6 +167,7 @@ export default function App() {
           </Routes>
           <InstallPrompt />
           </BrowserRouter>
+          </CloudGate>
         </ToastProvider>
       </SyncProvider>
     </SettingsProvider>
