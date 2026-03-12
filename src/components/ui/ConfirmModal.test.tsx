@@ -78,6 +78,68 @@ describe("ConfirmModal", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
+  it("calls onCancel when Escape key is pressed", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    render(
+      <ConfirmModal
+        isOpen={true}
+        title="Cancel"
+        message="Sure?"
+        confirmLabel="Confirm"
+        variant="danger"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("calls onCancel when backdrop is clicked", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    render(
+      <ConfirmModal
+        isOpen={true}
+        title="Cancel"
+        message="Sure?"
+        confirmLabel="Confirm"
+        variant="danger"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    // Click the backdrop (the outer overlay div)
+    await user.click(screen.getByText("Cancel").closest("div.fixed")!);
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("does not dismiss on Escape when loading", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    render(
+      <ConfirmModal
+        isOpen={true}
+        title="Cancel"
+        message="Sure?"
+        confirmLabel="Confirm"
+        variant="danger"
+        isLoading={true}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it("shows loading state when isLoading is true", () => {
     render(
       <ConfirmModal

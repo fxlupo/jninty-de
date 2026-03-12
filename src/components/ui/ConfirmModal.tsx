@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Button from "./Button";
 
 interface ConfirmModalProps {
@@ -21,11 +22,28 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !isLoading) {
+        onCancel();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isLoading, onCancel]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-sm rounded-xl bg-cream-100 p-6 shadow-lg">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={() => { if (!isLoading) onCancel(); }}
+    >
+      <div
+        className="mx-4 w-full max-w-sm rounded-xl bg-cream-100 p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="font-display text-lg font-semibold text-text-heading">
           {title}
         </h3>
