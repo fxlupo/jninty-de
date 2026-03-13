@@ -3,8 +3,6 @@ import { register } from "../../lib/apiClient";
 import {
   stripeMonthlyPriceId,
   stripeAnnualPriceId,
-  monthlyPrice,
-  annualPrice,
 } from "../../config/cloud";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useModalA11y } from "../../hooks/useModalA11y";
