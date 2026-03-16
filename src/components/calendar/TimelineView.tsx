@@ -306,7 +306,7 @@ export default function TimelineView() {
   const emptyContent = useMemo(() => {
     if (loading) return null;
     const totalBars = monthRows.reduce((sum, row) => sum + row.bars.length, 0);
-    if (totalBars === 0) {
+    if (totalBars === 0 && !placement) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-sm text-text-secondary">
@@ -319,7 +319,7 @@ export default function TimelineView() {
       );
     }
     return null;
-  }, [loading, monthRows]);
+  }, [loading, monthRows, placement]);
 
   return (
     <div className="relative flex flex-col">
@@ -331,7 +331,7 @@ export default function TimelineView() {
 
       {/* Placement mode banner */}
       {placement && (
-        <div className="flex items-center justify-between bg-green-50 px-3 py-2 text-sm">
+        <div className="flex items-center justify-between bg-green-50 px-3 py-2 mb-3 text-sm">
           <span className="text-green-800">
             Click a day to place{" "}
             <strong>
