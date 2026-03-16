@@ -202,16 +202,16 @@ export default function StartingFlowWizard({
   }, [state, createSchedule, toast, onClose, navigate]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 md:items-center">
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="New planting wizard"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl"
+        className="flex max-h-[calc(100vh-env(safe-area-inset-bottom,0px)-4.5rem)] w-full max-w-lg flex-col rounded-t-2xl bg-surface-elevated md:max-h-[90vh] md:rounded-2xl"
       >
         {/* Header with step dots */}
-        <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-border-default px-4 py-3">
           <div className="flex gap-1.5">
             {STEP_ORDER.map((s, i) => (
               <div
@@ -244,7 +244,7 @@ export default function StartingFlowWizard({
         </div>
 
         {/* Step content */}
-        <div className="p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4" style={{ WebkitOverflowScrolling: 'touch' }}>
           {step === "crop" && (
             <StepSelectCrop onSelect={handleCropSelect} />
           )}
