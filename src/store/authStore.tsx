@@ -9,9 +9,27 @@ import {
 } from "react";
 import { isCloudEnabled, apiUrl } from "../config/cloud";
 import type { AuthState, AuthAction } from "../types/auth";
-import { normalizeUser } from "../lib/apiClient";
+import { normalizeUser, logoutFromServer, clearLegacyToken } from "../lib/apiClient";
 
-const AUTH_TOKEN_KEY = "jninty_auth_token";
+/**
+ * localStorage key — kept temporarily for migration fallback.
+ * TODO: Remove after migration period (~7 days post-deploy).
+ */
+const LEGACY_TOKEN_KEY = "jninty_auth_token";
+
+/** Check whether the non-HttpOnly companion cookie is set. */
+function hasLoggedInCookie(): boolean {
+  return document.cookie.split("; ").some((c) => c.startsWith("jninty_logged_in="));
+}
+
+/** Check whether a legacy localStorage token exists (migration fallback). */
+function getLegacyToken(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
 
 const initialState: AuthState = {
   isAuthenticated: false,
@@ -23,15 +41,16 @@ const initialState: AuthState = {
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case "LOGIN":
-      localStorage.setItem(AUTH_TOKEN_KEY, action.payload.token);
       return {
         isAuthenticated: true,
         user: action.payload.user,
-        token: action.payload.token,
+        token: action.payload.token ?? null,
         isLoading: false,
       };
     case "LOGOUT":
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      // Clear server cookies + legacy localStorage
+      void logoutFromServer();
+      clearLegacyToken();
       return {
         isAuthenticated: false,
         user: null,
@@ -68,8 +87,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const fetchingRef = useRef(false);
   useEffect(() => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!token || !apiUrl) {
+    // Primary: check for the non-HttpOnly companion cookie
+    const hasCookie = hasLoggedInCookie();
+    // Migration fallback: check localStorage for a legacy token
+    const legacyToken = getLegacyToken();
+
+    if ((!hasCookie && !legacyToken) || !apiUrl) {
       dispatch({ type: "SET_LOADING", payload: false });
       return;
     }
@@ -77,8 +100,15 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
+    const headers: Record<string, string> = {};
+    // Migration: if we have a legacy token but no cookie yet, send it as Bearer
+    if (!hasCookie && legacyToken) {
+      headers["Authorization"] = `Bearer ${legacyToken}`;
+    }
+
     fetch(`${apiUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
+      credentials: "include", // send HttpOnly cookie
     })
       .then((res) => {
         if (!res.ok) throw new Error("unauthorized");
@@ -87,10 +117,15 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       .then((raw: Record<string, unknown>) => {
         // /auth/me may return the user directly or wrapped in { user: ... }
         const userData = (raw["user"] ?? raw) as Record<string, unknown>;
-        dispatch({ type: "LOGIN", payload: { user: normalizeUser(userData), token } });
+        dispatch({ type: "LOGIN", payload: { user: normalizeUser(userData) } });
+        // If we validated a legacy token, the server should now have set
+        // the HttpOnly cookie. Clean up localStorage.
+        if (legacyToken) {
+          clearLegacyToken();
+        }
       })
       .catch(() => {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
+        clearLegacyToken();
         dispatch({ type: "LOGOUT" });
         fetchingRef.current = false;
       });

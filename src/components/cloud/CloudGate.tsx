@@ -123,7 +123,7 @@ export default function CloudGate({ children }: { children: ReactNode }) {
   // OSS mode — no gate
   if (!isCloudEnabled) return <>{children}</>;
 
-  // Validating stored token
+  // Validating auth session
   if (state.isLoading) return <LoadingScreen />;
 
   // Not logged in
