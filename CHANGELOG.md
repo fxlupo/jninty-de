@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Geändert
 
+- **Pflanzentypen erweitert** — Neue Typen "Strauch" (`shrub`) und "Hecke" (`hedge`) hinzugefügt; Umlaute in den Labels korrigiert (Gemüse, Kräuter); Gartenplan-Farben für neue Typen ergänzt
+
 - **UI-Übersetzung (Teil 2)** — Verbliebene englische Passagen ins Deutsche übersetzt:
   - `NotFoundPage`: "Seite nicht gefunden", "Zurück zum Dashboard"
   - `PlantsListPage`: Überschrift, Suche, Filter, Ansichtsumschalter, leere Zustände, Buttons

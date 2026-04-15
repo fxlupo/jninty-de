@@ -8,6 +8,8 @@ export const plantTypeSchema = z.enum([
   "ornamental",
   "fruit_tree",
   "berry",
+  "shrub",
+  "hedge",
   "other",
 ]);
 
