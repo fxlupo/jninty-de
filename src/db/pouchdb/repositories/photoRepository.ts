@@ -300,7 +300,7 @@ export async function getPhotosMeta(ids: string[]): Promise<PhotoMeta[]> {
   const results: PhotoMeta[] = [];
   for (const row of result.rows) {
     if (!("doc" in row) || !row.doc) continue;
-    const doc = row.doc as Record<string, unknown>;
+    const doc = row.doc as unknown as Record<string, unknown>;
     const rawId = doc["_id"];
     const createdAt = doc["createdAt"];
     if (typeof rawId !== "string" || typeof createdAt !== "string") continue;
