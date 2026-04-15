@@ -9,4 +9,4 @@ RUN npm ci
 RUN mkdir -p /app/data
 
 # Run pending DB migrations, then start the API server
-CMD ["sh", "-c", "npm run db:migrate && tsx server/src/index.ts"]
+CMD ["sh", "-c", "npm run db:migrate && node_modules/.bin/tsx server/src/index.ts"]
