@@ -96,9 +96,7 @@ export default function PlantDetailPage() {
 
   // Load hero photo
   useEffect(() => {
-    let revoked = false;
-    let objectUrl: string | undefined;
-
+    let cancelled = false;
     const photoId = plant?.photoIds?.[0];
 
     void (async () => {
@@ -106,22 +104,13 @@ export default function PlantDetailPage() {
         setHeroUrl(null);
         return;
       }
-
-      const blob = await photoRepository.getDisplayBlob(photoId);
-      if (revoked) return;
-      if (blob) {
-        objectUrl = URL.createObjectURL(blob);
-        setHeroUrl(objectUrl);
-      } else {
-        setHeroUrl(null);
-      }
+      const url = await photoRepository.getDisplayUrl(photoId);
+      if (cancelled) return;
+      setHeroUrl(url ?? null);
     })();
 
     return () => {
-      revoked = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      cancelled = true;
     };
   }, [plant?.photoIds]);
 

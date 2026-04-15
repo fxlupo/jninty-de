@@ -40,22 +40,17 @@ export default function PhotoLightbox({
   useEffect(() => {
     baseScale.current = 1;
     if (!photoId) return;
-    let revoked = false;
-    let objectUrl: string | undefined;
+    let cancelled = false;
 
     void (async () => {
-      const blob = await photoRepository.getDisplayBlob(photoId);
-      if (revoked) return;
-      if (blob) {
-        objectUrl = URL.createObjectURL(blob);
-        setSrc(objectUrl);
-      }
+      const url = await photoRepository.getDisplayUrl(photoId);
+      if (cancelled) return;
+      setSrc(url ?? null);
       setLoading(false);
     })();
 
     return () => {
-      revoked = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      cancelled = true;
     };
   }, [photoId]);
 

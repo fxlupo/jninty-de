@@ -1,13 +1,7 @@
-import "fake-indexeddb/auto";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { clearPouchDB } from "../db/pouchdb/testUtils.ts";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { photoRepository } from "../db/index.ts";
 import PhotoThumbnail from "./PhotoThumbnail.tsx";
-
-beforeEach(async () => {
-  await clearPouchDB();
-});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -29,16 +23,12 @@ describe("PhotoThumbnail", () => {
     });
   });
 
-  it("renders an img when photo exists", async () => {
-    const blobUrl = "blob:mock-thumbnail-url";
-    globalThis.URL.createObjectURL = vi.fn().mockReturnValue(blobUrl);
-    globalThis.URL.revokeObjectURL = vi.fn();
-
-    const thumb = new Blob([new Uint8Array(100)], { type: "image/jpeg" });
-
-    const photo = await photoRepository.create({
-      thumbnailBlob: thumb,
-      originalStored: false,
+  it("renders an img with thumbnailUrl when photo exists", async () => {
+    const photo = await photoRepository.createWithFiles({
+      thumbnailBlob: new Blob([new Uint8Array(100)], { type: "image/jpeg" }),
+      displayBlob: new Blob([new Uint8Array(200)], { type: "image/jpeg" }),
+      width: 320,
+      height: 240,
     });
 
     render(<PhotoThumbnail photoId={photo.id} alt="My tomato" className="h-20" />);
@@ -46,44 +36,18 @@ describe("PhotoThumbnail", () => {
     await waitFor(() => {
       const img = screen.getByRole("img", { name: "My tomato" });
       expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute("src", blobUrl);
+      expect(img).toHaveAttribute("src", photo.thumbnailUrl);
       expect(img.className).toContain("h-20");
     });
   });
 
-  it("shows placeholder when DB lookup fails", async () => {
-    vi.spyOn(photoRepository, "getById").mockRejectedValue(new Error("DB error"));
+  it("shows placeholder when getById fails", async () => {
+    vi.spyOn(photoRepository, "getById").mockRejectedValue(new Error("fetch error"));
 
     render(<PhotoThumbnail photoId="any-id" />);
 
     await waitFor(() => {
       expect(screen.getByLabelText("Photo not found")).toBeInTheDocument();
     });
-  });
-
-  it("revokes blob URL on unmount", async () => {
-    const blobUrl = "blob:mock-revoke-test";
-    globalThis.URL.createObjectURL = vi.fn().mockReturnValue(blobUrl);
-    const revokeSpy = (globalThis.URL.revokeObjectURL = vi.fn());
-
-    const photo = await photoRepository.create({
-      thumbnailBlob: new Blob([new Uint8Array(50)], { type: "image/jpeg" }),
-      originalStored: false,
-    });
-
-    const { unmount } = render(
-      <PhotoThumbnail photoId={photo.id} alt="test photo" />,
-    );
-
-    // Wait for the image to load
-    await waitFor(() => {
-      expect(
-        screen.getByRole("img", { name: "test photo" }),
-      ).toBeInTheDocument();
-    });
-
-    unmount();
-
-    expect(revokeSpy).toHaveBeenCalledWith(blobUrl);
   });
 });

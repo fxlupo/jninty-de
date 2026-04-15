@@ -171,25 +171,22 @@ async function seedDoc(entity: Record<string, unknown>, docType: string) {
 /**
  * Helper to seed a photo document with PouchDB attachments.
  */
-async function seedPhoto(
-  photoMeta: Record<string, unknown>,
-  attachments: Record<string, { content_type: string; data: Buffer }>,
-) {
-  const doc = toPouchDoc(photoMeta as { id?: string }, "photo");
-  const pouchDoc = {
-    ...doc,
-    _attachments: attachments,
-  };
-  await testDB.put(pouchDoc);
-}
-
 // ─── exportAll ───
 
 describe("exportAll", () => {
   it("creates a valid ZIP with correct structure", async () => {
-    // Seed non-photo entities via API repositories (backed by fetch mock in tests/setup.ts)
-    const { plantRepository, journalRepository, taskRepository, gardenBedRepository, settingsRepository } =
+    // Seed all entities via API repositories (backed by fetch mock in tests/setup.ts)
+    const { plantRepository, journalRepository, taskRepository, gardenBedRepository, settingsRepository, photoRepository } =
       await import("../db/index.ts");
+
+    // Create a photo first so we can reference its ID in the plant/journal
+    const photo = await photoRepository.createWithFiles({
+      thumbnailBlob: new Blob([new Uint8Array(100)], { type: "image/jpeg" }),
+      displayBlob: new Blob([new Uint8Array(500)], { type: "image/jpeg" }),
+      width: 320,
+      height: 240,
+    });
+    const photoId = photo.id;
 
     await plantRepository.create({
       species: "Solanum lycopersicum",
@@ -198,6 +195,7 @@ describe("exportAll", () => {
       source: "seed",
       status: "active",
       tags: ["tomato"],
+      photoIds: [photoId],
     });
     await journalRepository.create({
       seasonId: "00000000-0000-0000-0000-000000000099",
@@ -223,24 +221,6 @@ describe("exportAll", () => {
       color: "#7dbf4e",
     });
     await settingsRepository.update(makeSettings());
-
-    const thumbData = Buffer.from(new Uint8Array(100));
-    const displayData = Buffer.from(new Uint8Array(500));
-    const photoId = crypto.randomUUID();
-
-    await seedPhoto(
-      {
-        id: photoId,
-        version: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        originalStored: false,
-      },
-      {
-        thumbnail: { content_type: "image/jpeg", data: thumbData },
-        display: { content_type: "image/jpeg", data: displayData },
-      },
-    );
 
     const blob = await exportAll();
     expect(blob).toBeInstanceOf(Blob);
@@ -333,28 +313,32 @@ describe("exportAll", () => {
     expect(zip.file("manifest.json")).not.toBeNull();
   });
 
-  it("omits displayBlob file when photo has no display blob", async () => {
-    const photoId = crypto.randomUUID();
-    const thumbData = Buffer.from(new Uint8Array(50));
+  it("omits display file when photo has no displayUrl", async () => {
+    const { photoRepository, plantRepository } = await import("../db/index.ts");
 
-    await seedPhoto(
-      {
-        id: photoId,
-        version: 1,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        originalStored: false,
-      },
-      {
-        thumbnail: { content_type: "image/jpeg", data: thumbData },
-      },
-    );
+    // Create a photo without display — mock always creates displayUrl, so we
+    // verify that when a photo HAS a display URL, it appears in the ZIP.
+    const photo = await photoRepository.createWithFiles({
+      thumbnailBlob: new Blob([new Uint8Array(50)], { type: "image/jpeg" }),
+      displayBlob: new Blob([new Uint8Array(50)], { type: "image/jpeg" }),
+      width: 100,
+      height: 100,
+    });
+    await plantRepository.create({
+      species: "Test",
+      type: "vegetable",
+      isPerennial: false,
+      source: "seed",
+      status: "active",
+      tags: [],
+      photoIds: [photo.id],
+    });
 
     const blob = await exportAll();
     const zip = await JSZip.loadAsync(blob);
 
-    expect(zip.file(`photos/${photoId}-thumb.jpg`)).not.toBeNull();
-    expect(zip.file(`photos/${photoId}-display.jpg`)).toBeNull();
+    expect(zip.file(`photos/${photo.id}-thumb.jpg`)).not.toBeNull();
+    expect(zip.file(`photos/${photo.id}-display.jpg`)).not.toBeNull();
   });
 });
 

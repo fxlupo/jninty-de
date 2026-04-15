@@ -106,7 +106,7 @@ export default function PlantFormPage() {
         if (photo) {
           entries.push({
             id: photoId,
-            previewUrl: URL.createObjectURL(photo.thumbnailBlob),
+            previewUrl: photo.thumbnailUrl,
             ...(photo.takenAt != null ? { takenAt: photo.takenAt } : {}),
           });
         }

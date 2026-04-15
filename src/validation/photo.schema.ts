@@ -1,13 +1,10 @@
 import { z } from "zod";
 import { baseEntitySchema, isoTimestamp } from "./base.schema.ts";
 
-const blobSchema = z.instanceof(Blob);
-
 export const photoSchema = baseEntitySchema
   .extend({
-    thumbnailBlob: blobSchema,
-    displayBlob: blobSchema.optional(),
-    displayStoredInOpfs: z.boolean().optional(),
+    thumbnailUrl: z.string().min(1),
+    displayUrl: z.string().min(1).optional(),
     originalStored: z.boolean(),
     caption: z.string().min(1).optional(),
     takenAt: isoTimestamp.optional(),

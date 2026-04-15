@@ -12,9 +12,7 @@ import {
   taskRuleRepository,
   userPlantKnowledgeRepository,
 } from "../db/index.ts";
-import { localDB } from "../db/pouchdb/client.ts";
-import { stripPouchFields, type PouchDoc } from "../db/pouchdb/utils.ts";
-import { getOriginal } from "../db/pouchdb/originalsStore.ts";
+import { photoRepository } from "../db/index.ts";
 import { plantInstanceSchema } from "../validation/plantInstance.schema.ts";
 import { journalEntrySchema } from "../validation/journalEntry.schema.ts";
 import { taskSchema } from "../validation/task.schema.ts";
@@ -83,44 +81,6 @@ export const photoImportSchema = z
   })
   .strict();
 
-// ─── Photo metadata type for PouchDB docs ───
-
-type PhotoMetaDoc = {
-  id: string;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
-  originalStored: boolean;
-  caption?: string;
-  width?: number;
-  height?: number;
-  thumbnailBlob?: unknown;
-  displayBlob?: unknown;
-  displayStoredInOpfs?: boolean;
-};
-
-// ─── Helpers ───
-
-async function blobToArrayBuffer(
-  blob: Blob | Buffer,
-): Promise<Uint8Array> {
-  if (typeof Buffer !== "undefined" && blob instanceof Buffer) {
-    // Copy into a clean Uint8Array so JSZip can handle it
-    return new Uint8Array(blob);
-  }
-  if (blob instanceof Blob && typeof blob.arrayBuffer === "function") {
-    return new Uint8Array(await blob.arrayBuffer());
-  }
-  // Fallback for environments where Blob.arrayBuffer isn't available
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(blob as Blob);
-  });
-}
-
 // ─── Export ───
 
 export async function exportAll(): Promise<Blob> {
@@ -169,20 +129,15 @@ export async function exportAll(): Promise<Blob> {
   const settingsRecord = await settingsRepository.get();
   const settingsArray = settingsRecord ? [settingsRecord] : [];
 
-  // Photos: query from PouchDB directly using allDocs range query
-  const photoResult = await localDB.allDocs({
-    startkey: "photo:",
-    endkey: "photo:\uffff",
-    include_docs: true,
-  });
-
-  const photos = photoResult.rows
-    .filter((row) => row.doc != null)
-    .map((row) => {
-      const doc = row.doc as PouchDoc<PhotoMetaDoc>;
-      return stripPouchFields(doc);
-    })
-    .filter((p) => p.deletedAt == null);
+  // Photos: fetch all photo IDs from plant instances + journal entries, then load via API
+  const allPhotoIds = new Set<string>();
+  for (const plant of plantInstances) {
+    for (const id of plant.photoIds ?? []) allPhotoIds.add(id);
+  }
+  for (const entry of journalEntries) {
+    for (const id of entry.photoIds ?? []) allPhotoIds.add(id);
+  }
+  const photos = await photoRepository.getByIds([...allPhotoIds]);
 
   dataFolder.file("plantInstances.json", JSON.stringify(plantInstances));
   dataFolder.file("journalEntries.json", JSON.stringify(journalEntries));
@@ -195,61 +150,62 @@ export async function exportAll(): Promise<Blob> {
   dataFolder.file("userPlantKnowledge.json", JSON.stringify(userPlantKnowledge));
   dataFolder.file("settings.json", JSON.stringify(settingsArray));
 
-  // Photos: store metadata JSON + blob files from PouchDB attachments
+  // Photos: store metadata JSON + image files fetched from server URLs
   const photoMetadata = photos.map((p) => ({
     id: p.id,
     version: p.version,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-    ...(p.deletedAt != null ? { deletedAt: p.deletedAt } : {}),
     originalStored: p.originalStored,
     ...(p.caption != null ? { caption: p.caption } : {}),
+    ...(p.takenAt != null ? { takenAt: p.takenAt } : {}),
     ...(p.width != null ? { width: p.width } : {}),
     ...(p.height != null ? { height: p.height } : {}),
   }));
   dataFolder.file("photos.json", JSON.stringify(photoMetadata));
 
   for (const photo of photos) {
-    const docId = `photo:${photo.id}`;
-
-    // Thumbnail attachment
+    // Fetch thumbnail from server URL
     try {
-      const thumbnailData = await localDB.getAttachment(docId, "thumbnail");
-      if (thumbnailData) {
+      const res = await fetch(photo.thumbnailUrl, { credentials: "include" });
+      if (res.ok) {
         photosFolder.file(
           `${photo.id}-thumb.jpg`,
-          await blobToArrayBuffer(thumbnailData as Blob | Buffer),
+          new Uint8Array(await res.arrayBuffer()),
         );
       }
     } catch {
-      // Thumbnail attachment doesn't exist
+      // Photo file unavailable
     }
 
-    // Display attachment
-    try {
-      const displayData = await localDB.getAttachment(docId, "display");
-      if (displayData) {
-        photosFolder.file(
-          `${photo.id}-display.jpg`,
-          await blobToArrayBuffer(displayData as Blob | Buffer),
-        );
-      }
-    } catch {
-      // Display attachment doesn't exist
-    }
-
-    // Original — stored in local-only originals DB (not synced)
-    if (photo.originalStored) {
+    // Fetch display from server URL
+    if (photo.displayUrl) {
       try {
-        const originalBlob = await getOriginal(photo.id);
-        if (originalBlob) {
+        const res = await fetch(photo.displayUrl, { credentials: "include" });
+        if (res.ok) {
           photosFolder.file(
-            `${photo.id}-original.jpg`,
-            await blobToArrayBuffer(originalBlob),
+            `${photo.id}-display.jpg`,
+            new Uint8Array(await res.arrayBuffer()),
           );
         }
       } catch {
-        // Original doesn't exist in local store
+        // Display file unavailable
+      }
+    }
+
+    // Fetch original from server (stored in uploads dir)
+    if (photo.originalStored) {
+      try {
+        const originalUrl = photo.thumbnailUrl.replace("thumbnail.jpg", "original.jpg");
+        const res = await fetch(originalUrl, { credentials: "include" });
+        if (res.ok) {
+          photosFolder.file(
+            `${photo.id}-original.jpg`,
+            new Uint8Array(await res.arrayBuffer()),
+          );
+        }
+      } catch {
+        // Original file unavailable
       }
     }
   }

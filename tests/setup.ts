@@ -64,6 +64,14 @@ globalThis.fetch = vi.fn(async (
         ? input.href
         : (input as Request).url;
 
+  // Serve /uploads/* as tiny stub JPEG responses (for tests, no real filesystem)
+  if (rawUrl.startsWith("/uploads/")) {
+    return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
+      status: 200,
+      headers: { "Content-Type": "image/jpeg" },
+    });
+  }
+
   // Pass through non-API requests unchanged
   if (!rawUrl.startsWith("/api/")) {
     return _realFetch(input, init);
@@ -82,9 +90,83 @@ globalThis.fetch = vi.fn(async (
   const subAction = pathSegments[2];   // e.g. "complete", "uncomplete", "activate"
 
   const bodyText = init?.body;
-  const body = bodyText
+  const isFormData = bodyText instanceof FormData;
+  const body = (bodyText && !isFormData)
     ? (JSON.parse(bodyText as string) as Record<string, unknown>)
     : {};
+
+  // ── Photos collection ────────────────────────────────────────────────────
+  // Photos use FormData for upload, hard-delete (not soft), and URL-based fields.
+  if (collection === "photos") {
+    if (!_mockDB.has("photos")) _mockDB.set("photos", []);
+    const photoColl = _mockDB.get("photos")!;
+
+    // POST /api/photos/upload — multipart FormData
+    if (method === "POST" && id === "upload") {
+      const formData = init?.body as FormData | undefined;
+      const hasThumbnail = formData instanceof FormData && formData.has("thumbnail");
+      if (!hasThumbnail) return _jsonResponse({ error: "thumbnail file required" }, 400);
+
+      const photoId = crypto.randomUUID();
+      const takenAt = formData instanceof FormData ? (formData.get("takenAt") as string | null) : null;
+      const widthStr = formData instanceof FormData ? (formData.get("width") as string | null) : null;
+      const heightStr = formData instanceof FormData ? (formData.get("height") as string | null) : null;
+      const hasDisplay = formData instanceof FormData && formData.has("display");
+      const hasOriginal = formData instanceof FormData && formData.has("original");
+
+      const width = widthStr ? parseInt(widthStr, 10) : undefined;
+      const height = heightStr ? parseInt(heightStr, 10) : undefined;
+
+      const record: Record<string, unknown> = {
+        id: photoId,
+        version: 1,
+        createdAt: _now(),
+        updatedAt: _now(),
+        thumbnailUrl: `/uploads/${photoId}/thumbnail.jpg`,
+        originalStored: hasOriginal,
+        ...(hasDisplay ? { displayUrl: `/uploads/${photoId}/display.jpg` } : {}),
+        ...(takenAt ? { takenAt } : {}),
+        ...(width != null && !Number.isNaN(width) ? { width } : {}),
+        ...(height != null && !Number.isNaN(height) ? { height } : {}),
+      };
+      photoColl.push(record);
+      return _jsonResponse(record, 201);
+    }
+
+    // GET /api/photos/:id
+    if (method === "GET" && id) {
+      const item = photoColl.find((r) => r["id"] === id && !r["deletedAt"]);
+      if (!item) return _jsonResponse({ error: "Not found" }, 404);
+      return _jsonResponse(item);
+    }
+
+    // PATCH /api/photos/:id — update metadata
+    if (method === "PATCH" && id && !subAction) {
+      const patchBody = bodyText
+        ? (JSON.parse(bodyText as string) as Record<string, unknown>)
+        : {};
+      const idx = photoColl.findIndex((r) => r["id"] === id && !r["deletedAt"]);
+      if (idx === -1) return _jsonResponse({ error: "Not found" }, 404);
+      const prev = photoColl[idx]!;
+      photoColl[idx] = {
+        ...prev,
+        ...patchBody,
+        version: ((prev["version"] as number) || 0) + 1,
+        updatedAt: _now(),
+      };
+      return _jsonResponse(photoColl[idx]);
+    }
+
+    // DELETE /api/photos/:id — hard delete, return 204
+    if (method === "DELETE" && id) {
+      const idx = photoColl.findIndex((r) => r["id"] === id && !r["deletedAt"]);
+      if (idx === -1) return _jsonResponse({ error: "Not found" }, 404);
+      photoColl.splice(idx, 1);
+      return new Response(null, { status: 204 });
+    }
+
+    return _jsonResponse({ error: `Unhandled photos: ${method} ${rawUrl}` }, 500);
+  }
 
   // ── Settings singleton ──────────────────────────────────────────────────
   if (collection === "settings") {
