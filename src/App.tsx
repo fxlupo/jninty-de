@@ -40,6 +40,9 @@ import { useAuth } from "./store/authStore";
 import { startCloudSync } from "./lib/cloudSync";
 import { normalizeUser } from "./lib/apiClient";
 import CloudGate from "./components/cloud/CloudGate";
+import { SessionProvider } from "./store/sessionStore";
+import RequireAuth from "./components/RequireAuth";
+import LoginPage from "./pages/LoginPage";
 
 // Lazy-load the map page to code-split the Konva.js bundle
 const GardenMapPage = lazy(() => import("./pages/GardenMapPage"));
@@ -136,6 +139,7 @@ export default function App() {
   }, [authState.isAuthenticated, authState.user]);
 
   return (
+    <SessionProvider>
     <SettingsProvider>
       <ThemeApplicator />
       <SyncProvider>
@@ -143,7 +147,8 @@ export default function App() {
           <CloudGate>
           <BrowserRouter>
           <Routes>
-            <Route element={<AppShell />}>
+            <Route path="login" element={<LoginPage />} />
+            <Route element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<DashboardPage />} />
               <Route path="plants" element={<PlantsListPage />} />
               <Route path="plants/new" element={<PlantFormPage />} />
@@ -201,5 +206,6 @@ export default function App() {
         </ToastProvider>
       </SyncProvider>
     </SettingsProvider>
+    </SessionProvider>
   );
 }
