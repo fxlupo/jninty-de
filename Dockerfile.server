@@ -1,0 +1,12 @@
+FROM node:22-alpine
+RUN apk add --no-cache git
+WORKDIR /app
+
+ARG JNINTY_REF=main
+RUN git clone --depth 1 --branch ${JNINTY_REF} https://github.com/fxlupo/jninty-de.git .
+
+RUN npm ci
+RUN mkdir -p /app/data
+
+# Run pending DB migrations, then start the API server
+CMD ["sh", "-c", "npm run db:migrate && tsx server/src/index.ts"]

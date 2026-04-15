@@ -23,7 +23,6 @@ services:
       dockerfile: Dockerfile
       args:
         JNINTY_REF: main
-        VITE_CLOUD_ENABLED: "true"
     networks:
       - proxy
     depends_on:
