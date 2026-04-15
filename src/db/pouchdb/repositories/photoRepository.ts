@@ -20,6 +20,13 @@ export type CreatePhotoWithFilesInput = {
   originalFile?: Blob;
   width: number;
   height: number;
+  takenAt?: string;
+};
+
+export type PhotoMeta = {
+  id: string;
+  takenAt?: string;
+  createdAt: string;
 };
 
 function now(): string {
@@ -127,6 +134,7 @@ export async function createWithFiles(
     originalStored: !!input.originalFile,
     ...(input.width > 0 ? { width: input.width } : {}),
     ...(input.height > 0 ? { height: input.height } : {}),
+    ...(input.takenAt != null ? { takenAt: input.takenAt } : {}),
     id,
     version: 1,
     createdAt: timestamp,
@@ -262,4 +270,47 @@ export async function getOriginalBlob(
 export async function removeWithFiles(id: string): Promise<void> {
   await remove(id);
   await removeOriginal(id);
+}
+
+/**
+ * Update photo metadata fields (takenAt, caption) without touching attachments.
+ */
+export async function updateMeta(
+  id: string,
+  meta: { takenAt?: string; caption?: string },
+): Promise<void> {
+  const docId = `${DOC_TYPE}:${id}`;
+  const existing = await localDB.get(docId);
+  const updated = {
+    ...existing,
+    ...(meta.takenAt != null ? { takenAt: meta.takenAt } : {}),
+    ...(meta.caption != null ? { caption: meta.caption } : {}),
+    updatedAt: now(),
+  };
+  await localDB.put(updated);
+}
+
+/**
+ * Fetch lightweight metadata for multiple photos (no blobs loaded).
+ */
+export async function getPhotosMeta(ids: string[]): Promise<PhotoMeta[]> {
+  if (ids.length === 0) return [];
+  const docIds = ids.map((id) => `${DOC_TYPE}:${id}`);
+  const result = await localDB.allDocs({ keys: docIds, include_docs: true });
+  const results: PhotoMeta[] = [];
+  for (const row of result.rows) {
+    if (!("doc" in row) || !row.doc) continue;
+    const doc = row.doc as Record<string, unknown>;
+    const rawId = doc["_id"];
+    const createdAt = doc["createdAt"];
+    if (typeof rawId !== "string" || typeof createdAt !== "string") continue;
+    const takenAt =
+      typeof doc["takenAt"] === "string" ? doc["takenAt"] : undefined;
+    results.push({
+      id: rawId.replace(`${DOC_TYPE}:`, ""),
+      ...(takenAt != null ? { takenAt } : {}),
+      createdAt,
+    });
+  }
+  return results;
 }
