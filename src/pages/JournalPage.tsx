@@ -142,20 +142,15 @@ function EntryDetail({
     const firstPhotoId = entry.photoIds[0];
     if (!firstPhotoId) return;
 
-    let url: string | undefined;
     let cancelled = false;
 
-    void photoRepository.getDisplayBlob(firstPhotoId).then((blob) => {
+    void photoRepository.getDisplayUrl(firstPhotoId).then((url) => {
       if (cancelled) return;
-      if (blob) {
-        url = URL.createObjectURL(blob);
-        setDisplayUrl(url);
-      }
+      if (url) setDisplayUrl(url);
     });
 
     return () => {
       cancelled = true;
-      if (url) URL.revokeObjectURL(url);
     };
   }, [entry.photoIds]);
 

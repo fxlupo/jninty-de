@@ -16,28 +16,21 @@ export default function PhotoThumbnail({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let revoked = false;
-    let objectUrl: string | undefined;
+    let cancelled = false;
 
     photoRepository
       .getById(photoId)
       .then((photo) => {
-        if (revoked) return;
-        if (photo) {
-          objectUrl = URL.createObjectURL(photo.thumbnailBlob);
-          setSrc(objectUrl);
-        }
+        if (cancelled) return;
+        setSrc(photo?.thumbnailUrl ?? null);
         setLoading(false);
       })
       .catch(() => {
-        if (!revoked) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
 
     return () => {
-      revoked = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      cancelled = true;
     };
   }, [photoId]);
 

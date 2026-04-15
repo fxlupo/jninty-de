@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -19,6 +20,7 @@ import plantingsRouter from "./routes/plantings.ts";
 import plantingSchedulesRouter from "./routes/plantingSchedules.ts";
 import taskRulesRouter from "./routes/taskRules.ts";
 import knowledgeRouter from "./routes/knowledge.ts";
+import photosRouter from "./routes/photos.ts";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 const FRONTEND_ORIGIN = process.env["FRONTEND_ORIGIN"] ?? "http://localhost:5173";
@@ -64,6 +66,13 @@ app.route("/api/plantings", plantingsRouter);
 app.route("/api/planting-schedules", plantingSchedulesRouter);
 app.route("/api/task-rules", taskRulesRouter);
 app.route("/api/knowledge", knowledgeRouter);
+app.route("/api/photos", photosRouter);
+
+// ─── Serve uploaded photos as static files ────────────────────────────────────
+// Files are stored at data/uploads/{photoId}/*.jpg on the filesystem.
+// serveStatic root is relative to process.cwd() (repo root).
+
+app.use("/uploads/*", serveStatic({ root: "./data" }));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 

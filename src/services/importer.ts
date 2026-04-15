@@ -10,7 +10,8 @@ import {
 } from "./exporter.ts";
 import { localDB, destroyAndRecreate, setupSync } from "../db/pouchdb/client.ts";
 import { toPouchDoc } from "../db/pouchdb/utils.ts";
-import { saveOriginal, destroyAndRecreateOriginals } from "../db/pouchdb/originalsStore.ts";
+import { destroyAndRecreateOriginals } from "../db/pouchdb/originalsStore.ts";
+import { photoRepository } from "../db/index.ts";
 import { ensureAllIndexes } from "../db/pouchdb/indexes.ts";
 import {
   rebuildIndex,
@@ -189,80 +190,67 @@ async function writePhotos(
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i]!;
     const photoId = photo["id"] as string;
-    const docId = `photo:${photoId}`;
 
     onProgress?.("Importing photos", i + 1, photos.length);
 
     if (skipExisting) {
-      try {
-        await localDB.get(docId);
+      const existing = await photoRepository.getById(photoId);
+      if (existing) {
         skipped++;
         continue;
-      } catch {
-        // Not found — proceed to insert
       }
     }
 
-    // Build PouchDB doc with inline _attachments
-    const pouchDoc: Record<string, unknown> = {
-      _id: docId,
-      docType: "photo",
-      id: photo["id"],
-      version: photo["version"],
-      createdAt: photo["createdAt"],
-      updatedAt: photo["updatedAt"],
-      originalStored: photo["originalStored"],
-    };
-    if (photo["deletedAt"] != null) pouchDoc["deletedAt"] = photo["deletedAt"];
-    if (photo["caption"] != null) pouchDoc["caption"] = photo["caption"];
-    if (photo["width"] != null) pouchDoc["width"] = photo["width"];
-    if (photo["height"] != null) pouchDoc["height"] = photo["height"];
-
-    // Collect attachments from ZIP
-    const attachments: Record<string, { content_type: string; data: Blob | Buffer }> = {};
-
-    if (parsed.zip) {
-      const thumbFile = parsed.zip.file(`photos/${photoId}-thumb.jpg`);
-      if (thumbFile) {
-        attachments["thumbnail"] = {
-          content_type: "image/jpeg",
-          data: await readZipEntry(thumbFile),
-        };
-      }
-
-      const displayFile = parsed.zip.file(`photos/${photoId}-display.jpg`);
-      if (displayFile) {
-        attachments["display"] = {
-          content_type: "image/jpeg",
-          data: await readZipEntry(displayFile),
-        };
-      }
-
-      // Original → separate DB
-      if (photo["originalStored"]) {
-        const originalFile = parsed.zip.file(`photos/${photoId}-original.jpg`);
-        if (originalFile) {
-          const data = await readZipEntry(originalFile);
-          const blob =
-            data instanceof Blob ? data : new Blob([data], { type: "image/jpeg" });
-          try {
-            await saveOriginal(photoId, blob);
-          } catch (err) {
-            errors.push(`Photo ${photoId} original: ${err instanceof Error ? err.message : "write failed"}`);
-          }
-        }
-      }
+    if (!parsed.zip) {
+      errors.push(`Photo ${photoId}: no zip data`);
+      continue;
     }
 
-    if (Object.keys(attachments).length > 0) {
-      pouchDoc["_attachments"] = attachments;
+    // Read thumbnail blob from ZIP (required)
+    const thumbFile = parsed.zip.file(`photos/${photoId}-thumb.jpg`);
+    if (!thumbFile) {
+      errors.push(`Photo ${photoId}: missing thumbnail in zip`);
+      continue;
+    }
+
+    const thumbData = await readZipEntry(thumbFile);
+    const thumbnailBlob =
+      thumbData instanceof Blob ? thumbData : new Blob([thumbData], { type: "image/jpeg" });
+
+    // Read display blob (optional)
+    let displayBlob: Blob | undefined;
+    const displayFile = parsed.zip.file(`photos/${photoId}-display.jpg`);
+    if (displayFile) {
+      const displayData = await readZipEntry(displayFile);
+      displayBlob = displayData instanceof Blob
+        ? displayData
+        : new Blob([displayData], { type: "image/jpeg" });
+    }
+
+    // Read original blob (optional)
+    let originalFile: Blob | undefined;
+    if (photo["originalStored"]) {
+      const origFile = parsed.zip.file(`photos/${photoId}-original.jpg`);
+      if (origFile) {
+        const origData = await readZipEntry(origFile);
+        originalFile = origData instanceof Blob
+          ? origData
+          : new Blob([origData], { type: "image/jpeg" });
+      }
     }
 
     try {
-      await localDB.put(pouchDoc);
+      await photoRepository.createWithFiles({
+        thumbnailBlob,
+        displayBlob: displayBlob ?? thumbnailBlob,
+        ...(originalFile ? { originalFile } : {}),
+        width: typeof photo["width"] === "number" ? photo["width"] : 0,
+        height: typeof photo["height"] === "number" ? photo["height"] : 0,
+        ...(photo["takenAt"] != null ? { takenAt: photo["takenAt"] as string } : {}),
+      });
       inserted++;
     } catch (err) {
-      errors.push(`Photo ${photoId}: ${err instanceof Error ? err.message : "write failed"}`);
+      errors.push(`Photo ${photoId}: ${err instanceof Error ? err.message : "upload failed"}`);
     }
   }
 

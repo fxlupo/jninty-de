@@ -1,22 +1,20 @@
 /**
- * Photo repository — still uses PouchDB + attachment storage.
- * TODO Phase 3: migrate to server upload endpoint + filesystem storage + URL-based schema.
+ * Photo repository — server-backed via fetch API.
+ * Photos are stored as files on the server filesystem; metadata in SQLite.
+ * URLs point to /uploads/{photoId}/thumbnail.jpg etc. served as static files.
  */
-import { localDB } from "../client.ts";
-import { type PouchDoc, stripPouchFields, toPouchDoc } from "../utils.ts";
-import { photoSchema, type Photo } from "../../../validation/photo.schema.ts";
-import {
-  saveOriginal,
-  getOriginal,
-  removeOriginal,
-} from "../originalsStore.ts";
+import type { Photo } from "../../../validation/photo.schema.ts";
 
-const DOC_TYPE = "photo";
+const BASE = "/api/photos";
 
-type CreatePhotoInput = Omit<
-  Photo,
-  "id" | "version" | "createdAt" | "updatedAt" | "deletedAt"
->;
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { credentials: "include", ...init });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(err.error ?? res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
 
 export type CreatePhotoWithFilesInput = {
   thumbnailBlob: Blob;
@@ -33,197 +31,40 @@ export type PhotoMeta = {
   createdAt: string;
 };
 
-function now(): string {
-  return new Date().toISOString();
-}
-
 /**
- * Convert a Blob to a format PouchDB can store as an attachment.
- * In the browser, PouchDB accepts Blob directly.
- * In Node.js (tests), PouchDB needs a Buffer.
- */
-async function toAttachmentData(
-  blob: Blob | Buffer,
-): Promise<Blob | Buffer> {
-  if (typeof Buffer !== "undefined" && blob instanceof Buffer) {
-    return blob;
-  }
-  if (typeof Buffer !== "undefined") {
-    // Node.js / jsdom environment — convert Blob to Buffer.
-    // jsdom Blobs may lack arrayBuffer()/text(), so try multiple approaches.
-    if (typeof (blob as Blob).arrayBuffer === "function") {
-      try {
-        return Buffer.from(await (blob as Blob).arrayBuffer());
-      } catch {
-        // fall through to next approach
-      }
-    }
-    if (typeof (blob as Blob).text === "function") {
-      try {
-        return Buffer.from(await (blob as Blob).text());
-      } catch {
-        // fall through
-      }
-    }
-    // Last resort: return an empty buffer of the declared size
-    return Buffer.alloc((blob as Blob).size || 0);
-  }
-  return blob;
-}
-
-/**
- * Create a photo record with blobs stored as PouchDB attachments.
- * Attachments sync automatically with CouchDB.
- */
-export async function create(input: CreatePhotoInput): Promise<Photo> {
-  const timestamp = now();
-  const id = crypto.randomUUID();
-
-  const record: Photo = {
-    ...input,
-    id,
-    version: 1,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-
-  const parsed = photoSchema.parse(record);
-
-  const doc = toPouchDoc(parsed, DOC_TYPE);
-
-  // Remove blob fields from the document body — they'll be attachments
-  const { thumbnailBlob, displayBlob, ...docWithoutBlobs } = doc;
-  void thumbnailBlob;
-  void displayBlob;
-
-  const attachments: Record<
-    string,
-    { content_type: string; data: Blob | Buffer }
-  > = {
-    thumbnail: {
-      content_type: input.thumbnailBlob.type || "image/jpeg",
-      data: await toAttachmentData(input.thumbnailBlob),
-    },
-  };
-
-  if (input.displayBlob) {
-    attachments["display"] = {
-      content_type: input.displayBlob.type || "image/jpeg",
-      data: await toAttachmentData(input.displayBlob),
-    };
-  }
-
-  const pouchDoc = {
-    ...docWithoutBlobs,
-    _attachments: attachments,
-  };
-
-  await localDB.put(pouchDoc);
-  return parsed;
-}
-
-/**
- * Create a photo with separate file handling (thumbnail, display, optional original).
- * All blobs are stored as PouchDB attachments for automatic sync.
+ * Upload thumbnail + display (+ optional original) and create the photo record.
  */
 export async function createWithFiles(
   input: CreatePhotoWithFilesInput,
 ): Promise<Photo> {
-  const timestamp = now();
-  const id = crypto.randomUUID();
-
-  const record: Photo = {
-    thumbnailBlob: input.thumbnailBlob,
-    displayBlob: input.displayBlob,
-    originalStored: !!input.originalFile,
-    ...(input.width > 0 ? { width: input.width } : {}),
-    ...(input.height > 0 ? { height: input.height } : {}),
-    ...(input.takenAt != null ? { takenAt: input.takenAt } : {}),
-    id,
-    version: 1,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-
-  const parsed = photoSchema.parse(record);
-  const doc = toPouchDoc(parsed, DOC_TYPE);
-
-  // Remove blob fields from document body
-  const { thumbnailBlob, displayBlob, ...docWithoutBlobs } = doc;
-  void thumbnailBlob;
-  void displayBlob;
-
-  const attachments: Record<
-    string,
-    { content_type: string; data: Blob | Buffer }
-  > = {
-    thumbnail: {
-      content_type: input.thumbnailBlob.type || "image/jpeg",
-      data: await toAttachmentData(input.thumbnailBlob),
-    },
-    display: {
-      content_type: input.displayBlob.type || "image/jpeg",
-      data: await toAttachmentData(input.displayBlob),
-    },
-  };
-
-  // Originals are stored in a separate local-only DB (not synced via CouchDB)
-  // to avoid bloating replication with multi-megabyte files.
-
-  const pouchDoc = {
-    ...docWithoutBlobs,
-    _attachments: attachments,
-  };
-
-  await localDB.put(pouchDoc);
-
+  const form = new FormData();
+  form.append("thumbnail", input.thumbnailBlob, "thumbnail.jpg");
+  form.append("display", input.displayBlob, "display.jpg");
   if (input.originalFile) {
-    await saveOriginal(id, input.originalFile);
+    form.append("original", input.originalFile, "original.jpg");
   }
+  if (input.width > 0) form.append("width", String(input.width));
+  if (input.height > 0) form.append("height", String(input.height));
+  if (input.takenAt != null) form.append("takenAt", input.takenAt);
 
-  return parsed;
-}
+  const res = await fetch(`${BASE}/upload`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
 
-export async function remove(id: string): Promise<void> {
-  const docId = `${DOC_TYPE}:${id}`;
-  let existing;
-  try {
-    existing = await localDB.get(docId);
-  } catch {
-    throw new Error(`Photo not found: ${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(err.error ?? res.statusText);
   }
-  await localDB.remove(existing);
+  return res.json() as Promise<Photo>;
 }
 
 export async function getById(id: string): Promise<Photo | undefined> {
-  const docId = `${DOC_TYPE}:${id}`;
-  try {
-    const doc = await localDB.get<PouchDoc<Photo>>(docId, {
-      attachments: true,
-      binary: true,
-    });
-
-    const entity = stripPouchFields(doc);
-
-    // Restore blobs from attachments
-    const attachments = (doc as unknown as Record<string, unknown>)._attachments as
-      | Record<string, { data: Blob | Buffer }>
-      | undefined;
-    if (attachments?.["thumbnail"]) {
-      const data = attachments["thumbnail"].data;
-      entity.thumbnailBlob =
-        data instanceof Blob ? data : new Blob([data]);
-    }
-    if (attachments?.["display"]) {
-      const data = attachments["display"].data;
-      entity.displayBlob =
-        data instanceof Blob ? data : new Blob([data]);
-    }
-
-    return entity;
-  } catch {
-    return undefined;
-  }
+  const res = await fetch(`${BASE}/${id}`, { credentials: "include" });
+  if (res.status === 404) return undefined;
+  if (!res.ok) return undefined;
+  return res.json() as Promise<Photo>;
 }
 
 export async function getByIds(ids: string[]): Promise<Photo[]> {
@@ -235,86 +76,58 @@ export async function getByIds(ids: string[]): Promise<Photo[]> {
   return results;
 }
 
-export async function getDisplayBlob(
-  photoId: string,
-): Promise<Blob | undefined> {
-  const docId = `${DOC_TYPE}:${photoId}`;
-  try {
-    // Try display attachment first, fall back to thumbnail
-    try {
-      const data = await localDB.getAttachment(docId, "display");
-      if (data) {
-        return data instanceof Blob ? data : new Blob([data as Buffer]);
-      }
-    } catch {
-      // display attachment doesn't exist
-    }
-
-    const data = await localDB.getAttachment(docId, "thumbnail");
-    if (data) {
-      return data instanceof Blob ? data : new Blob([data as Buffer]);
-    }
-    return undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export async function getOriginalBlob(
-  photoId: string,
-): Promise<Blob | undefined> {
-  return getOriginal(photoId);
-}
-
 /**
- * Remove a photo and all its attachments (including local-only originals).
- * PouchDB remove deletes the synced doc + attachments; we also clean up
- * the separate originals store.
+ * Returns the URL for the display-size image (falls back to thumbnail if no display).
  */
-export async function removeWithFiles(id: string): Promise<void> {
-  await remove(id);
-  await removeOriginal(id);
+export async function getDisplayUrl(
+  photoId: string,
+): Promise<string | undefined> {
+  const photo = await getById(photoId);
+  if (!photo) return undefined;
+  return photo.displayUrl ?? photo.thumbnailUrl;
 }
 
 /**
- * Update photo metadata fields (takenAt, caption) without touching attachments.
+ * Fetch lightweight metadata for multiple photos (no image data loaded).
+ */
+export async function getPhotosMeta(ids: string[]): Promise<PhotoMeta[]> {
+  const photos = await getByIds(ids);
+  return photos.map((p) => ({
+    id: p.id,
+    createdAt: p.createdAt,
+    ...(p.takenAt != null ? { takenAt: p.takenAt } : {}),
+  }));
+}
+
+/**
+ * Update photo metadata fields (takenAt, caption) without touching image files.
  */
 export async function updateMeta(
   id: string,
   meta: { takenAt?: string; caption?: string },
 ): Promise<void> {
-  const docId = `${DOC_TYPE}:${id}`;
-  const existing = await localDB.get(docId);
-  const updated = {
-    ...existing,
-    ...(meta.takenAt != null ? { takenAt: meta.takenAt } : {}),
-    ...(meta.caption != null ? { caption: meta.caption } : {}),
-    updatedAt: now(),
-  };
-  await localDB.put(updated);
+  await apiRequest<Photo>(`${BASE}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(meta),
+  });
+}
+
+export async function remove(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(err.error ?? `Photo not found: ${id}`);
+  }
 }
 
 /**
- * Fetch lightweight metadata for multiple photos (no blobs loaded).
+ * Remove photo record and all associated image files from the server.
+ * Also covers "original" file if it was stored.
  */
-export async function getPhotosMeta(ids: string[]): Promise<PhotoMeta[]> {
-  if (ids.length === 0) return [];
-  const docIds = ids.map((id) => `${DOC_TYPE}:${id}`);
-  const result = await localDB.allDocs({ keys: docIds, include_docs: true });
-  const results: PhotoMeta[] = [];
-  for (const row of result.rows) {
-    if (!("doc" in row) || !row.doc) continue;
-    const doc = row.doc as unknown as Record<string, unknown>;
-    const rawId = doc["_id"];
-    const createdAt = doc["createdAt"];
-    if (typeof rawId !== "string" || typeof createdAt !== "string") continue;
-    const takenAt =
-      typeof doc["takenAt"] === "string" ? doc["takenAt"] : undefined;
-    results.push({
-      id: rawId.replace(`${DOC_TYPE}:`, ""),
-      ...(takenAt != null ? { takenAt } : {}),
-      createdAt,
-    });
-  }
-  return results;
+export async function removeWithFiles(id: string): Promise<void> {
+  await remove(id);
 }

@@ -4,10 +4,10 @@ import { validateEntity } from "./helpers.ts";
 
 const validPhoto = {
   id: "550e8400-e29b-41d4-a716-446655440000",
-  version: 0,
+  version: 1,
   createdAt: "2026-03-15T14:30:00Z",
   updatedAt: "2026-03-15T14:30:00Z",
-  thumbnailBlob: new Blob(["thumb"], { type: "image/jpeg" }),
+  thumbnailUrl: "/uploads/abc/thumbnail.jpg",
   originalStored: false,
 };
 
@@ -20,10 +20,10 @@ describe("photoSchema", () => {
   it("accepts photo with all optional fields", () => {
     const full = {
       ...validPhoto,
-      displayBlob: new Blob(["display"], { type: "image/jpeg" }),
-      displayStoredInOpfs: true,
+      displayUrl: "/uploads/abc/display.jpg",
       originalStored: true,
       caption: "My tomato seedling",
+      takenAt: "2026-03-15T10:00:00.000Z",
       width: 320,
       height: 240,
     };
@@ -31,21 +31,22 @@ describe("photoSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts photo without displayStoredInOpfs (defaults to absent)", () => {
+  it("accepts photo without displayUrl (optional)", () => {
     const result = validateEntity(photoSchema, validPhoto);
     expect(result.success).toBe(true);
   });
 
-  it("rejects missing thumbnailBlob", () => {
-    const { thumbnailBlob: _, ...noThumb } = validPhoto;
+  it("rejects missing thumbnailUrl", () => {
+    const { thumbnailUrl: _, ...noThumb } = validPhoto;
+    void _;
     const result = validateEntity(photoSchema, noThumb);
     expect(result.success).toBe(false);
   });
 
-  it("rejects string instead of Blob for thumbnailBlob", () => {
+  it("rejects empty thumbnailUrl", () => {
     const result = validateEntity(photoSchema, {
       ...validPhoto,
-      thumbnailBlob: "not-a-blob",
+      thumbnailUrl: "",
     });
     expect(result.success).toBe(false);
   });
