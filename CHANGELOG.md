@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Mehrere Fotos pro Pflanze** — Pflanzenformular unterstützt jetzt beliebig viele Fotos (vorher max. 1)
+- **Aufnahmedatum pro Foto** — Neues `takenAt`-Feld im Foto-Schema; im Formular als Datumseingabe pro Foto bearbeitbar; in der Timeline-Ansicht als Sortierkriterium genutzt
+- **Titelbild festlegbar** — Das erste Foto in der Liste gilt als Titelbild (Übersichtsanzeige); per "Als Titelbild"-Button kann jedes Foto an die erste Stelle gesetzt werden
+- **Titelbild-Badge in der Galerie** — In der Pflanzendetailseite ist das Titelbild mit einem "Titelbild"-Badge markiert; Aufnahmedatum wird unter jedem Pflanzenfoto angezeigt
+- Neuer Hook `usePlantPhotoManager` kapselt die gesamte Multi-Foto-Logik (hinzufügen, entfernen, Reihenfolge, speichern)
+- Neue Komponente `PlantPhotoManager` als Foto-Verwaltungs-UI im Formular
+- `photoRepository`: `updateMeta()` für metadaten-only Updates; `getPhotosMeta()` für leichtgewichtiges Laden ohne Blobs
+
 ### Geändert
 
 - **Pflanzentypen erweitert** — Neue Typen "Strauch" (`shrub`) und "Hecke" (`hedge`) hinzugefügt; Umlaute in den Labels korrigiert (Gemüse, Kräuter); Gartenplan-Farben für neue Typen ergänzt

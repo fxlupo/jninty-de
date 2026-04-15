@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ZodError } from "zod";
 import { plantRepository, photoRepository } from "../db/index.ts";
 import { addToIndex, serializeIndex } from "../db/search";
 import { usePhotoCapture } from "../hooks/usePhotoCapture";
 import { useSettings } from "../hooks/useSettings";
-import type { ProcessedPhoto } from "../services/photoProcessor";
+import { usePlantPhotoManager } from "../hooks/usePlantPhotoManager";
 import type { PlantType, PlantSource, PlantStatus } from "../types";
 import {
   TYPE_OPTIONS,
@@ -16,7 +16,8 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import StoreAutosuggest from "../components/StoreAutosuggest";
-import { ChevronLeftIcon, CloseIcon } from "../components/icons";
+import PlantPhotoManager from "../components/plant/PlantPhotoManager";
+import { ChevronLeftIcon } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
 
 // ─── Select style ───
@@ -61,16 +62,10 @@ export default function PlantFormPage() {
   const [careNotes, setCareNotes] = useState("");
   const [tagsInput, setTagsInput] = useState("");
 
-  // Photo state
-  const [existingPhotoId, setExistingPhotoId] = useState<string | null>(null);
-  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
-  const [newPhoto, setNewPhoto] = useState<ProcessedPhoto | null>(null);
-  const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
-
   const { settings } = useSettings();
   const { capturePhoto, selectPhoto, isProcessing, error: photoError } =
     usePhotoCapture({ keepOriginals: settings.keepOriginalPhotos });
+  const photoManager = usePlantPhotoManager();
 
   // Submission state
   const [saving, setSaving] = useState(false);
@@ -101,14 +96,12 @@ export default function PlantFormPage() {
       setCareNotes(plant.careNotes ?? "");
       setTagsInput(plant.tags.join(", "));
 
-      // Load existing photo
-      const photoId = plant.photoIds?.[0];
-      if (photoId) {
-        setExistingPhotoId(photoId);
+      // Load all existing photos
+      for (const photoId of plant.photoIds ?? []) {
         const photo = await photoRepository.getById(photoId);
         if (photo) {
           const url = URL.createObjectURL(photo.thumbnailBlob);
-          setExistingPhotoUrl(url);
+          photoManager.addExisting(photoId, url, photo.takenAt);
         }
       }
 
@@ -116,55 +109,23 @@ export default function PlantFormPage() {
     })();
   }, [id, navigate]);
 
-  // Cleanup preview URLs
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-    };
-  }, []);
-
-  // Cleanup existing photo URL
-  useEffect(() => {
-    return () => {
-      if (existingPhotoUrl) {
-        URL.revokeObjectURL(existingPhotoUrl);
-      }
-    };
-  }, [existingPhotoUrl]);
-
   // ─── Photo handlers ───
 
-  const handlePhoto = async (
-    getPhoto: () => Promise<ProcessedPhoto>,
-  ) => {
+  const handleCapturePhoto = async () => {
     try {
-      const photo = await getPhoto();
-      // Revoke old preview URL
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      const url = URL.createObjectURL(photo.thumbnailBlob);
-      previewUrlRef.current = url;
-      setNewPhoto(photo);
-      setNewPhotoPreview(url);
+      const photo = await capturePhoto();
+      photoManager.addNew(photo);
     } catch {
-      // Error is handled by usePhotoCapture
+      // error handled by usePhotoCapture
     }
   };
 
-  const handleRemovePhoto = () => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    setNewPhoto(null);
-    setNewPhotoPreview(null);
-    setExistingPhotoId(null);
-    if (existingPhotoUrl) {
-      URL.revokeObjectURL(existingPhotoUrl);
-      setExistingPhotoUrl(null);
+  const handleSelectPhoto = async () => {
+    try {
+      const photo = await selectPhoto();
+      photoManager.addNew(photo);
+    } catch {
+      // error handled by usePhotoCapture
     }
   };
 
@@ -183,20 +144,10 @@ export default function PlantFormPage() {
     setSaving(true);
 
     try {
-      // Save new photo if one was added
-      let photoIds: string[] | undefined;
-      if (newPhoto) {
-        const savedPhoto = await photoRepository.createWithFiles({
-          thumbnailBlob: newPhoto.thumbnailBlob,
-          displayBlob: newPhoto.displayBlob,
-          ...(newPhoto.originalFile ? { originalFile: newPhoto.originalFile } : {}),
-          width: newPhoto.width,
-          height: newPhoto.height,
-        });
-        photoIds = [savedPhoto.id];
-      } else if (existingPhotoId) {
-        photoIds = [existingPhotoId];
-      }
+      // Save photos
+      const savedPhotoIds = await photoManager.saveAll();
+      const photoIds: string[] | undefined =
+        savedPhotoIds.length > 0 ? savedPhotoIds : undefined;
 
       // Parse tags
       const tags = tagsInput
@@ -282,7 +233,6 @@ export default function PlantFormPage() {
     );
   }
 
-  const currentPhotoPreview = newPhotoPreview ?? existingPhotoUrl;
   const backPath = isEditing && id ? `/plants/${id}` : "/plants";
 
   return (
@@ -306,54 +256,19 @@ export default function PlantFormPage() {
         {/* Photo section */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Foto
+            Fotos
           </h2>
           <div className="mt-3">
-            {currentPhotoPreview ? (
-              <div className="relative">
-                <img
-                  src={currentPhotoPreview}
-                  alt="Vorschau Pflanzenfoto"
-                  className="h-48 w-full rounded-lg object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="absolute top-2 right-2 rounded-full bg-soil-900/60 p-1.5 text-white transition-colors hover:bg-soil-900/80"
-                  aria-label="Foto entfernen"
-                >
-                  <CloseIcon className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-border-strong bg-surface">
-                <p className="text-sm text-text-secondary">Noch kein Foto hinzugefuegt</p>
-              </div>
-            )}
-
-            <div className="mt-3 flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isProcessing}
-                onClick={() => void handlePhoto(capturePhoto)}
-              >
-                {isProcessing ? "Wird verarbeitet..." : "Foto aufnehmen"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isProcessing}
-                onClick={() => void handlePhoto(selectPhoto)}
-              >
-                {isProcessing ? "Wird verarbeitet..." : "Foto auswaehlen"}
-              </Button>
-            </div>
-            {photoError && (
-              <p className="mt-1 text-sm text-terracotta-600">
-                {photoError.message}
-              </p>
-            )}
+            <PlantPhotoManager
+              photos={photoManager.photos}
+              onRemove={photoManager.remove}
+              onSetCover={photoManager.setCover}
+              onUpdateTakenAt={photoManager.updateTakenAt}
+              onCapturePhoto={handleCapturePhoto}
+              onSelectPhoto={handleSelectPhoto}
+              isProcessing={isProcessing}
+              error={photoError}
+            />
           </div>
         </Card>
 

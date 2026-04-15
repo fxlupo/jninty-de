@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { parseISO } from "date-fns";
 import { plantRepository, journalRepository, taskRepository, photoRepository, plantingRepository, seasonRepository } from "../db/index.ts";
+import type { PhotoMeta } from "../db/pouchdb/repositories/photoRepository.ts";
 import { removeFromIndex, serializeIndex } from "../db/search";
 import { useToast } from "../components/ui/Toast";
 import type { Planting, PlantingOutcome } from "../validation/planting.schema";
@@ -69,6 +70,15 @@ export default function PlantDetailPage() {
 
   // All seasons (for looking up season names)
   const seasons = usePouchQuery(() => seasonRepository.getAll(), []);
+
+  // Metadata for plant-level photos (takenAt, createdAt — no blobs)
+  const plantPhotosMeta = usePouchQuery(
+    () =>
+      plant?.photoIds && plant.photoIds.length > 0
+        ? photoRepository.getPhotosMeta(plant.photoIds)
+        : Promise.resolve([] as PhotoMeta[]),
+    [plant?.photoIds?.join(",") ?? ""],
+  );
 
   const { toast } = useToast();
 
@@ -156,6 +166,15 @@ export default function PlantDetailPage() {
     return Array.from(new Set([...plantPhotos, ...journalPhotos]));
   }, [plant, journalEntries]);
 
+  // Map from photo ID to metadata for plant-level photos
+  const plantPhotoMetaMap = useMemo(() => {
+    const map = new Map<string, PhotoMeta>();
+    for (const meta of plantPhotosMeta ?? []) {
+      map.set(meta.id, meta);
+    }
+    return map;
+  }, [plantPhotosMeta]);
+
   // Photos with journal context (for photo timeline)
   const photosWithContext = useMemo<PhotoWithContext[]>(() => {
     if (!journalEntries) return [];
@@ -186,13 +205,15 @@ export default function PlantDetailPage() {
     for (const photoId of plantPhotos) {
       if (!seen.has(photoId)) {
         seen.add(photoId);
+        const meta = plantPhotoMetaMap.get(photoId);
         result.push({
           photoId,
           journalEntryId: "",
           activityType: "general",
           body: "",
           isMilestone: false,
-          createdAt: plant?.createdAt ?? new Date().toISOString(),
+          createdAt:
+            meta?.takenAt ?? meta?.createdAt ?? plant?.createdAt ?? new Date().toISOString(),
           seasonId: "",
         });
       }
@@ -200,7 +221,7 @@ export default function PlantDetailPage() {
 
     result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return result;
-  }, [journalEntries, plant]);
+  }, [journalEntries, plant, plantPhotoMetaMap]);
 
   // Milestone entries (for growth story)
   const milestoneEntries = useMemo(() => {
@@ -470,23 +491,39 @@ export default function PlantDetailPage() {
               </span>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {allPhotoIds.map((pId, index) => (
-                <button
-                  key={pId}
-                  type="button"
-                  onClick={() => {
-                    setLightboxIndex(index);
-                    setShowLightbox(true);
-                  }}
-                  className="aspect-square overflow-hidden rounded-lg"
-                >
-                  <PhotoThumbnail
-                    photoId={pId}
-                    alt={`Photo ${String(index + 1)}`}
-                    className="h-full w-full"
-                  />
-                </button>
-              ))}
+              {allPhotoIds.map((pId, index) => {
+                const isCoverPhoto = pId === plant.photoIds?.[0];
+                const meta = plantPhotoMetaMap.get(pId);
+                const photoDate = meta?.takenAt ?? meta?.createdAt;
+                return (
+                  <div key={pId} className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLightboxIndex(index);
+                        setShowLightbox(true);
+                      }}
+                      className="relative aspect-square overflow-hidden rounded-lg"
+                    >
+                      <PhotoThumbnail
+                        photoId={pId}
+                        alt={`Foto ${String(index + 1)}`}
+                        className="h-full w-full"
+                      />
+                      {isCoverPhoto && (
+                        <div className="absolute top-1 left-1 rounded-full bg-primary/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                          Titelbild
+                        </div>
+                      )}
+                    </button>
+                    {photoDate && (
+                      <p className="text-center text-[10px] text-text-muted">
+                        {formatBrowserDate(photoDate)}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Card>
         )}

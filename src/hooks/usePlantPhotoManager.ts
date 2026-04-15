@@ -1,0 +1,170 @@
+import { useState, useCallback, useEffect, useRef } from "react";
+import { photoRepository } from "../db/index.ts";
+import type { ProcessedPhoto } from "../services/photoProcessor";
+
+// ─── Types ───
+
+export type ExistingPhotoEntry = {
+  kind: "existing";
+  id: string;
+  previewUrl: string;
+  takenAt?: string;
+  originalTakenAt?: string;
+};
+
+export type PendingPhotoEntry = {
+  kind: "pending";
+  localId: string;
+  processed: ProcessedPhoto;
+  previewUrl: string;
+  takenAt: string;
+};
+
+export type PhotoEntry = ExistingPhotoEntry | PendingPhotoEntry;
+
+export function entryId(entry: PhotoEntry): string {
+  return entry.kind === "existing" ? entry.id : entry.localId;
+}
+
+// ─── Hook ───
+
+export function usePlantPhotoManager() {
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [saving, setSaving] = useState(false);
+  const allUrlsRef = useRef<Set<string>>(new Set());
+  const removedExistingIdsRef = useRef<string[]>([]);
+
+  // Revoke all Object URLs on unmount
+  useEffect(() => {
+    const urls = allUrlsRef.current;
+    return () => {
+      for (const url of urls) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, []);
+
+  /** Register an already-saved photo (edit mode). */
+  const addExisting = useCallback(
+    (id: string, previewUrl: string, takenAt?: string) => {
+      allUrlsRef.current.add(previewUrl);
+      setPhotos((prev) => [
+        ...prev,
+        {
+          kind: "existing" as const,
+          id,
+          previewUrl,
+          ...(takenAt != null ? { takenAt, originalTakenAt: takenAt } : {}),
+        },
+      ]);
+    },
+    [],
+  );
+
+  /** Add a newly captured/selected photo (not yet saved to DB). */
+  const addNew = useCallback((processed: ProcessedPhoto) => {
+    const previewUrl = URL.createObjectURL(processed.thumbnailBlob);
+    allUrlsRef.current.add(previewUrl);
+    const takenAt = new Date().toISOString();
+    const localId = crypto.randomUUID();
+    setPhotos((prev) => [
+      ...prev,
+      { kind: "pending" as const, localId, processed, previewUrl, takenAt },
+    ]);
+  }, []);
+
+  /** Remove a photo by its entry ID. Revokes its Object URL. */
+  const remove = useCallback((eId: string) => {
+    setPhotos((prev) => {
+      const entry = prev.find((p) => entryId(p) === eId);
+      if (entry) {
+        URL.revokeObjectURL(entry.previewUrl);
+        allUrlsRef.current.delete(entry.previewUrl);
+        if (entry.kind === "existing") {
+          removedExistingIdsRef.current.push(entry.id);
+        }
+      }
+      return prev.filter((p) => entryId(p) !== eId);
+    });
+  }, []);
+
+  /** Move the photo with the given ID to index 0 (makes it the cover). */
+  const setCover = useCallback((eId: string) => {
+    setPhotos((prev) => {
+      const index = prev.findIndex((p) => entryId(p) === eId);
+      if (index <= 0) return prev;
+      const copy = [...prev];
+      const item = copy.splice(index, 1)[0];
+      if (!item) return prev;
+      return [item, ...copy];
+    });
+  }, []);
+
+  /** Update the takenAt date for a photo entry. */
+  const updateTakenAt = useCallback((eId: string, takenAt: string) => {
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (entryId(p) !== eId) return p;
+        return { ...p, takenAt };
+      }),
+    );
+  }, []);
+
+  /**
+   * Persist all photos to the DB.
+   * - New photos are created via photoRepository.createWithFiles
+   * - Existing photos with a changed takenAt are updated via updateMeta
+   * - Removed existing photos are deleted from the DB
+   * Returns the final ordered list of photo IDs (index 0 = cover).
+   */
+  const saveAll = useCallback(async (): Promise<string[]> => {
+    setSaving(true);
+    const ids: string[] = [];
+    try {
+      for (const entry of photos) {
+        if (entry.kind === "existing") {
+          if (
+            entry.takenAt != null &&
+            entry.takenAt !== entry.originalTakenAt
+          ) {
+            await photoRepository.updateMeta(entry.id, {
+              takenAt: entry.takenAt,
+            });
+          }
+          ids.push(entry.id);
+        } else {
+          const saved = await photoRepository.createWithFiles({
+            thumbnailBlob: entry.processed.thumbnailBlob,
+            displayBlob: entry.processed.displayBlob,
+            ...(entry.processed.originalFile
+              ? { originalFile: entry.processed.originalFile }
+              : {}),
+            width: entry.processed.width,
+            height: entry.processed.height,
+            takenAt: entry.takenAt,
+          });
+          ids.push(saved.id);
+        }
+      }
+      // Clean up deleted existing photos from DB
+      for (const id of removedExistingIdsRef.current) {
+        await photoRepository.removeWithFiles(id);
+      }
+      removedExistingIdsRef.current = [];
+    } finally {
+      setSaving(false);
+    }
+    return ids;
+  }, [photos]);
+
+  return {
+    photos,
+    addExisting,
+    addNew,
+    remove,
+    setCover,
+    updateTakenAt,
+    saveAll,
+    saving,
+  };
+}
