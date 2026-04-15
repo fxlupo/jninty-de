@@ -102,7 +102,7 @@ export default function CsvImportDialog({
       try {
         const { headers: h, rows: r } = await parseCsvFile(file);
         if (h.length === 0) {
-          setParseError("No columns found in CSV");
+          setParseError("Keine Spalten in der CSV gefunden");
           return;
         }
         setHeaders(h);
@@ -111,7 +111,7 @@ export default function CsvImportDialog({
         setStep("mapping");
       } catch (err) {
         setParseError(
-          err instanceof Error ? err.message : "Failed to parse CSV",
+          err instanceof Error ? err.message : "CSV konnte nicht verarbeitet werden",
         );
       } finally {
         setParsing(false);

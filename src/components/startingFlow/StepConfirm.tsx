@@ -84,7 +84,7 @@ export default function StepConfirm({
           <div className="mt-2 flex justify-between">
             <span className="text-text-muted">Bed</span>
             <span className="font-medium text-text-primary">
-              {bedName ?? "No bed"}
+              {bedName ?? "Kein Beet"}
             </span>
           </div>
         </div>

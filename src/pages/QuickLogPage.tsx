@@ -137,7 +137,7 @@ export default function QuickLogPage() {
       // Build journal entry input — use spread for optional fields
       // to satisfy exactOptionalPropertyTypes
       if (!activeSeason) {
-        setError("No active season found. Create one in Settings.");
+        setError("Keine aktive Saison gefunden. Erstelle eine in den Einstellungen.");
         setSaving(false);
         return;
       }
@@ -174,7 +174,7 @@ export default function QuickLogPage() {
       setSuccess(true);
       setTimeout(() => void navigate("/journal"), 600);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save.");
+      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
       setSaving(false);
     }
   };
@@ -272,7 +272,7 @@ export default function QuickLogPage() {
           className={selectClass}
           aria-label="Select plant"
         >
-          <option value="">No plant (optional)</option>
+          <option value="">Keine Pflanze (optional)</option>
           {plants?.map((p) => (
             <option key={p.id} value={p.id}>
               {p.nickname ?? p.species}

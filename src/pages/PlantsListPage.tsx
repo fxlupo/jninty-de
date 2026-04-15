@@ -144,10 +144,10 @@ export default function PlantsListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Plant Inventory
+          Pflanzenkatalog
         </h1>
         <span className="text-sm text-text-secondary">
-          {allPlants.length} {allPlants.length === 1 ? "plant" : "plants"}
+          {allPlants.length} {allPlants.length === 1 ? "Pflanze" : "Pflanzen"}
         </span>
       </div>
 
@@ -155,10 +155,10 @@ export default function PlantsListPage() {
       <div className="mt-4">
         <Input
           type="search"
-          placeholder="Search plants…"
+          placeholder="Pflanzen suchen…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search plants"
+          aria-label="Pflanzen suchen"
         />
       </div>
 
@@ -168,9 +168,9 @@ export default function PlantsListPage() {
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as PlantType | "")}
           className={selectClass}
-          aria-label="Filter by type"
+          aria-label="Nach Typ filtern"
         >
-          <option value="">All types</option>
+          <option value="">Alle Typen</option>
           {ALL_TYPES.map((t) => (
             <option key={t} value={t}>
               {TYPE_LABELS[t]}
@@ -184,9 +184,9 @@ export default function PlantsListPage() {
             setStatusFilter(e.target.value as PlantStatus | "")
           }
           className={selectClass}
-          aria-label="Filter by status"
+          aria-label="Nach Status filtern"
         >
-          <option value="">All statuses</option>
+          <option value="">Alle Status</option>
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>
               {STATUS_LABELS[s]}
@@ -198,7 +198,7 @@ export default function PlantsListPage() {
           <button
             type="button"
             onClick={() => setViewMode("grid")}
-            aria-label="Grid view"
+            aria-label="Rasteransicht"
             className={`p-2 transition-colors ${
               viewMode === "grid"
                 ? "bg-primary text-text-on-primary"
@@ -210,7 +210,7 @@ export default function PlantsListPage() {
           <button
             type="button"
             onClick={() => setViewMode("list")}
-            aria-label="List view"
+            aria-label="Listenansicht"
             className={`p-2 transition-colors ${
               viewMode === "list"
                 ? "bg-primary text-text-on-primary"
@@ -229,25 +229,25 @@ export default function PlantsListPage() {
             <>
               <PlantPlaceholderIcon className="mx-auto h-16 w-16 text-text-muted" />
               <p className="mt-4 text-lg font-medium text-text-secondary">
-                No plants yet
+                Noch keine Pflanzen
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Add your first plant to get started.
+                Füge deine erste Pflanze hinzu.
               </p>
               <Link
                 to="/plants/new"
                 className="mt-4 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-on-primary transition-colors hover:bg-primary-hover"
               >
-                Add Plant
+                Pflanze hinzufügen
               </Link>
             </>
           ) : (
             <>
               <p className="text-lg font-medium text-text-secondary">
-                No plants match your filters
+                Keine Pflanzen gefunden
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Try adjusting your search or filters.
+                Passe die Suche oder Filter an.
               </p>
             </>
           )}
@@ -351,7 +351,7 @@ export default function PlantsListPage() {
       {/* Floating add button */}
       <Link
         to="/plants/new"
-        aria-label="Add plant"
+        aria-label="Pflanze hinzufügen"
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95 md:bottom-6"
       >
         <PlusIcon className="h-7 w-7" />

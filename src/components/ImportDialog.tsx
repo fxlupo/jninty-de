@@ -74,7 +74,7 @@ export default function ImportDialog({ open, onClose }: ImportDialogProps) {
         }
       } catch (err) {
         setParseError(
-          err instanceof Error ? err.message : "Failed to parse ZIP",
+          err instanceof Error ? err.message : "ZIP konnte nicht verarbeitet werden",
         );
       } finally {
         setParsing(false);

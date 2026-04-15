@@ -401,7 +401,7 @@ export default function JournalPage() {
       setSelectedEntry(null);
       toast("Journal entry deleted", "success");
     } catch {
-      toast("Failed to delete entry", "error");
+      toast("Eintrag konnte nicht gelöscht werden", "error");
     }
   }, [toast]);
 

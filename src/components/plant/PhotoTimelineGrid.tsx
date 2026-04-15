@@ -36,7 +36,7 @@ export default function PhotoTimelineGrid({
       <Card>
         <div className="flex flex-col items-center justify-center py-8 text-text-muted">
           <ImageIcon className="h-10 w-10" />
-          <p className="mt-2 text-sm">No photos yet</p>
+          <p className="mt-2 text-sm">Noch keine Fotos</p>
         </div>
       </Card>
     );
