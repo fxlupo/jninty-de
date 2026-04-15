@@ -70,10 +70,10 @@ export default function KnowledgeDetailPage() {
     setDeleting(true);
     try {
       await userPlantKnowledgeRepository.softDelete(id);
-      toast("Entry deleted", "success");
+      toast("Eintrag geloescht", "success");
       void navigate("/knowledge", { replace: true });
     } catch {
-      toast("Failed to delete entry", "error");
+      toast("Eintrag konnte nicht geloescht werden", "error");
       setDeleting(false);
     }
   };
@@ -84,7 +84,7 @@ export default function KnowledgeDetailPage() {
       <div
         className="mx-auto max-w-2xl p-4"
         role="status"
-        aria-label="Loading knowledge entry"
+        aria-label="Wissenseintrag wird geladen"
       >
         <Skeleton className="h-8 w-3/4" />
         <Skeleton className="mt-2 h-5 w-1/2" />
@@ -98,12 +98,12 @@ export default function KnowledgeDetailPage() {
   if (item === null) {
     return (
       <div className="p-4 text-center">
-        <p className="text-lg font-medium text-text-secondary">Entry not found</p>
+        <p className="text-lg font-medium text-text-secondary">Eintrag nicht gefunden</p>
         <Link
           to="/knowledge"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Back to Knowledge Base
+          Zurueck zur Wissensbasis
         </Link>
       </div>
     );
@@ -120,7 +120,7 @@ export default function KnowledgeDetailPage() {
             type="button"
             onClick={() => navigate(-1)}
             className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Back to knowledge base"
+            aria-label="Zurueck zur Wissensbasis"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -139,7 +139,7 @@ export default function KnowledgeDetailPage() {
           <Badge variant={source === "builtin" ? "success" : "warning"}>
             {SOURCE_LABELS[source]}
           </Badge>
-          {data.isPerennial && <Badge variant="default">Perennial</Badge>}
+          {data.isPerennial && <Badge variant="default">Mehrjaehrig</Badge>}
           {data.family && <Badge variant="default">{data.family}</Badge>}
         </div>
       </div>
@@ -148,24 +148,24 @@ export default function KnowledgeDetailPage() {
         {/* Growing Info */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Growing Info
+            Anbauinfos
           </h2>
           <dl className="mt-3 space-y-2">
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Sun</dt>
+              <dt className="text-sm text-text-secondary">Sonne</dt>
               <dd className="text-sm font-medium text-text-primary">
                 {SUN_LABELS[data.sunNeeds]}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Water</dt>
+              <dt className="text-sm text-text-secondary">Wasser</dt>
               <dd className="text-sm font-medium text-text-primary">
                 {WATER_LABELS[data.waterNeeds]}
               </dd>
             </div>
             {data.soilPreference && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Soil</dt>
+                <dt className="text-sm text-text-secondary">Boden</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {data.soilPreference}
                 </dd>
@@ -173,7 +173,7 @@ export default function KnowledgeDetailPage() {
             )}
             {data.growthRate && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Growth Rate</dt>
+                <dt className="text-sm text-text-secondary">Wachstum</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {GROWTH_RATE_LABELS[data.growthRate]}
                 </dd>
@@ -181,7 +181,7 @@ export default function KnowledgeDetailPage() {
             )}
             {data.matureHeightInches != null && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Height</dt>
+                <dt className="text-sm text-text-secondary">Hoehe</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {data.matureHeightInches}"
                 </dd>
@@ -189,7 +189,7 @@ export default function KnowledgeDetailPage() {
             )}
             {data.matureSpreadInches != null && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Spread</dt>
+                <dt className="text-sm text-text-secondary">Breite</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {data.matureSpreadInches}"
                 </dd>
@@ -197,7 +197,7 @@ export default function KnowledgeDetailPage() {
             )}
             {data.spacingInches != null && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Spacing</dt>
+                <dt className="text-sm text-text-secondary">Abstand</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {data.spacingInches}"
                 </dd>
@@ -215,55 +215,54 @@ export default function KnowledgeDetailPage() {
           data.daysToMaturity != null) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Planting Timing
+              Pflanzzeitpunkte
             </h2>
             <dl className="mt-3 space-y-2">
               {data.indoorStartWeeksBeforeLastFrost != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Indoor Start</dt>
+                  <dt className="text-sm text-text-secondary">Vorkultur</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.indoorStartWeeksBeforeLastFrost} weeks before last
-                    frost
+                    {data.indoorStartWeeksBeforeLastFrost} Wochen vor dem letzten Frost
                   </dd>
                 </div>
               )}
               {data.transplantWeeksAfterLastFrost != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Transplant</dt>
+                  <dt className="text-sm text-text-secondary">Pflanzen</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.transplantWeeksAfterLastFrost} weeks after last frost
+                    {data.transplantWeeksAfterLastFrost} Wochen nach dem letzten Frost
                   </dd>
                 </div>
               )}
               {data.directSowWeeksBeforeLastFrost != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Direct Sow (before)</dt>
+                  <dt className="text-sm text-text-secondary">Direktsaat (vorher)</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.directSowWeeksBeforeLastFrost} weeks before last frost
+                    {data.directSowWeeksBeforeLastFrost} Wochen vor dem letzten Frost
                   </dd>
                 </div>
               )}
               {data.directSowWeeksAfterLastFrost != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Direct Sow (after)</dt>
+                  <dt className="text-sm text-text-secondary">Direktsaat (nachher)</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.directSowWeeksAfterLastFrost} weeks after last frost
+                    {data.directSowWeeksAfterLastFrost} Wochen nach dem letzten Frost
                   </dd>
                 </div>
               )}
               {data.daysToGermination != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Germination</dt>
+                  <dt className="text-sm text-text-secondary">Keimung</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.daysToGermination} days
+                    {data.daysToGermination} Tage
                   </dd>
                 </div>
               )}
               {data.daysToMaturity != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Maturity</dt>
+                  <dt className="text-sm text-text-secondary">Reife</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.daysToMaturity} days
+                    {data.daysToMaturity} Tage
                   </dd>
                 </div>
               )}
@@ -275,61 +274,61 @@ export default function KnowledgeDetailPage() {
         {data.scheduling && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Scheduling Info
+              Anbauplanung
             </h2>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {data.scheduling.directSow && (
-                <Badge variant="success">Direct Sow</Badge>
+                <Badge variant="success">Direktsaat</Badge>
               )}
               {data.scheduling.indoorStart && (
-                <Badge variant="success">Indoor Start</Badge>
+                <Badge variant="success">Vorkultur</Badge>
               )}
               {data.scheduling.frostHardy && (
-                <Badge variant="default">Frost Hardy</Badge>
+                <Badge variant="default">Frosthart</Badge>
               )}
             </div>
             <dl className="mt-3 space-y-2">
               {data.scheduling.seedingDepthInches > 0 && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Seeding Depth</dt>
+                  <dt className="text-sm text-text-secondary">Saattiefe</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.scheduling.seedingDepthInches} inches
+                    {data.scheduling.seedingDepthInches} Zoll
                   </dd>
                 </div>
               )}
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Row Spacing</dt>
+                <dt className="text-sm text-text-secondary">Reihenabstand</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {data.scheduling.rowSpacingInches} inches
+                  {data.scheduling.rowSpacingInches} Zoll
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Harvest Window</dt>
+                <dt className="text-sm text-text-secondary">Erntefenster</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {data.scheduling.harvestWindowDays} days
+                  {data.scheduling.harvestWindowDays} Tage
                 </dd>
               </div>
               {data.scheduling.successionIntervalDays != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Succession Interval</dt>
+                  <dt className="text-sm text-text-secondary">Satzfolge-Intervall</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.scheduling.successionIntervalDays} days
+                    {data.scheduling.successionIntervalDays} Tage
                   </dd>
                 </div>
               )}
               {data.scheduling.bedPrepLeadDays > 0 && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Bed Prep Lead</dt>
+                  <dt className="text-sm text-text-secondary">Vorlauf Beetvorbereitung</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.scheduling.bedPrepLeadDays} days
+                    {data.scheduling.bedPrepLeadDays} Tage
                   </dd>
                 </div>
               )}
               {data.scheduling.daysToTransplant != null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-text-secondary">Days to Transplant</dt>
+                  <dt className="text-sm text-text-secondary">Tage bis zum Auspflanzen</dt>
                   <dd className="text-sm font-medium text-text-primary">
-                    {data.scheduling.daysToTransplant} days
+                    {data.scheduling.daysToTransplant} Tage
                   </dd>
                 </div>
               )}
@@ -347,12 +346,12 @@ export default function KnowledgeDetailPage() {
           (data.badCompanions && data.badCompanions.length > 0)) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Companion Planting
+              Mischkultur
             </h2>
             {data.goodCompanions && data.goodCompanions.length > 0 && (
               <div className="mt-3">
                 <p className="text-sm font-medium text-text-secondary">
-                  Good Companions
+                  Gute Nachbarn
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {data.goodCompanions.map((c) => (
@@ -366,7 +365,7 @@ export default function KnowledgeDetailPage() {
             {data.badCompanions && data.badCompanions.length > 0 && (
               <div className="mt-3">
                 <p className="text-sm font-medium text-text-secondary">
-                  Bad Companions
+                  Schlechte Nachbarn
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {data.badCompanions.map((c) => (
@@ -385,11 +384,11 @@ export default function KnowledgeDetailPage() {
           (data.commonDiseases && data.commonDiseases.length > 0)) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Common Issues
+              Haeufige Probleme
             </h2>
             {data.commonPests && data.commonPests.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Pests</p>
+                <p className="text-sm font-medium text-text-secondary">Schaedlinge</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {data.commonPests.map((p) => (
                     <Badge key={p} variant="warning">
@@ -401,7 +400,7 @@ export default function KnowledgeDetailPage() {
             )}
             {data.commonDiseases && data.commonDiseases.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Diseases</p>
+                <p className="text-sm font-medium text-text-secondary">Krankheiten</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {data.commonDiseases.map((d) => (
                     <Badge key={d} variant="danger">
@@ -423,7 +422,7 @@ export default function KnowledgeDetailPage() {
           return (
             <Card>
               <h2 className="font-display text-lg font-semibold text-text-heading">
-                Related Varieties
+                Verwandte Sorten
               </h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {siblings.map((s) => (
@@ -447,14 +446,14 @@ export default function KnowledgeDetailPage() {
             <Button
               onClick={() => void navigate(`/knowledge/${item.id}/edit`)}
             >
-              Edit Entry
+              Eintrag bearbeiten
             </Button>
             <Button
               variant="ghost"
               className="text-terracotta-600 hover:bg-terracotta-400/10"
               onClick={() => setShowDeleteConfirm(true)}
             >
-              Delete
+              Loeschen
             </Button>
           </div>
         )}
@@ -475,10 +474,10 @@ export default function KnowledgeDetailPage() {
                 id="delete-dialog-title"
                 className="font-display text-lg font-semibold text-text-primary"
               >
-                Delete {data.commonName}?
+                {data.commonName} loeschen?
               </h3>
               <p className="mt-2 text-sm text-text-secondary">
-                This knowledge entry will be permanently removed. This action
+                Dieser Wissenseintrag wird dauerhaft entfernt. Diese Aktion
                 cannot be undone.
               </p>
               <div className="mt-4 flex justify-end gap-2">
@@ -496,7 +495,7 @@ export default function KnowledgeDetailPage() {
                   onClick={() => void handleDelete()}
                   disabled={deleting}
                 >
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? "Loescht..." : "Loeschen"}
                 </Button>
               </div>
             </Card>

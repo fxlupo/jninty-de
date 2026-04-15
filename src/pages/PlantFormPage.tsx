@@ -27,17 +27,17 @@ const selectClass =
 // ─── Field label map for user-friendly Zod error messages ───
 
 const FIELD_LABELS: Record<string, string> = {
-  species: "Species",
-  nickname: "Nickname",
-  variety: "Variety",
-  type: "Type",
-  isPerennial: "Perennial",
-  source: "Source",
+  species: "Art",
+  nickname: "Spitzname",
+  variety: "Sorte",
+  type: "Typ",
+  isPerennial: "Mehrjaehrig",
+  source: "Quelle",
   status: "Status",
-  dateAcquired: "Date Acquired",
-  careNotes: "Care Notes",
-  tags: "Tags",
-  photoIds: "Photos",
+  dateAcquired: "Kaufdatum",
+  careNotes: "Pflegenotizen",
+  tags: "Schlagwoerter",
+  photoIds: "Fotos",
 };
 
 // ─── Component ───
@@ -176,7 +176,7 @@ export default function PlantFormPage() {
 
     // Basic validation
     if (!species.trim()) {
-      setErrors(["Species is required."]);
+      setErrors(["Die Art ist erforderlich."]);
       return;
     }
 
@@ -256,13 +256,13 @@ export default function PlantFormPage() {
             const label =
               typeof field === "string"
                 ? (FIELD_LABELS[field] ?? field)
-                : "Field";
+                : "Feld";
             return `${label}: ${issue.message}`;
           }),
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to save plant.";
+          err instanceof Error ? err.message : "Pflanze konnte nicht gespeichert werden.";
         setErrors([message]);
       }
     } finally {
@@ -272,7 +272,7 @@ export default function PlantFormPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Loading form">
+      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Formular wird geladen">
         <Skeleton className="h-8 w-40" />
         <div className="mt-6 space-y-6">
           <Skeleton className="h-48 w-full" />
@@ -293,12 +293,12 @@ export default function PlantFormPage() {
           type="button"
           onClick={() => void navigate(backPath)}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Go back"
+          aria-label="Zurueck"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          {isEditing ? "Edit Plant" : "Add Plant"}
+          {isEditing ? "Pflanze bearbeiten" : "Pflanze hinzufuegen"}
         </h1>
       </div>
 
@@ -306,28 +306,28 @@ export default function PlantFormPage() {
         {/* Photo section */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Photo
+            Foto
           </h2>
           <div className="mt-3">
             {currentPhotoPreview ? (
               <div className="relative">
                 <img
                   src={currentPhotoPreview}
-                  alt="Plant photo preview"
+                  alt="Vorschau Pflanzenfoto"
                   className="h-48 w-full rounded-lg object-cover"
                 />
                 <button
                   type="button"
                   onClick={handleRemovePhoto}
                   className="absolute top-2 right-2 rounded-full bg-soil-900/60 p-1.5 text-white transition-colors hover:bg-soil-900/80"
-                  aria-label="Remove photo"
+                  aria-label="Foto entfernen"
                 >
                   <CloseIcon className="h-4 w-4" />
                 </button>
               </div>
             ) : (
               <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-border-strong bg-surface">
-                <p className="text-sm text-text-secondary">No photo added</p>
+                <p className="text-sm text-text-secondary">Noch kein Foto hinzugefuegt</p>
               </div>
             )}
 
@@ -338,7 +338,7 @@ export default function PlantFormPage() {
                 disabled={isProcessing}
                 onClick={() => void handlePhoto(capturePhoto)}
               >
-                {isProcessing ? "Processing…" : "Take Photo"}
+                {isProcessing ? "Wird verarbeitet..." : "Foto aufnehmen"}
               </Button>
               <Button
                 type="button"
@@ -346,7 +346,7 @@ export default function PlantFormPage() {
                 disabled={isProcessing}
                 onClick={() => void handlePhoto(selectPhoto)}
               >
-                {isProcessing ? "Processing…" : "Choose Photo"}
+                {isProcessing ? "Wird verarbeitet..." : "Foto auswaehlen"}
               </Button>
             </div>
             {photoError && (
@@ -360,7 +360,7 @@ export default function PlantFormPage() {
         {/* Plant information */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Plant Information
+            Pflanzeninformationen
           </h2>
 
           <div className="mt-4 space-y-4">
@@ -370,12 +370,12 @@ export default function PlantFormPage() {
                 htmlFor="species"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Species <span className="text-terracotta-500">*</span>
+                Art <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="species"
                 type="text"
-                placeholder="e.g. Solanum lycopersicum"
+                placeholder="z. B. Solanum lycopersicum"
                 value={species}
                 onChange={(e) => setSpecies(e.target.value)}
               />
@@ -387,12 +387,12 @@ export default function PlantFormPage() {
                 htmlFor="nickname"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Nickname
+                Spitzname
               </label>
               <Input
                 id="nickname"
                 type="text"
-                placeholder="e.g. Backyard Apple Tree"
+                placeholder="z. B. Apfelbaum hinten im Garten"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
               />
@@ -404,12 +404,12 @@ export default function PlantFormPage() {
                 htmlFor="variety"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Variety
+                Sorte
               </label>
               <Input
                 id="variety"
                 type="text"
-                placeholder="e.g. Honeycrisp"
+                placeholder="z. B. Honeycrisp"
                 value={variety}
                 onChange={(e) => setVariety(e.target.value)}
               />
@@ -421,7 +421,7 @@ export default function PlantFormPage() {
                 htmlFor="plant-type"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Type
+                Typ
               </label>
               <select
                 id="plant-type"
@@ -440,7 +440,7 @@ export default function PlantFormPage() {
             {/* Perennial toggle */}
             <div className="flex items-center gap-3">
               <label htmlFor="is-perennial" className="text-sm font-medium text-text-secondary">
-                Perennial
+                Mehrjaehrig
               </label>
               <button
                 type="button"
@@ -466,7 +466,7 @@ export default function PlantFormPage() {
                 htmlFor="source"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Source
+                Quelle
               </label>
               <select
                 id="source"
@@ -510,7 +510,7 @@ export default function PlantFormPage() {
                 htmlFor="date-acquired"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Date Acquired
+                Kaufdatum
               </label>
               <Input
                 id="date-acquired"
@@ -526,7 +526,7 @@ export default function PlantFormPage() {
                 htmlFor="purchase-price"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Purchase Price ($)
+                Kaufpreis ($)
               </label>
               <Input
                 id="purchase-price"
@@ -545,7 +545,7 @@ export default function PlantFormPage() {
                 htmlFor="purchase-store"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Purchased At
+                Gekauft bei
               </label>
               <StoreAutosuggest
                 id="purchase-store"
@@ -560,17 +560,17 @@ export default function PlantFormPage() {
                 htmlFor="tags"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Tags
+                Schlagwoerter
               </label>
               <Input
                 id="tags"
                 type="text"
-                placeholder="e.g. raised bed, heirloom, organic"
+                placeholder="z. B. Hochbeet, samenfest, bio"
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Separate with commas
+                Mit Kommas trennen
               </p>
             </div>
 
@@ -580,12 +580,12 @@ export default function PlantFormPage() {
                 htmlFor="care-notes"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Care Notes
+                Pflegenotizen
               </label>
               <textarea
                 id="care-notes"
                 rows={3}
-                placeholder="Any notes about caring for this plant…"
+                placeholder="Notizen zur Pflege dieser Pflanze..."
                 value={careNotes}
                 onChange={(e) => setCareNotes(e.target.value)}
                 className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
@@ -609,17 +609,17 @@ export default function PlantFormPage() {
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
             {saving
-              ? "Saving…"
+              ? "Speichert..."
               : isEditing
-                ? "Save Changes"
-                : "Add Plant"}
+                ? "Aenderungen speichern"
+                : "Pflanze hinzufuegen"}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => void navigate(backPath)}
           >
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>

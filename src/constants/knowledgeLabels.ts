@@ -4,44 +4,44 @@ import type { KnowledgeSource } from "../services/knowledgeBaseTypes.ts";
 // ─── Human-readable label maps ───
 
 export const SUN_LABELS: Record<SunExposure, string> = {
-  full_sun: "Full Sun",
-  partial_shade: "Partial Shade",
-  full_shade: "Full Shade",
+  full_sun: "Volle Sonne",
+  partial_shade: "Halbschatten",
+  full_shade: "Voller Schatten",
 };
 
 export const WATER_LABELS: Record<WaterNeeds, string> = {
-  low: "Low",
-  moderate: "Moderate",
-  high: "High",
+  low: "Wenig",
+  moderate: "Mittel",
+  high: "Hoch",
 };
 
 export const GROWTH_RATE_LABELS: Record<GrowthRate, string> = {
-  slow: "Slow",
-  moderate: "Moderate",
-  fast: "Fast",
+  slow: "Langsam",
+  moderate: "Mittel",
+  fast: "Schnell",
 };
 
 export const SOURCE_LABELS: Record<KnowledgeSource, string> = {
-  builtin: "Built-in",
-  custom: "Custom",
+  builtin: "Integriert",
+  custom: "Benutzerdefiniert",
 };
 
 // ─── Option arrays for form selects ───
 
 export const SUN_OPTIONS: { value: SunExposure; label: string }[] = [
-  { value: "full_sun", label: "Full Sun" },
-  { value: "partial_shade", label: "Partial Shade" },
-  { value: "full_shade", label: "Full Shade" },
+  { value: "full_sun", label: "Volle Sonne" },
+  { value: "partial_shade", label: "Halbschatten" },
+  { value: "full_shade", label: "Voller Schatten" },
 ];
 
 export const WATER_OPTIONS: { value: WaterNeeds; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "moderate", label: "Moderate" },
-  { value: "high", label: "High" },
+  { value: "low", label: "Wenig" },
+  { value: "moderate", label: "Mittel" },
+  { value: "high", label: "Hoch" },
 ];
 
 export const GROWTH_RATE_OPTIONS: { value: GrowthRate; label: string }[] = [
-  { value: "slow", label: "Slow" },
-  { value: "moderate", label: "Moderate" },
-  { value: "fast", label: "Fast" },
+  { value: "slow", label: "Langsam" },
+  { value: "moderate", label: "Mittel" },
+  { value: "fast", label: "Schnell" },
 ];

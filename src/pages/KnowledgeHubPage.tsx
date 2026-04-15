@@ -99,7 +99,7 @@ export default function KnowledgeHubPage() {
 
   if (userEntries === undefined) {
     return (
-      <div className="mx-auto max-w-5xl p-4" role="status" aria-label="Loading knowledge base">
+      <div className="mx-auto max-w-5xl p-4" role="status" aria-label="Wissensbasis wird geladen">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="mt-4 h-10 w-full" />
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -120,10 +120,10 @@ export default function KnowledgeHubPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Knowledge Base
+          Wissensbasis
         </h1>
         <span className="text-sm text-text-secondary">
-          {allItems.length} {allItems.length === 1 ? "entry" : "entries"}
+          {allItems.length} {allItems.length === 1 ? "Eintrag" : "Eintraege"}
         </span>
       </div>
 
@@ -131,10 +131,10 @@ export default function KnowledgeHubPage() {
       <div className="mt-4">
         <Input
           type="search"
-          placeholder="Search by name, species, or variety..."
+          placeholder="Nach Name, Art oder Sorte suchen..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search knowledge base"
+          aria-label="Wissensbasis durchsuchen"
         />
       </div>
 
@@ -143,10 +143,10 @@ export default function KnowledgeHubPage() {
         searchResults.length === 0 ? (
           <div className="mt-12 text-center">
             <p className="text-lg font-medium text-text-secondary">
-              No entries match your search
+              Keine Eintraege passen zur Suche
             </p>
             <p className="mt-1 text-sm text-text-secondary">
-              Try a different search term.
+              Versuche einen anderen Suchbegriff.
             </p>
           </div>
         ) : (
@@ -164,7 +164,7 @@ export default function KnowledgeHubPage() {
                   <div className="mt-2 flex items-center gap-2 text-xs text-text-secondary">
                     <span>{SUN_LABELS[item.data.sunNeeds]}</span>
                     <span>&middot;</span>
-                    <span>{WATER_LABELS[item.data.waterNeeds]} water</span>
+                    <span>Wasserbedarf: {WATER_LABELS[item.data.waterNeeds]}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Badge>{TYPE_LABELS[item.data.plantType]}</Badge>
@@ -203,7 +203,7 @@ export default function KnowledgeHubPage() {
             return (
               <div className="mt-8">
                 <h2 className="font-display text-lg font-semibold text-text-heading">
-                  Custom Entries
+                  Eigene Eintraege
                 </h2>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {customItems.map((item) => (
@@ -231,7 +231,7 @@ export default function KnowledgeHubPage() {
       {/* Floating add button */}
       <Link
         to="/knowledge/new"
-        aria-label="Add knowledge entry"
+        aria-label="Wissenseintrag hinzufuegen"
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95 md:bottom-6"
       >
         <PlusIcon className="h-7 w-7" />

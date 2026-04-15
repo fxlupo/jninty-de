@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { seasonRepository } from "../db/index.ts";
 import {
   getAllExpenseRows,
@@ -24,14 +24,15 @@ import Input from "../components/ui/Input";
 import StoreAutosuggest from "../components/StoreAutosuggest";
 import { PlusIcon, ChevronRightIcon } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
+import { formatDate } from "../lib/locale";
 
 const selectClass =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
 
 const ALL_CATEGORY_LABELS: Record<string, string> = {
   ...EXPENSE_CATEGORY_LABELS,
-  plants: "Plants",
-  seeds: "Seeds",
+  plants: "Pflanzen",
+  seeds: "Saatgut",
 };
 
 const ALL_CATEGORY_COLORS: Record<string, string> = {
@@ -109,7 +110,7 @@ export default function ExpensesPage() {
       <div
         className="mx-auto max-w-2xl space-y-4 p-4"
         role="status"
-        aria-label="Loading expenses"
+        aria-label="Ausgaben werden geladen"
       >
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-32 w-full" />
@@ -123,12 +124,12 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Expenses
+          Ausgaben
         </h1>
         <Link to="/expenses/new">
           <Button>
             <PlusIcon className="mr-1 h-4 w-4" />
-            Add Expense
+            Ausgabe hinzufuegen
           </Button>
         </Link>
       </div>
@@ -136,7 +137,7 @@ export default function ExpensesPage() {
       {/* Summary */}
       <Card className="mt-4">
         <div className="text-center">
-          <p className="text-sm text-text-secondary">Total Spent</p>
+          <p className="text-sm text-text-secondary">Gesamtausgaben</p>
           <p className="font-display text-3xl font-bold text-text-heading">
             {formatCurrency(totalSpent)}
           </p>
@@ -145,7 +146,7 @@ export default function ExpensesPage() {
         {/* Category bar chart */}
         {categoryTotals.length > 0 && (
           <div className="mt-4 space-y-2">
-            <h3 className="text-sm font-medium text-text-secondary">By Category</h3>
+            <h3 className="text-sm font-medium text-text-secondary">Nach Kategorie</h3>
             {categoryTotals.map((ct) => (
               <div key={ct.category} className="flex items-center gap-2">
                 <span className="w-28 truncate text-xs text-text-secondary">
@@ -173,7 +174,7 @@ export default function ExpensesPage() {
         {/* Top stores */}
         {storeTotals.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-sm font-medium text-text-secondary">Top Stores</h3>
+            <h3 className="text-sm font-medium text-text-secondary">Top-Laeden</h3>
             <div className="mt-2 space-y-1">
               {storeTotals.slice(0, 5).map((st) => (
                 <div
@@ -200,7 +201,7 @@ export default function ExpensesPage() {
         onClick={() => setShowFilters(!showFilters)}
         className="mt-4 text-sm font-medium text-text-link hover:underline"
       >
-        {showFilters ? "Hide filters" : "Show filters"}
+        {showFilters ? "Filter ausblenden" : "Filter anzeigen"}
       </button>
 
       {/* Filters */}
@@ -213,7 +214,7 @@ export default function ExpensesPage() {
                 htmlFor="filter-season"
                 className="mb-1 block text-xs font-medium text-text-secondary"
               >
-                Season
+                Saison
               </label>
               <select
                 id="filter-season"
@@ -221,7 +222,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setSeasonId(e.target.value)}
                 className={selectClass}
               >
-                <option value="">All seasons</option>
+                <option value="">Alle Saisons</option>
                 {seasons?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -237,7 +238,7 @@ export default function ExpensesPage() {
                   htmlFor="filter-start"
                   className="mb-1 block text-xs font-medium text-text-secondary"
                 >
-                  From
+                  Von
                 </label>
                 <Input
                   id="filter-start"
@@ -251,7 +252,7 @@ export default function ExpensesPage() {
                   htmlFor="filter-end"
                   className="mb-1 block text-xs font-medium text-text-secondary"
                 >
-                  To
+                  Bis
                 </label>
                 <Input
                   id="filter-end"
@@ -268,20 +269,20 @@ export default function ExpensesPage() {
                 htmlFor="filter-store"
                 className="mb-1 block text-xs font-medium text-text-secondary"
               >
-                Store
+                Laden
               </label>
               <StoreAutosuggest
                 id="filter-store"
                 value={storeFilter}
                 onChange={setStoreFilter}
-                placeholder="Filter by store"
+                placeholder="Nach Laden filtern"
               />
             </div>
 
             {/* Categories */}
             <div>
               <span className="mb-1 block text-xs font-medium text-text-secondary">
-                Categories
+                Kategorien
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_EXPENSE_CATEGORIES.map((cat) => (
@@ -329,7 +330,7 @@ export default function ExpensesPage() {
                 }}
                 className="text-xs text-terracotta-600 hover:underline"
               >
-                Clear all filters
+                Alle Filter zuruecksetzen
               </button>
             )}
           </div>
@@ -339,13 +340,13 @@ export default function ExpensesPage() {
       {/* Expense list */}
       <section className="mt-4">
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          All Expenses
+          Alle Ausgaben
         </h2>
 
         {rows.length === 0 ? (
           <Card className="mt-2">
             <p className="text-center text-sm text-text-secondary">
-              No expenses found. Start tracking your garden spending!
+              Keine Ausgaben gefunden. Erfasse deine Gartenausgaben.
             </p>
           </Card>
         ) : (
@@ -367,7 +368,7 @@ export default function ExpensesPage() {
                         </Badge>
                       </div>
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-text-secondary">
-                        <span>{format(parseISO(row.date), "MMM d, yyyy")}</span>
+                        <span>{formatDate(parseISO(row.date), "d. MMM yyyy")}</span>
                         {row.store && (
                           <span className="truncate">
                             &middot; {row.store}

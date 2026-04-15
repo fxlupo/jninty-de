@@ -9,9 +9,9 @@ export const TASK_TYPE_COLORS: Record<ScheduleTaskType, string> = {
 };
 
 export const TASK_TYPE_LABELS: Record<ScheduleTaskType, string> = {
-  seed_start: "Seed",
-  bed_prep: "Prep",
-  transplant: "Transplant",
-  cultivate: "Cultivate",
-  harvest: "Harvest",
+  seed_start: "Aussaat",
+  bed_prep: "Beetvorb.",
+  transplant: "Pflanzen",
+  cultivate: "Pflege",
+  harvest: "Ernte",
 };

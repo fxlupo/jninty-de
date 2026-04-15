@@ -17,12 +17,12 @@ const selectClass =
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
-  category: "Category",
-  amount: "Amount",
-  store: "Store",
-  date: "Date",
-  seasonId: "Season",
-  notes: "Notes",
+  category: "Kategorie",
+  amount: "Betrag",
+  store: "Laden",
+  date: "Datum",
+  seasonId: "Saison",
+  notes: "Notizen",
 };
 
 function todayDate(): string {
@@ -78,18 +78,18 @@ export default function ExpenseFormPage() {
     setErrors([]);
 
     if (!name.trim()) {
-      setErrors(["Name is required."]);
+      setErrors(["Name ist erforderlich."]);
       return;
     }
 
     const amountNum = Number(amount);
     if (!amount || Number.isNaN(amountNum) || amountNum < 0) {
-      setErrors(["Amount must be a non-negative number."]);
+      setErrors(["Der Betrag muss eine nicht negative Zahl sein."]);
       return;
     }
 
     if (!date) {
-      setErrors(["Date is required."]);
+      setErrors(["Datum ist erforderlich."]);
       return;
     }
 
@@ -126,13 +126,13 @@ export default function ExpenseFormPage() {
             const label =
               typeof field === "string"
                 ? (FIELD_LABELS[field] ?? field)
-                : "Field";
+                : "Feld";
             return `${label}: ${issue.message}`;
           }),
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to save expense.";
+          err instanceof Error ? err.message : "Ausgabe konnte nicht gespeichert werden.";
         setErrors([message]);
       }
     } finally {
@@ -142,7 +142,7 @@ export default function ExpenseFormPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Loading form">
+      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Formular wird geladen">
         <Skeleton className="h-8 w-40" />
         <div className="mt-6 space-y-6">
           <Skeleton className="h-64 w-full" />
@@ -159,19 +159,19 @@ export default function ExpenseFormPage() {
           type="button"
           onClick={() => void navigate("/expenses")}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Go back"
+          aria-label="Zurueck"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          {isEditing ? "Edit Expense" : "Add Expense"}
+          {isEditing ? "Ausgabe bearbeiten" : "Ausgabe hinzufuegen"}
         </h1>
       </div>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-6">
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Expense Details
+            Ausgabendetails
           </h2>
 
           <div className="mt-4 space-y-4">
@@ -186,7 +186,7 @@ export default function ExpenseFormPage() {
               <Input
                 id="expense-name"
                 type="text"
-                placeholder='e.g. "Garden hose", "Potting mix"'
+                placeholder='z. B. "Gartenschlauch", "Blumenerde"'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -198,7 +198,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-amount"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Amount ($) <span className="text-terracotta-500">*</span>
+                Betrag ($) <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="expense-amount"
@@ -217,7 +217,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-category"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Category <span className="text-terracotta-500">*</span>
+                Kategorie <span className="text-terracotta-500">*</span>
               </label>
               <select
                 id="expense-category"
@@ -239,7 +239,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-store"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Store
+                Laden
               </label>
               <StoreAutosuggest
                 id="expense-store"
@@ -254,7 +254,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-date"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Date <span className="text-terracotta-500">*</span>
+                Datum <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="expense-date"
@@ -270,7 +270,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-season"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Season
+                Saison
               </label>
               <select
                 id="expense-season"
@@ -278,7 +278,7 @@ export default function ExpenseFormPage() {
                 onChange={(e) => setSeasonId(e.target.value)}
                 className={selectClass}
               >
-                <option value="">No season</option>
+                <option value="">Keine Saison</option>
                 {seasons?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -293,12 +293,12 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-notes"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Notes
+                Notizen
               </label>
               <textarea
                 id="expense-notes"
                 rows={3}
-                placeholder="Any notes about this expense..."
+                placeholder="Notizen zu dieser Ausgabe..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
@@ -322,17 +322,17 @@ export default function ExpenseFormPage() {
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
             {saving
-              ? "Saving..."
+              ? "Speichert..."
               : isEditing
-                ? "Save Changes"
-                : "Add Expense"}
+                ? "Aenderungen speichern"
+                : "Ausgabe hinzufuegen"}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => void navigate("/expenses")}
           >
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>

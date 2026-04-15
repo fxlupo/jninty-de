@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { plantRepository, journalRepository, taskRepository, photoRepository, plantingRepository, seasonRepository } from "../db/index.ts";
 import { removeFromIndex, serializeIndex } from "../db/search";
 import { useToast } from "../components/ui/Toast";
@@ -28,6 +28,7 @@ import {
   PlusIcon,
 } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
+import { formatBrowserDate, formatDate } from "../lib/locale";
 
 type Tab = "overview" | "season-history" | "photo-timeline";
 
@@ -251,7 +252,7 @@ export default function PlantDetailPage() {
       void navigate("/plants", { replace: true });
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete plant.";
+        err instanceof Error ? err.message : "Pflanze konnte nicht geloescht werden.";
       setDeleteError(message);
       setDeleting(false);
     }
@@ -261,7 +262,7 @@ export default function PlantDetailPage() {
 
   if (plant === undefined) {
     return (
-      <div className="mx-auto max-w-2xl" role="status" aria-label="Loading plant details">
+      <div className="mx-auto max-w-2xl" role="status" aria-label="Pflanzendetails werden geladen">
         <Skeleton className="aspect-[16/9] w-full rounded-none" />
         <div className="space-y-4 p-4">
           <Skeleton className="h-8 w-3/4" />
@@ -276,12 +277,12 @@ export default function PlantDetailPage() {
   if (plant === null) {
     return (
       <div className="p-4 text-center">
-        <p className="text-lg font-medium text-text-secondary">Plant not found</p>
+        <p className="text-lg font-medium text-text-secondary">Pflanze nicht gefunden</p>
         <Link
           to="/plants"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Back to Plant Inventory
+          Zurueck zur Pflanzenliste
         </Link>
       </div>
     );
@@ -328,7 +329,7 @@ export default function PlantDetailPage() {
           type="button"
           onClick={() => navigate("/plants")}
           className="absolute top-3 left-3 rounded-full bg-soil-900/40 p-2 text-white transition-colors hover:bg-soil-900/60"
-          aria-label="Back to plants"
+          aria-label="Zurueck zu den Pflanzen"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
@@ -359,9 +360,9 @@ export default function PlantDetailPage() {
         {/* Tab bar */}
         <div className="flex overflow-hidden rounded-lg border border-border-strong">
           {([
-            { key: "overview" as const, label: "Overview" },
-            { key: "season-history" as const, label: "Seasons" },
-            { key: "photo-timeline" as const, label: "Photos" },
+            { key: "overview" as const, label: "Uebersicht" },
+            { key: "season-history" as const, label: "Saisons" },
+            { key: "photo-timeline" as const, label: "Fotos" },
           ]).map((tab) => (
             <button
               key={tab.key}
@@ -420,36 +421,36 @@ export default function PlantDetailPage() {
           <dl className="mt-3 space-y-2">
             {plant.variety && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Variety</dt>
+                <dt className="text-sm text-text-secondary">Sorte</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {plant.variety}
                 </dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Perennial</dt>
+              <dt className="text-sm text-text-secondary">Mehrjaehrig</dt>
               <dd className="text-sm font-medium text-text-primary">
-                {plant.isPerennial ? "Yes" : "No"}
+                {plant.isPerennial ? "Ja" : "Nein"}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Source</dt>
+              <dt className="text-sm text-text-secondary">Quelle</dt>
               <dd className="text-sm font-medium text-text-primary">
                 {SOURCE_LABELS[plant.source]}
               </dd>
             </div>
             {plant.dateAcquired && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Date Acquired</dt>
+                <dt className="text-sm text-text-secondary">Kaufdatum</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {format(parseISO(plant.dateAcquired), "MMM d, yyyy")}
+                  {formatDate(parseISO(plant.dateAcquired), "d. MMM yyyy")}
                 </dd>
               </div>
             )}
           </dl>
           {plant.careNotes && (
             <div className="mt-4 border-t border-border-default pt-3">
-              <h3 className="text-sm font-medium text-text-secondary">Care Notes</h3>
+              <h3 className="text-sm font-medium text-text-secondary">Pflegenotizen</h3>
               <p className="mt-1 text-sm whitespace-pre-wrap text-text-primary">
                 {plant.careNotes}
               </p>
@@ -462,7 +463,7 @@ export default function PlantDetailPage() {
           <Card>
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-semibold text-text-heading">
-                Photos
+                Fotos
               </h2>
               <span className="text-sm text-text-secondary">
                 {String(allPhotoIds.length)}
@@ -494,7 +495,7 @@ export default function PlantDetailPage() {
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Plantings
+              Pflanzungen
             </h2>
             <span className="text-sm text-text-secondary">
               {plantings?.length ?? 0}
@@ -507,16 +508,16 @@ export default function PlantDetailPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm font-medium text-text-primary">
-                        {seasonMap.get(planting.seasonId) ?? "Unknown Season"}
+                        {seasonMap.get(planting.seasonId) ?? "Unbekannte Saison"}
                       </p>
                       {planting.datePlanted && (
                         <p className="mt-0.5 text-xs text-text-secondary">
-                          Planted: {format(parseISO(planting.datePlanted), "MMM d, yyyy")}
+                          Gepflanzt: {formatDate(parseISO(planting.datePlanted), "d. MMM yyyy")}
                         </p>
                       )}
                       {planting.dateRemoved && (
                         <p className="text-xs text-text-secondary">
-                          Removed: {format(parseISO(planting.dateRemoved), "MMM d, yyyy")}
+                          Entfernt: {formatDate(parseISO(planting.dateRemoved), "d. MMM yyyy")}
                         </p>
                       )}
                       {planting.notes && (
@@ -552,7 +553,7 @@ export default function PlantDetailPage() {
                           type="button"
                           onClick={() => setEditingOutcome(planting.id)}
                           className="flex items-center gap-1"
-                          title="Set outcome"
+                          title="Ergebnis festlegen"
                         >
                           {planting.outcome ? (
                             <Badge variant={outcomeVariant[planting.outcome] ?? "default"}>
@@ -560,7 +561,7 @@ export default function PlantDetailPage() {
                             </Badge>
                           ) : (
                             <span className="rounded-full border border-dashed border-border-strong px-2 py-0.5 text-xs text-text-secondary hover:border-focus-ring hover:text-text-heading">
-                              Set outcome
+                              Ergebnis festlegen
                             </span>
                           )}
                         </button>
@@ -572,7 +573,7 @@ export default function PlantDetailPage() {
             </ul>
           ) : (
             <p className="mt-3 text-sm text-text-secondary">
-              No plantings yet.
+              Noch keine Pflanzungen.
             </p>
           )}
         </Card>
@@ -581,7 +582,7 @@ export default function PlantDetailPage() {
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Journal Entries
+              Journaleintraege
             </h2>
             <span className="text-sm text-text-secondary">
               {journalEntries?.length ?? 0}
@@ -605,14 +606,14 @@ export default function PlantDetailPage() {
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-text-muted">
-                    {new Date(entry.createdAt).toLocaleDateString()}
+                    {formatBrowserDate(entry.createdAt)}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="mt-3 text-sm text-text-secondary">
-              No journal entries yet.
+              Noch keine Journaleintraege.
             </p>
           )}
         </Card>
@@ -621,10 +622,10 @@ export default function PlantDetailPage() {
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Tasks
+              Aufgaben
             </h2>
             <span className="text-sm text-text-secondary">
-              {pendingTasks.length} pending
+              {pendingTasks.length} offen
             </span>
           </div>
           {pendingTasks.length > 0 ? (
@@ -637,7 +638,7 @@ export default function PlantDetailPage() {
                     </p>
                     {task.dueDate && (
                       <p className="text-xs text-text-secondary">
-                        Due: {format(parseISO(task.dueDate), "MMM d, yyyy")}
+                        Faellig: {formatDate(parseISO(task.dueDate), "d. MMM yyyy")}
                       </p>
                     )}
                   </div>
@@ -656,7 +657,7 @@ export default function PlantDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-text-secondary">No pending tasks.</p>
+            <p className="mt-3 text-sm text-text-secondary">Keine offenen Aufgaben.</p>
           )}
         </Card>
         </>
@@ -667,14 +668,14 @@ export default function PlantDetailPage() {
           <Button
             onClick={() => void navigate(`/plants/${plant.id}/edit`)}
           >
-            Edit Plant
+            Pflanze bearbeiten
           </Button>
           <Button
             variant="ghost"
             className="text-terracotta-600 hover:bg-terracotta-400/10"
             onClick={() => setShowDeleteConfirm(true)}
           >
-            Delete
+            Loeschen
           </Button>
         </div>
 
@@ -694,11 +695,11 @@ export default function PlantDetailPage() {
                 id="delete-dialog-title"
                 className="font-display text-lg font-semibold text-text-primary"
               >
-                Delete {displayName}?
+                {displayName} loeschen?
               </h3>
               <p className="mt-2 text-sm text-text-secondary">
-                This plant will be removed from your inventory. This action
-                cannot be undone.
+                Diese Pflanze wird aus deinem Bestand entfernt. Das kann nicht
+                rueckgaengig gemacht werden.
               </p>
               {deleteError && (
                 <p className="mt-2 text-sm text-terracotta-600">
@@ -712,7 +713,7 @@ export default function PlantDetailPage() {
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting}
                 >
-                  Cancel
+                  Abbrechen
                 </Button>
                 <Button
                   variant="primary"
@@ -720,7 +721,7 @@ export default function PlantDetailPage() {
                   onClick={() => void handleDelete()}
                   disabled={deleting}
                 >
-                  {deleting ? "Deleting…" : "Delete"}
+                  {deleting ? "Loescht..." : "Loeschen"}
                 </Button>
               </div>
             </Card>
@@ -765,7 +766,7 @@ function SeasonHistoryTab({
     return (
       <Card>
         <p className="text-center text-sm text-text-secondary">
-          No season history yet.
+          Noch keine Saisonhistorie.
         </p>
       </Card>
     );
@@ -813,7 +814,7 @@ function SeasonHistoryTab({
       {timeRange > 0 && (
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Timeline
+            Zeitachse
           </h2>
           <div className="mt-3 space-y-2">
             {sorted.map((p) => {
@@ -833,7 +834,7 @@ function SeasonHistoryTab({
               return (
                 <div key={p.id}>
                   <div className="flex items-center justify-between text-xs text-text-secondary">
-                    <span>{seasonMap.get(p.seasonId) ?? "Unknown"}</span>
+                    <span>{seasonMap.get(p.seasonId) ?? "Unbekannt"}</span>
                     <Badge
                       variant={
                         outcome === "thrived"
@@ -855,7 +856,7 @@ function SeasonHistoryTab({
                         left: `${String(leftPct)}%`,
                         width: `${String(widthPct)}%`,
                       }}
-                      title={`${format(parseISO(p.datePlanted), "MMM d, yyyy")}${p.dateRemoved ? ` – ${format(parseISO(p.dateRemoved), "MMM d, yyyy")}` : " – present"}`}
+                      title={`${formatDate(parseISO(p.datePlanted), "d. MMM yyyy")}${p.dateRemoved ? ` - ${formatDate(parseISO(p.dateRemoved), "d. MMM yyyy")}` : " - heute"}`}
                     />
                   </div>
                 </div>
@@ -863,8 +864,8 @@ function SeasonHistoryTab({
             })}
             {/* Timeline axis labels */}
             <div className="flex justify-between text-[10px] text-text-muted">
-              <span>{format(new Date(minTime), "MMM yyyy")}</span>
-              <span>{format(new Date(maxTime), "MMM yyyy")}</span>
+              <span>{formatDate(new Date(minTime), "MMM yyyy")}</span>
+              <span>{formatDate(new Date(maxTime), "MMM yyyy")}</span>
             </div>
           </div>
         </Card>
@@ -873,7 +874,7 @@ function SeasonHistoryTab({
       {/* Season details */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Season Details
+          Saisondetails
         </h2>
         <ul className="mt-3 divide-y divide-border-default">
           {sorted.map((p) => {
@@ -885,7 +886,7 @@ function SeasonHistoryTab({
               <li key={p.id} className="py-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-text-primary">
-                    {seasonMap.get(p.seasonId) ?? "Unknown Season"}
+                    {seasonMap.get(p.seasonId) ?? "Unbekannte Saison"}
                   </span>
                   <Badge
                     variant={
@@ -904,27 +905,27 @@ function SeasonHistoryTab({
                 <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
                   {p.datePlanted && (
                     <div className="flex justify-between">
-                      <dt className="text-xs text-text-muted">Planted</dt>
+                      <dt className="text-xs text-text-muted">Gepflanzt</dt>
                       <dd className="text-xs text-text-secondary">
-                        {format(parseISO(p.datePlanted), "MMM d, yyyy")}
+                        {formatDate(parseISO(p.datePlanted), "d. MMM yyyy")}
                       </dd>
                     </div>
                   )}
                   {p.dateRemoved && (
                     <div className="flex justify-between">
-                      <dt className="text-xs text-text-muted">Removed</dt>
+                      <dt className="text-xs text-text-muted">Entfernt</dt>
                       <dd className="text-xs text-text-secondary">
-                        {format(parseISO(p.dateRemoved), "MMM d, yyyy")}
+                        {formatDate(parseISO(p.dateRemoved), "d. MMM yyyy")}
                       </dd>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <dt className="text-xs text-text-muted">Journal entries</dt>
+                    <dt className="text-xs text-text-muted">Journaleintraege</dt>
                     <dd className="text-xs text-text-secondary">{String(journalCount)}</dd>
                   </div>
                   {harvestWeight > 0 && (
                     <div className="flex justify-between">
-                      <dt className="text-xs text-text-muted">Harvest</dt>
+                      <dt className="text-xs text-text-muted">Ernte</dt>
                       <dd className="text-xs text-text-secondary">
                         {harvestWeight >= 1000
                           ? `${(harvestWeight / 1000).toFixed(1)} kg`

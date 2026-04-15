@@ -36,15 +36,15 @@ const textareaClass =
 // ─── Field labels for Zod error messages ───
 
 const FIELD_LABELS: Record<string, string> = {
-  activityType: "Activity Type",
-  body: "Body",
-  title: "Title",
-  plantInstanceId: "Plant",
-  bedId: "Garden Bed",
-  photoIds: "Photos",
-  isMilestone: "Milestone",
-  milestoneType: "Milestone Type",
-  harvestWeight: "Harvest Weight",
+  activityType: "Aktivitaetstyp",
+  body: "Inhalt",
+  title: "Titel",
+  plantInstanceId: "Pflanze",
+  bedId: "Gartenbeet",
+  photoIds: "Fotos",
+  isMilestone: "Meilenstein",
+  milestoneType: "Meilensteintyp",
+  harvestWeight: "Erntegewicht",
 };
 
 // ─── Component ───
@@ -150,13 +150,13 @@ export default function JournalEntryFormPage() {
     // Client-side validation
     const validationErrors: string[] = [];
     if (!activityType) {
-      validationErrors.push("Activity type is required.");
+      validationErrors.push("Bitte einen Aktivitaetstyp auswaehlen.");
     }
     if (!body.trim()) {
-      validationErrors.push("Body text is required.");
+      validationErrors.push("Der Inhalt ist erforderlich.");
     }
     if (isMilestone && !milestoneType) {
-      validationErrors.push("Select a milestone type.");
+      validationErrors.push("Bitte einen Meilensteintyp auswaehlen.");
     }
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
@@ -187,7 +187,7 @@ export default function JournalEntryFormPage() {
       // Determine season: keep existing in edit mode, otherwise use active
       const seasonId = isEdit ? existingSeasonId : activeSeason?.id;
       if (!seasonId) {
-        setErrors(["No active season found. Create one in Settings."]);
+        setErrors(["Keine aktive Saison gefunden. Bitte in den Einstellungen eine Saison anlegen."]);
         setSaving(false);
         return;
       }
@@ -248,13 +248,13 @@ export default function JournalEntryFormPage() {
             const label =
               typeof field === "string"
                 ? (FIELD_LABELS[field] ?? field)
-                : "Field";
+                : "Feld";
             return `${label}: ${issue.message}`;
           }),
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to save entry.";
+          err instanceof Error ? err.message : "Eintrag konnte nicht gespeichert werden.";
         setErrors([message]);
       }
     } finally {
@@ -270,12 +270,12 @@ export default function JournalEntryFormPage() {
           type="button"
           onClick={() => void navigate(-1)}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Go back"
+          aria-label="Zurueck"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          {isEdit ? "Edit Journal Entry" : "New Journal Entry"}
+          {isEdit ? "Journaleintrag bearbeiten" : "Neuer Journaleintrag"}
         </h1>
       </div>
 
@@ -283,12 +283,12 @@ export default function JournalEntryFormPage() {
         {/* Activity Type (required) */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Activity Type <span className="text-terracotta-500">*</span>
+            Aktivitaetstyp <span className="text-terracotta-500">*</span>
           </h2>
           <div
             className="mt-3 flex flex-wrap gap-2"
             role="group"
-            aria-label="Activity type"
+            aria-label="Aktivitaetstyp"
           >
             {ALL_ACTIVITY_TYPES.map((type) => (
               <button
@@ -320,7 +320,7 @@ export default function JournalEntryFormPage() {
                 htmlFor="plant"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Plant
+                Pflanze
               </label>
               <select
                 id="plant"
@@ -328,7 +328,7 @@ export default function JournalEntryFormPage() {
                 onChange={(e) => setPlantId(e.target.value)}
                 className={selectClass}
               >
-                <option value="">None (optional)</option>
+                <option value="">Keine (optional)</option>
                 {plants?.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nickname ?? p.species}
@@ -343,7 +343,7 @@ export default function JournalEntryFormPage() {
                 htmlFor="bed"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Garden Bed
+                Gartenbeet
               </label>
               <select
                 id="bed"
@@ -351,7 +351,7 @@ export default function JournalEntryFormPage() {
                 onChange={(e) => setBedId(e.target.value)}
                 className={selectClass}
               >
-                <option value="">None (optional)</option>
+                <option value="">Keines (optional)</option>
                 {gardenBeds?.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
@@ -366,12 +366,12 @@ export default function JournalEntryFormPage() {
                 htmlFor="title"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Title
+                Titel
               </label>
               <Input
                 id="title"
                 type="text"
-                placeholder="Optional title"
+                placeholder="Optionaler Titel"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -383,13 +383,13 @@ export default function JournalEntryFormPage() {
                 htmlFor="body"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Body <span className="text-terracotta-500">*</span>
+                Inhalt <span className="text-terracotta-500">*</span>
               </label>
               <textarea
                 id="body"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="What happened?"
+                placeholder="Was ist passiert?"
                 rows={4}
                 className={textareaClass}
               />
@@ -401,7 +401,7 @@ export default function JournalEntryFormPage() {
                 htmlFor="is-milestone"
                 className="text-sm font-medium text-text-secondary"
               >
-                Milestone
+                Meilenstein
               </label>
               <button
                 type="button"
@@ -431,7 +431,7 @@ export default function JournalEntryFormPage() {
                   htmlFor="milestone-type"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Milestone Type <span className="text-terracotta-500">*</span>
+                  Meilensteintyp <span className="text-terracotta-500">*</span>
                 </label>
                 <select
                   id="milestone-type"
@@ -441,7 +441,7 @@ export default function JournalEntryFormPage() {
                   }
                   className={selectClass}
                 >
-                  <option value="">Select type...</option>
+                  <option value="">Typ auswaehlen...</option>
                   {MILESTONE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -458,14 +458,14 @@ export default function JournalEntryFormPage() {
                   htmlFor="harvest-weight"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Harvest Weight (g)
+                  Erntegewicht (g)
                 </label>
                 <Input
                   id="harvest-weight"
                   type="number"
                   min="0"
                   step="any"
-                  placeholder="Weight in grams"
+                  placeholder="Gewicht in Gramm"
                   value={harvestWeight}
                   onChange={(e) => setHarvestWeight(e.target.value)}
                 />
@@ -477,7 +477,7 @@ export default function JournalEntryFormPage() {
         {/* Photos */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Photos
+            Fotos
           </h2>
 
           {/* Photo previews */}
@@ -487,14 +487,14 @@ export default function JournalEntryFormPage() {
                 <div key={url} className="relative">
                   <img
                     src={url}
-                    alt={`Photo ${i + 1}`}
+                    alt={`Foto ${i + 1}`}
                     className="h-24 w-24 rounded-lg object-cover"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemovePhoto(i)}
                     className="absolute -top-1 -right-1 rounded-full bg-soil-900/60 p-1 text-white transition-colors hover:bg-soil-900/80"
-                    aria-label={`Remove photo ${i + 1}`}
+                    aria-label={`Foto ${i + 1} entfernen`}
                   >
                     <CloseIcon className="h-3 w-3" />
                   </button>
@@ -512,7 +512,7 @@ export default function JournalEntryFormPage() {
               onClick={() => void handlePhoto(capturePhoto)}
             >
               <CameraIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
-              {isProcessing ? "Processing..." : "Take Photo"}
+              {isProcessing ? "Verarbeitet..." : "Foto aufnehmen"}
             </Button>
             <Button
               type="button"
@@ -521,7 +521,7 @@ export default function JournalEntryFormPage() {
               onClick={() => void handlePhoto(selectPhoto)}
             >
               <ImageIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
-              {isProcessing ? "Processing..." : "Choose"}
+              {isProcessing ? "Verarbeitet..." : "Auswaehlen"}
             </Button>
           </div>
           {photoError && (
@@ -545,14 +545,14 @@ export default function JournalEntryFormPage() {
         {/* Submit */}
         <div className="flex gap-3">
           <Button type="submit" disabled={saving || !loaded}>
-            {saving ? "Saving..." : isEdit ? "Update Entry" : "Save Entry"}
+            {saving ? "Speichert..." : isEdit ? "Eintrag aktualisieren" : "Eintrag speichern"}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => void navigate("/journal")}
           >
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>

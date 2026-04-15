@@ -1,10 +1,10 @@
 import type { QuantityUnit } from "../validation/seed.schema.ts";
 
 export const QUANTITY_UNIT_LABELS: Record<QuantityUnit, string> = {
-  packets: "Packets",
-  grams: "Grams",
-  ounces: "Ounces",
-  count: "Count",
+  packets: "Tueten",
+  grams: "Gramm",
+  ounces: "Unzen",
+  count: "Stueck",
 };
 
 export const ALL_QUANTITY_UNITS: QuantityUnit[] = [
@@ -21,9 +21,9 @@ export const QUANTITY_UNIT_OPTIONS: { value: QuantityUnit; label: string }[] =
 export type SeedTypeFilter = "vegetable" | "herb" | "flower";
 
 export const SEED_TYPE_FILTER_LABELS: Record<SeedTypeFilter, string> = {
-  vegetable: "Vegetable",
-  herb: "Herb",
-  flower: "Flower",
+  vegetable: "Gemuese",
+  herb: "Kraeuter",
+  flower: "Blumen",
 };
 
 export const ALL_SEED_TYPE_FILTERS: SeedTypeFilter[] = [

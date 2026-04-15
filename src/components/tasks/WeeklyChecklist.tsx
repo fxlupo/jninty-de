@@ -3,13 +3,13 @@ import {
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  format,
   formatISO,
   isSameDay,
 } from "date-fns";
 import ScheduleTaskItem from "./ScheduleTaskItem.tsx";
 import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
 import type { Task } from "../../types";
+import { formatDate } from "../../lib/locale";
 
 interface WeeklyChecklistProps {
   scheduleTasks: ScheduleTask[];
@@ -46,7 +46,7 @@ export default function WeeklyChecklist({
       return {
         date,
         dateStr,
-        label: format(date, "EEEE, MMM d"),
+        label: formatDate(date, "EEEE, d. MMM"),
         isToday: isSameDay(date, now),
         scheduleTasks: scheduleTasks.filter((t) => t.scheduledDate === dateStr),
         manualTasks: manualTasks.filter((t) => t.dueDate === dateStr),
@@ -60,8 +60,8 @@ export default function WeeklyChecklist({
   return (
     <div>
       <h2 className="font-display text-base font-semibold text-text-heading">
-        This Week &mdash; {format(weekStart, "MMM d")}&ndash;
-        {format(weekEnd, "MMM d, yyyy")}
+        Diese Woche - {formatDate(weekStart, "d. MMM")}&ndash;
+        {formatDate(weekEnd, "d. MMM yyyy")}
       </h2>
 
       <div className="mt-3 space-y-4">
@@ -76,12 +76,12 @@ export default function WeeklyChecklist({
                 }`}
               >
                 {day.label}
-                {day.isToday && " (Today)"}
+                {day.isToday && " (Heute)"}
               </h3>
 
               {taskCount === 0 ? (
                 <p className="mt-1 text-xs italic text-text-muted">
-                  No tasks
+                  Keine Aufgaben
                 </p>
               ) : (
                 <div className="mt-1.5 space-y-1.5">
@@ -102,7 +102,7 @@ export default function WeeklyChecklist({
                         type="button"
                         onClick={() => onCompleteManualTask(task)}
                         aria-label={
-                          task.isCompleted ? "Mark incomplete" : "Mark complete"
+                          task.isCompleted ? "Als unvollstaendig markieren" : "Als erledigt markieren"
                         }
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-border-strong transition-colors hover:border-focus-ring"
                       >

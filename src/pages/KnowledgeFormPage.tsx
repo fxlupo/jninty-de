@@ -24,18 +24,18 @@ const selectClass =
 // ─── Field label map ───
 
 const FIELD_LABELS: Record<string, string> = {
-  species: "Species",
-  commonName: "Common Name",
-  variety: "Variety",
-  plantType: "Plant Type",
-  isPerennial: "Perennial",
-  sunNeeds: "Sun Needs",
-  waterNeeds: "Water Needs",
-  soilPreference: "Soil Preference",
-  growthRate: "Growth Rate",
-  spacingInches: "Spacing",
-  matureHeightInches: "Height",
-  matureSpreadInches: "Spread",
+  species: "Artname",
+  commonName: "Trivialname",
+  variety: "Sorte",
+  plantType: "Pflanzentyp",
+  isPerennial: "Mehrjaehrig",
+  sunNeeds: "Sonnenbedarf",
+  waterNeeds: "Wasserbedarf",
+  soilPreference: "Boden",
+  growthRate: "Wachstum",
+  spacingInches: "Abstand",
+  matureHeightInches: "Hoehe",
+  matureSpreadInches: "Breite",
 };
 
 // ─── Component ───
@@ -163,7 +163,7 @@ export default function KnowledgeFormPage() {
     setErrors([]);
 
     if (!species.trim() || !commonName.trim()) {
-      setErrors(["Species and Common Name are required."]);
+      setErrors(["Artname und Trivialname sind erforderlich."]);
       return;
     }
 
@@ -261,7 +261,7 @@ export default function KnowledgeFormPage() {
         entry = await userPlantKnowledgeRepository.create(input);
       }
 
-      toast(isEditing ? "Entry updated" : "Entry created", "success");
+      toast(isEditing ? "Eintrag aktualisiert" : "Eintrag erstellt", "success");
       void navigate(`/knowledge/${entry.id}`, { replace: true });
     } catch (err) {
       if (err instanceof ZodError) {
@@ -271,13 +271,13 @@ export default function KnowledgeFormPage() {
             const label =
               typeof field === "string"
                 ? (FIELD_LABELS[field] ?? field)
-                : "Field";
+                : "Feld";
             return `${label}: ${issue.message}`;
           }),
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to save entry.";
+          err instanceof Error ? err.message : "Eintrag konnte nicht gespeichert werden.";
         setErrors([message]);
       }
     } finally {
@@ -290,7 +290,7 @@ export default function KnowledgeFormPage() {
       <div
         className="mx-auto max-w-2xl p-4"
         role="status"
-        aria-label="Loading form"
+        aria-label="Formular wird geladen"
       >
         <Skeleton className="h-8 w-40" />
         <div className="mt-6 space-y-6">
@@ -311,12 +311,12 @@ export default function KnowledgeFormPage() {
           type="button"
           onClick={() => void navigate(backPath)}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Go back"
+          aria-label="Zurueck"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          {isEditing ? "Edit Knowledge Entry" : "Add Knowledge Entry"}
+          {isEditing ? "Wissenseintrag bearbeiten" : "Wissenseintrag hinzufuegen"}
         </h1>
       </div>
 
@@ -324,7 +324,7 @@ export default function KnowledgeFormPage() {
         {/* Basic Info */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Basic Info
+            Grunddaten
           </h2>
           <div className="mt-4 space-y-4">
             <div>
@@ -332,12 +332,12 @@ export default function KnowledgeFormPage() {
                 htmlFor="species"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Species <span className="text-terracotta-500">*</span>
+                Artname <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="species"
                 type="text"
-                placeholder="e.g. Solanum lycopersicum"
+                placeholder="z. B. Solanum lycopersicum"
                 value={species}
                 onChange={(e) => setSpecies(e.target.value)}
               />
@@ -347,12 +347,12 @@ export default function KnowledgeFormPage() {
                 htmlFor="commonName"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Common Name <span className="text-terracotta-500">*</span>
+                Trivialname <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="commonName"
                 type="text"
-                placeholder="e.g. Tomato"
+                placeholder="z. B. Tomate"
                 value={commonName}
                 onChange={(e) => setCommonName(e.target.value)}
               />
@@ -362,12 +362,12 @@ export default function KnowledgeFormPage() {
                 htmlFor="variety"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Variety
+                Sorte
               </label>
               <Input
                 id="variety"
                 type="text"
-                placeholder="e.g. Roma"
+                placeholder="z. B. Roma"
                 value={variety}
                 onChange={(e) => setVariety(e.target.value)}
               />
@@ -377,7 +377,7 @@ export default function KnowledgeFormPage() {
                 htmlFor="plantType"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Plant Type <span className="text-terracotta-500">*</span>
+                Pflanzentyp <span className="text-terracotta-500">*</span>
               </label>
               <select
                 id="plantType"
@@ -397,7 +397,7 @@ export default function KnowledgeFormPage() {
                 htmlFor="isPerennial"
                 className="text-sm font-medium text-text-secondary"
               >
-                Perennial <span className="text-terracotta-500">*</span>
+                Mehrjaehrig <span className="text-terracotta-500">*</span>
               </label>
               <button
                 type="button"
@@ -422,7 +422,7 @@ export default function KnowledgeFormPage() {
         {/* Care Requirements */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Care Requirements
+            Pflegebedarf
           </h2>
           <div className="mt-4 space-y-4">
             <div>
@@ -430,7 +430,7 @@ export default function KnowledgeFormPage() {
                 htmlFor="sunNeeds"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Sun Needs <span className="text-terracotta-500">*</span>
+                Sonnenbedarf <span className="text-terracotta-500">*</span>
               </label>
               <select
                 id="sunNeeds"
@@ -450,7 +450,7 @@ export default function KnowledgeFormPage() {
                 htmlFor="waterNeeds"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Water Needs <span className="text-terracotta-500">*</span>
+                Wasserbedarf <span className="text-terracotta-500">*</span>
               </label>
               <select
                 id="waterNeeds"
@@ -470,12 +470,12 @@ export default function KnowledgeFormPage() {
                 htmlFor="soilPreference"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Soil Preference
+                Boden
               </label>
               <Input
                 id="soilPreference"
                 type="text"
-                placeholder="e.g. Well-drained, loamy"
+                placeholder="z. B. durchlaessig, lehmig"
                 value={soilPreference}
                 onChange={(e) => setSoilPreference(e.target.value)}
               />
@@ -485,7 +485,7 @@ export default function KnowledgeFormPage() {
                 htmlFor="growthRate"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Growth Rate
+                Wachstum
               </label>
               <select
                 id="growthRate"
@@ -495,7 +495,7 @@ export default function KnowledgeFormPage() {
                 }
                 className={selectClass}
               >
-                <option value="">Not specified</option>
+                <option value="">Nicht angegeben</option>
                 {GROWTH_RATE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -509,7 +509,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="spacingInches"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Spacing (in)
+                  Abstand (Zoll)
                 </label>
                 <Input
                   id="spacingInches"
@@ -525,7 +525,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="heightInches"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Height (in)
+                  Hoehe (Zoll)
                 </label>
                 <Input
                   id="heightInches"
@@ -541,7 +541,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="spreadInches"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Spread (in)
+                  Breite (Zoll)
                 </label>
                 <Input
                   id="spreadInches"
@@ -559,7 +559,7 @@ export default function KnowledgeFormPage() {
         {/* Planting Timing */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Planting Timing
+            Pflanzzeitpunkte
           </h2>
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -568,7 +568,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="indoorStart"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Indoor Start (wks before frost)
+                  Vorkultur (Wochen vor Frost)
                 </label>
                 <Input
                   id="indoorStart"
@@ -583,7 +583,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="transplant"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Transplant (wks after frost)
+                  Auspflanzen (Wochen nach Frost)
                 </label>
                 <Input
                   id="transplant"
@@ -600,7 +600,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="directSowBefore"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Direct Sow (wks before frost)
+                  Direktsaat (Wochen vor Frost)
                 </label>
                 <Input
                   id="directSowBefore"
@@ -615,7 +615,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="directSowAfter"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Direct Sow (wks after frost)
+                  Direktsaat (Wochen nach Frost)
                 </label>
                 <Input
                   id="directSowAfter"
@@ -632,7 +632,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="germination"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Days to Germination
+                  Tage bis zur Keimung
                 </label>
                 <Input
                   id="germination"
@@ -648,7 +648,7 @@ export default function KnowledgeFormPage() {
                   htmlFor="maturity"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Days to Maturity
+                  Tage bis zur Reife
                 </label>
                 <Input
                   id="maturity"
@@ -666,7 +666,7 @@ export default function KnowledgeFormPage() {
         {/* Companions & Issues */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Companions & Issues
+            Nachbarn und Probleme
           </h2>
           <div className="mt-4 space-y-4">
             <div>
@@ -674,17 +674,17 @@ export default function KnowledgeFormPage() {
                 htmlFor="goodCompanions"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Good Companions
+                Gute Nachbarn
               </label>
               <Input
                 id="goodCompanions"
                 type="text"
-                placeholder="e.g. Basil, Carrots, Marigold"
+                placeholder="z. B. Basilikum, Moehren, Tagetes"
                 value={goodCompanions}
                 onChange={(e) => setGoodCompanions(e.target.value)}
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Separate with commas
+                Mit Kommas trennen
               </p>
             </div>
             <div>
@@ -692,17 +692,17 @@ export default function KnowledgeFormPage() {
                 htmlFor="badCompanions"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Bad Companions
+                Schlechte Nachbarn
               </label>
               <Input
                 id="badCompanions"
                 type="text"
-                placeholder="e.g. Fennel, Brassicas"
+                placeholder="z. B. Fenchel, Kohl"
                 value={badCompanions}
                 onChange={(e) => setBadCompanions(e.target.value)}
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Separate with commas
+                Mit Kommas trennen
               </p>
             </div>
             <div>
@@ -710,17 +710,17 @@ export default function KnowledgeFormPage() {
                 htmlFor="commonPests"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Common Pests
+                Haeufige Schaedlinge
               </label>
               <Input
                 id="commonPests"
                 type="text"
-                placeholder="e.g. Aphids, Hornworms"
+                placeholder="z. B. Blattlaeuse, Raupen"
                 value={commonPests}
                 onChange={(e) => setCommonPests(e.target.value)}
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Separate with commas
+                Mit Kommas trennen
               </p>
             </div>
             <div>
@@ -728,17 +728,17 @@ export default function KnowledgeFormPage() {
                 htmlFor="commonDiseases"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Common Diseases
+                Haeufige Krankheiten
               </label>
               <Input
                 id="commonDiseases"
                 type="text"
-                placeholder="e.g. Blight, Powdery Mildew"
+                placeholder="z. B. Krautfaeule, Echter Mehltau"
                 value={commonDiseases}
                 onChange={(e) => setCommonDiseases(e.target.value)}
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Separate with commas
+                Mit Kommas trennen
               </p>
             </div>
           </div>
@@ -759,17 +759,17 @@ export default function KnowledgeFormPage() {
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
             {saving
-              ? "Saving..."
+              ? "Speichert..."
               : isEditing
-                ? "Save Changes"
-                : "Add Entry"}
+                ? "Aenderungen speichern"
+                : "Eintrag hinzufuegen"}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => void navigate(backPath)}
           >
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>

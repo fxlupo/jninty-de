@@ -2,9 +2,9 @@ import type { TaskPriority } from "../types/index.ts";
 import type { BadgeVariant } from "./plantLabels.ts";
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  urgent: "Urgent",
+  urgent: "Dringend",
   normal: "Normal",
-  low: "Low",
+  low: "Niedrig",
 };
 
 export const PRIORITY_VARIANT: Record<TaskPriority, BadgeVariant> = {

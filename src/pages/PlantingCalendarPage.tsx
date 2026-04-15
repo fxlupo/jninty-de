@@ -15,6 +15,7 @@ import {
   isSameDay,
   isWithinInterval,
 } from "date-fns";
+import { de } from "date-fns/locale";
 import { useSettings } from "../hooks/useSettings";
 import { plantRepository, plantingRepository, seasonRepository, taskRepository, scheduleTaskRepository } from "../db/index.ts";
 import { getBySpecies } from "../services/knowledgeBase";
@@ -38,6 +39,7 @@ import Skeleton from "../components/ui/Skeleton";
 import type { PlantInstance } from "../validation/plantInstance.schema";
 import type { Task } from "../validation/task.schema";
 import type { ScheduleTask } from "../validation/scheduleTask.schema.ts";
+import { formatDate } from "../lib/locale";
 
 // ─── Window color config ───
 
@@ -52,35 +54,35 @@ interface WindowType {
 const WINDOW_TYPES: WindowType[] = [
   {
     key: "indoorStart",
-    label: "Indoor Seed Start",
+    label: "Vorkultur",
     bgClass: "bg-blue-100",
     dotClass: "bg-blue-500",
     textClass: "text-blue-700",
   },
   {
     key: "directSow",
-    label: "Direct Sow",
+    label: "Direktsaat",
     bgClass: "bg-emerald-100",
     dotClass: "bg-emerald-500",
     textClass: "text-emerald-700",
   },
   {
     key: "transplant",
-    label: "Transplant",
+    label: "Pflanzen",
     bgClass: "bg-purple-100",
     dotClass: "bg-purple-500",
     textClass: "text-purple-700",
   },
   {
     key: "estimatedHarvest",
-    label: "Harvest",
+    label: "Ernte",
     bgClass: "bg-amber-100",
     dotClass: "bg-amber-500",
     textClass: "text-amber-700",
   },
 ];
 
-const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEK_DAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 // ─── Types ───
 
@@ -305,7 +307,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
         }
       }
     } catch {
-      toast("Failed to update task", "error");
+      toast("Aufgabe konnte nicht aktualisiert werden", "error");
     }
   }, [completeWithPropagation, toast]);
 
@@ -319,7 +321,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
     allScheduleTasks === undefined
   ) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 p-4" role="status" aria-label="Loading calendar">
+      <div className="mx-auto max-w-2xl space-y-4 p-4" role="status" aria-label="Kalender wird geladen">
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-80 w-full" />
       </div>
@@ -333,7 +335,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
     <div className="mx-auto max-w-2xl p-4">
       {/* Header */}
       <h1 className="font-display text-2xl font-bold text-text-heading">
-        Planting Calendar
+        Pflanzkalender
       </h1>
 
       {/* Frost warning */}
@@ -342,11 +344,11 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
           <div className="flex items-center gap-2">
             <span className="text-lg">{"\u2744\uFE0F"}</span>
             <div>
-              <p className="text-sm font-bold text-red-800">Frost Warning</p>
+              <p className="text-sm font-bold text-red-800">Frostwarnung</p>
               <p className="text-xs text-red-600">
-                Tonight&apos;s low is{" "}
-                {formatTemp(weather.lowC, settings.temperatureUnit)} — protect
-                sensitive plants
+                Heute Nacht wird es voraussichtlich{" "}
+                {formatTemp(weather.lowC, settings.temperatureUnit)} kalt. Bitte
+                empfindliche Pflanzen schuetzen.
               </p>
             </div>
           </div>
@@ -357,17 +359,17 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
       <div className="mt-4 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          aria-label="Previous month"
+          aria-label="Vorheriger Monat"
           className="rounded-lg p-2 text-text-heading transition-colors hover:bg-surface-muted"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          {format(currentMonth, "MMMM yyyy")}
+          {format(currentMonth, "MMMM yyyy", { locale: de })}
         </h2>
         <button
           onClick={nextMonth}
-          aria-label="Next month"
+          aria-label="Naechster Monat"
           className="rounded-lg p-2 text-text-heading transition-colors hover:bg-surface-muted"
         >
           <ChevronRightIcon className="h-5 w-5" />
@@ -384,11 +386,11 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
         ))}
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-          <span className="text-text-secondary">Frost dates</span>
+          <span className="text-text-secondary">Frosttermine</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-2 w-2 rotate-45 bg-brown-600" />
-          <span className="text-text-secondary">Tasks</span>
+          <span className="text-text-secondary">Aufgaben</span>
         </span>
       </div>
 
@@ -514,11 +516,11 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
         <div className="flex items-center gap-3 text-sm">
           <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
           <div className="text-text-secondary">
-            <span className="font-medium text-text-primary">Last frost:</span>{" "}
-            {format(lastFrostDate, "MMMM d, yyyy")}
+            <span className="font-medium text-text-primary">Letzter Frost:</span>{" "}
+            {formatDate(lastFrostDate, "d. MMMM yyyy")}
             <span className="mx-2 text-text-muted">|</span>
-            <span className="font-medium text-text-primary">First frost:</span>{" "}
-            {format(firstFrostDate, "MMMM d, yyyy")}
+            <span className="font-medium text-text-primary">Erster Frost:</span>{" "}
+            {formatDate(firstFrostDate, "d. MMMM yyyy")}
           </div>
         </div>
       </Card>
@@ -557,7 +559,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
           {selectedDayScheduleTasks.length > 0 && (
             <div className="mt-3 space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-                Schedule Tasks
+                Geplante Aufgaben
               </p>
               {selectedDayScheduleTasks.map((task) => (
                 <div
@@ -605,7 +607,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
           {selectedDayTasks.length > 0 && (
             <div className="mt-3 space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-                Tasks
+                Aufgaben
               </p>
               {selectedDayTasks.map((task) => (
                 <div
@@ -630,7 +632,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
         selectedDayScheduleTasks.length === 0 && (
         <Card className="mt-4">
           <p className="text-center text-sm text-text-secondary">
-            No planting windows or tasks on {format(selectedDay, "MMMM d")}.
+            Keine Pflanzfenster oder Aufgaben am {formatDate(selectedDay, "d. MMMM")}.
           </p>
         </Card>
       )}
@@ -639,7 +641,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
       {calendarPlants.length > 0 && (
         <section className="mt-6">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Plant Windows
+            Pflanzfenster
           </h2>
           <div className="mt-2 space-y-2">
             {calendarPlants.map((cp) => (
@@ -660,7 +662,7 @@ export default function PlantingCalendarPage({ initialMonth }: PlantingCalendarP
                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${wt.bgClass} ${wt.textClass}`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${wt.dotClass}`} />
-                        {wt.label}: {format(window.start, "MMM d")} – {format(window.end, "MMM d")}
+                        {wt.label}: {formatDate(window.start, "d. MMM")} - {formatDate(window.end, "d. MMM")}
                       </span>
                     );
                   })}

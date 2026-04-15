@@ -15,41 +15,41 @@ export type BadgeVariant = "default" | "success" | "warning" | "danger";
 // ─── Label maps ───
 
 export const TYPE_LABELS: Record<PlantType, string> = {
-  vegetable: "Vegetable",
-  herb: "Herb",
-  flower: "Flower",
-  ornamental: "Ornamental",
-  fruit_tree: "Fruit Tree",
-  berry: "Berry",
-  other: "Other",
+  vegetable: "Gemuese",
+  herb: "Kraeuter",
+  flower: "Blume",
+  ornamental: "Zierpflanze",
+  fruit_tree: "Obstbaum",
+  berry: "Beere",
+  other: "Sonstiges",
 };
 
 export const STATUS_LABELS: Record<PlantStatus, string> = {
-  active: "Active",
-  dormant: "Dormant",
-  harvested: "Harvested",
-  removed: "Removed",
-  dead: "Dead",
+  active: "Aktiv",
+  dormant: "Ruhend",
+  harvested: "Geerntet",
+  removed: "Entfernt",
+  dead: "Abgestorben",
 };
 
 export const SOURCE_LABELS: Record<PlantSource, string> = {
-  seed: "Seed",
-  nursery: "Nursery",
-  cutting: "Cutting",
-  gift: "Gift",
-  unknown: "Unknown",
+  seed: "Saatgut",
+  nursery: "Gaertnerei",
+  cutting: "Steckling",
+  gift: "Geschenk",
+  unknown: "Unbekannt",
 };
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  watering: "Watering",
-  fertilizing: "Fertilizing",
-  pruning: "Pruning",
-  pest: "Pest",
-  disease: "Disease",
-  harvest: "Harvest",
-  transplant: "Transplant",
-  milestone: "Milestone",
-  general: "General",
+  watering: "Giessen",
+  fertilizing: "Duengen",
+  pruning: "Rueckschnitt",
+  pest: "Schaedlinge",
+  disease: "Krankheit",
+  harvest: "Ernte",
+  transplant: "Umpflanzen",
+  milestone: "Meilenstein",
+  general: "Allgemein",
 };
 
 // ─── Badge variant maps ───
@@ -86,11 +86,11 @@ export const TYPE_OPTIONS: { value: PlantType; label: string }[] =
   ALL_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }));
 
 export const SOURCE_OPTIONS: { value: PlantSource; label: string }[] = [
-  { value: "seed", label: "Seed" },
-  { value: "nursery", label: "Nursery" },
-  { value: "cutting", label: "Cutting" },
-  { value: "gift", label: "Gift" },
-  { value: "unknown", label: "Unknown" },
+  { value: "seed", label: "Saatgut" },
+  { value: "nursery", label: "Gaertnerei" },
+  { value: "cutting", label: "Steckling" },
+  { value: "gift", label: "Geschenk" },
+  { value: "unknown", label: "Unbekannt" },
 ];
 
 export const STATUS_OPTIONS: { value: PlantStatus; label: string }[] =
@@ -116,11 +116,11 @@ export const ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] =
 // ─── Milestone labels ───
 
 export const MILESTONE_LABELS: Record<MilestoneType, string> = {
-  first_sprout: "First Sprout",
-  first_flower: "First Flower",
-  first_fruit: "First Fruit",
-  peak_harvest: "Peak Harvest",
-  other: "Other",
+  first_sprout: "Erster Keimling",
+  first_flower: "Erste Bluete",
+  first_fruit: "Erste Frucht",
+  peak_harvest: "Haupternte",
+  other: "Sonstiges",
 };
 
 export const ALL_MILESTONE_TYPES: MilestoneType[] = [

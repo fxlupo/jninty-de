@@ -1,8 +1,9 @@
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import Card from "../ui/Card.tsx";
 import { CheckIcon } from "../icons.tsx";
 import { TASK_TYPE_COLORS, TASK_TYPE_LABELS } from "../calendar/taskTypeColors.ts";
 import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
+import { formatDate } from "../../lib/locale";
 
 interface ScheduleTaskItemProps {
   task: ScheduleTask;
@@ -15,7 +16,7 @@ export default function ScheduleTaskItem({
   isOverdue,
   onComplete,
 }: ScheduleTaskItemProps) {
-  const dueDateFormatted = format(parseISO(task.scheduledDate), "MMM d");
+  const dueDateFormatted = formatDate(parseISO(task.scheduledDate), "d. MMM");
   const color = TASK_TYPE_COLORS[task.taskType];
   const typeLabel = TASK_TYPE_LABELS[task.taskType];
 
@@ -35,7 +36,7 @@ export default function ScheduleTaskItem({
             e.stopPropagation();
             onComplete();
           }}
-          aria-label={task.isCompleted ? "Mark incomplete" : "Mark complete"}
+          aria-label={task.isCompleted ? "Als unvollstaendig markieren" : "Als erledigt markieren"}
           className="flex h-11 w-11 -m-3 shrink-0 items-center justify-center"
         >
           <span
@@ -79,7 +80,7 @@ export default function ScheduleTaskItem({
                   : "text-text-secondary"
               }
             >
-              {isOverdue && !task.isCompleted ? "Overdue \u2014 " : ""}
+              {isOverdue && !task.isCompleted ? "Ueberfaellig - " : ""}
               {dueDateFormatted}
             </span>
             <span className="truncate text-text-muted">

@@ -242,22 +242,22 @@ interface NavItem {
 
 function getPrimaryNav(calendarBadge: number): NavItem[] {
   return [
-    { to: "/", label: "Home", icon: HomeIcon },
-    { to: "/plants", label: "Plants", icon: PlantIcon },
+    { to: "/", label: "Start", icon: HomeIcon },
+    { to: "/plants", label: "Pflanzen", icon: PlantIcon },
     // Quick Log is rendered separately (center prominent button)
-    { to: "/calendar", label: "Calendar", icon: CalendarIcon, badge: calendarBadge },
-    { to: "/map", label: "Map", icon: MapIcon },
+    { to: "/calendar", label: "Kalender", icon: CalendarIcon, badge: calendarBadge },
+    { to: "/map", label: "Karte", icon: MapIcon },
   ];
 }
 
 function getSecondaryNav(overdueCount: number): NavItem[] {
   return [
     { to: "/journal", label: "Journal", icon: JournalIcon },
-    { to: "/seeds", label: "Seed Bank", icon: SeedNavIcon },
-    { to: "/knowledge", label: "Knowledge", icon: BookIcon },
-    { to: "/expenses", label: "Expenses", icon: ExpenseIcon },
-    { to: "/tasks", label: "Tasks", icon: TaskIcon, badge: overdueCount },
-    { to: "/settings", label: "Settings", icon: SettingsIcon },
+    { to: "/seeds", label: "Saatgut", icon: SeedNavIcon },
+    { to: "/knowledge", label: "Wissen", icon: BookIcon },
+    { to: "/expenses", label: "Ausgaben", icon: ExpenseIcon },
+    { to: "/tasks", label: "Aufgaben", icon: TaskIcon, badge: overdueCount },
+    { to: "/settings", label: "Einstellungen", icon: SettingsIcon },
   ];
 }
 
@@ -276,7 +276,7 @@ function TabBarLink({ item }: { item: NavItem }) {
       <span className="flex min-w-[3rem] flex-col items-center gap-0.5 px-2 py-1 text-text-muted">
         <item.icon className="h-6 w-6" />
         <span className="text-[10px] leading-tight">{item.label}</span>
-        <span className="text-[8px] leading-tight">Soon</span>
+        <span className="text-[8px] leading-tight">Bald</span>
       </span>
     );
   }
@@ -309,7 +309,7 @@ function SidebarLink({ item }: { item: NavItem }) {
         <item.icon className="h-5 w-5" />
         <span className="text-sm">{item.label}</span>
         <span className="ml-auto rounded-full bg-text-muted/20 px-2 py-0.5 text-[10px]">
-          Soon
+          Bald
         </span>
       </span>
     );
@@ -353,11 +353,11 @@ function SyncStatusDot() {
   };
 
   const labelMap: Record<string, string> = {
-    syncing: "Syncing",
-    paused: "Synced",
-    error: "Sync error",
+    syncing: "Synchronisiert",
+    paused: "Synchronisiert",
+    error: "Sync-Fehler",
     offline: "Offline",
-    disabled: "Sync off",
+    disabled: "Sync aus",
   };
 
   return (
@@ -425,7 +425,7 @@ export default function AppShell() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:rounded focus:bg-primary focus:px-4 focus:py-2 focus:text-text-on-primary"
       >
-        Skip to main content
+        Zum Inhalt springen
       </a>
 
       {/* ── Desktop sidebar ── */}
@@ -442,13 +442,13 @@ export default function AppShell() {
           {authState.isAuthenticated && (
             <button
               type="button"
-              aria-label="Sign Out"
+              aria-label="Abmelden"
               onClick={() => {
                 stopCloudSync();
                 performLogout();
               }}
               className="ml-auto p-1 text-text-on-nav hover:text-text-on-primary transition-colors"
-              title="Sign Out"
+              title="Abmelden"
             >
               <LogOutIcon className="h-4 w-4" />
             </button>
@@ -467,7 +467,7 @@ export default function AppShell() {
             className="mt-2 flex items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             <PlusIcon className="h-5 w-5" />
-            <span>Quick Log</span>
+            <span>Schnellnotiz</span>
           </button>
 
           {/* Divider */}
@@ -503,7 +503,7 @@ export default function AppShell() {
             {authState.isAuthenticated && (
               <button
                 type="button"
-                aria-label="Sign Out"
+                aria-label="Abmelden"
                 onClick={() => {
                   stopCloudSync();
                   performLogout();
@@ -527,7 +527,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/seeds"
-              aria-label="Seed Bank"
+              aria-label="Saatgut"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
               }
@@ -536,7 +536,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/knowledge"
-              aria-label="Knowledge"
+              aria-label="Wissen"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
               }
@@ -545,7 +545,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/expenses"
-              aria-label="Expenses"
+              aria-label="Ausgaben"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
               }
@@ -554,7 +554,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/tasks"
-              aria-label="Tasks"
+              aria-label="Aufgaben"
               className={({ isActive }) =>
                 `relative p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
               }
@@ -568,7 +568,7 @@ export default function AppShell() {
             </NavLink>
             <NavLink
               to="/settings"
-              aria-label="Settings"
+              aria-label="Einstellungen"
               className={({ isActive }) =>
                 `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
               }
@@ -607,14 +607,14 @@ export default function AppShell() {
         {/* Quick Log — center prominent button */}
         <button
           onClick={() => navigate("/quick-log")}
-          aria-label="Quick Log"
+          aria-label="Schnellnotiz"
           className="-mt-4 flex flex-col items-center"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-terracotta-500 shadow-lg transition-transform active:scale-95">
             <PlusIcon className="h-7 w-7 text-white" />
           </span>
           <span className="mt-0.5 text-[10px] leading-tight text-text-on-nav">
-            Log
+            Neu
           </span>
         </button>
 

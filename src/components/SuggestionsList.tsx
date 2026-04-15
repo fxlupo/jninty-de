@@ -1,8 +1,9 @@
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import Card from "./ui/Card";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
 import type { TaskSuggestion } from "../services/taskEngine.ts";
+import { formatDate } from "../lib/locale";
 
 interface SuggestionsListProps {
   suggestions: TaskSuggestion[];
@@ -32,11 +33,11 @@ export default function SuggestionsList({
                 <span className="text-sm font-medium text-text-primary">
                   {s.title}
                 </span>
-                {showBadge && <Badge variant="default">Suggested</Badge>}
+                {showBadge && <Badge variant="default">Vorgeschlagen</Badge>}
               </div>
               <p className="mt-0.5 text-xs text-text-secondary">
-                {plantNames.get(s.plantInstanceId) ?? "Unknown plant"}
-                {" \u00b7 "}Due {format(parseISO(s.dueDate), "MMM d")}
+                {plantNames.get(s.plantInstanceId) ?? "Unbekannte Pflanze"}
+                {" \u00b7 "}Faellig {formatDate(parseISO(s.dueDate), "d. MMM")}
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
@@ -44,7 +45,7 @@ export default function SuggestionsList({
                 size="sm"
                 onClick={() => void onAccept(s)}
               >
-                Add
+                Hinzufuegen
               </Button>
               <Button
                 variant="ghost"
@@ -52,7 +53,7 @@ export default function SuggestionsList({
                 onClick={() => void onDismiss(s)}
                 className="text-text-secondary"
               >
-                Dismiss
+                Ausblenden
               </Button>
             </div>
           </div>

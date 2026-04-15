@@ -37,13 +37,13 @@ export default function KnowledgeCategoryPage() {
     return (
       <div className="p-4 text-center">
         <p className="text-lg font-medium text-text-secondary">
-          Category not found
+          Kategorie nicht gefunden
         </p>
         <Link
           to="/knowledge"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Back to Knowledge Base
+          Zurueck zur Wissensbasis
         </Link>
       </div>
     );
@@ -52,7 +52,7 @@ export default function KnowledgeCategoryPage() {
   // Loading
   if (userEntries === undefined) {
     return (
-      <div className="mx-auto max-w-5xl p-4" role="status" aria-label="Loading category">
+      <div className="mx-auto max-w-5xl p-4" role="status" aria-label="Kategorie wird geladen">
         <Skeleton className="h-8 w-48" />
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -75,7 +75,7 @@ export default function KnowledgeCategoryPage() {
           type="button"
           onClick={() => navigate("/knowledge")}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Back to knowledge base"
+          aria-label="Zurueck zur Wissensbasis"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
@@ -84,7 +84,7 @@ export default function KnowledgeCategoryPage() {
             {categoryDef.label}
           </h1>
           <p className="text-sm text-text-secondary">
-            {speciesGroups.length} species &middot; {categoryDef.description}
+            {speciesGroups.length} Arten &middot; {categoryDef.description}
           </p>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function KnowledgeCategoryPage() {
       {speciesGroups.length === 0 ? (
         <div className="mt-12 text-center">
           <p className="text-lg font-medium text-text-secondary">
-            No entries in this category
+            Keine Eintraege in dieser Kategorie
           </p>
         </div>
       ) : (
@@ -118,7 +118,7 @@ export default function KnowledgeCategoryPage() {
                     )}
                     {!isSingle && (
                       <Badge variant="success">
-                        {group.entries.length} varieties
+                        {group.entries.length} Sorten
                       </Badge>
                     )}
                   </div>

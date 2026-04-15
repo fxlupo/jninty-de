@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
-import { format, parseISO, differenceInDays } from "date-fns";
+import { parseISO, differenceInDays } from "date-fns";
 import { seedRepository, plantRepository, plantingRepository, seasonRepository } from "../db/index.ts";
 import { QUANTITY_UNIT_LABELS } from "../constants/seedLabels";
 import Card from "../components/ui/Card";
@@ -13,6 +13,7 @@ import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
 import { getBySpecies } from "../services/knowledgeBase";
 import type { PlantType } from "../validation/plantInstance.schema";
+import { formatDate } from "../lib/locale";
 
 export default function SeedDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function SeedDetailPage() {
 
   if (seed === undefined) {
     return (
-      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Loading seed">
+      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Saatgut wird geladen">
         <Skeleton className="h-8 w-40" />
         <div className="mt-6 space-y-4">
           <Skeleton className="h-48 w-full" />
@@ -49,12 +50,12 @@ export default function SeedDetailPage() {
   if (seed === null) {
     return (
       <div className="mx-auto max-w-2xl p-4 text-center">
-        <p className="text-lg font-medium text-text-secondary">Seed not found</p>
+        <p className="text-lg font-medium text-text-secondary">Saatgut nicht gefunden</p>
         <Link
           to="/seeds"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Back to Seed Bank
+          Zurueck zum Saatgutlager
         </Link>
       </div>
     );
@@ -73,11 +74,11 @@ export default function SeedDetailPage() {
     if (!seed || !id) return;
     const amount = Number(plantAmount);
     if (!amount || amount <= 0) {
-      toast("Enter a valid amount", "error");
+      toast("Bitte einen gueltigen Wert eingeben", "error");
       return;
     }
     if (amount > seed.quantityRemaining) {
-      toast("Not enough seeds remaining", "error");
+      toast("Nicht genug Saatgut vorhanden", "error");
       return;
     }
 
@@ -114,8 +115,8 @@ export default function SeedDetailPage() {
 
       toast(
         createPlant
-          ? "Seeds deducted and plant created"
-          : "Seeds deducted",
+          ? "Saatgut abgezogen und Pflanze angelegt"
+          : "Saatgut abgezogen",
         "success",
       );
 
@@ -123,7 +124,7 @@ export default function SeedDetailPage() {
       setPlantAmount("");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to plant seeds";
+        err instanceof Error ? err.message : "Saatgut konnte nicht verbucht werden";
       toast(message, "error");
     } finally {
       setPlanting(false);
@@ -135,10 +136,10 @@ export default function SeedDetailPage() {
     setDeleting(true);
     try {
       await seedRepository.softDelete(id);
-      toast("Seed deleted", "success");
+      toast("Saatgut geloescht", "success");
       void navigate("/seeds", { replace: true });
     } catch {
-      toast("Failed to delete seed", "error");
+      toast("Saatgut konnte nicht geloescht werden", "error");
     } finally {
       setDeleting(false);
     }
@@ -152,7 +153,7 @@ export default function SeedDetailPage() {
           type="button"
           onClick={() => void navigate("/seeds")}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Back to Seed Bank"
+          aria-label="Zurueck zum Saatgutlager"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
@@ -163,10 +164,10 @@ export default function SeedDetailPage() {
 
       {/* Status badges */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {isExpired && <Badge variant="danger">Expired</Badge>}
+        {isExpired && <Badge variant="danger">Abgelaufen</Badge>}
         {isExpiringSoon && !isExpired && (
           <Badge variant="warning">
-            Expires in {String(daysUntilExpiry)}d
+            Laeuft in {String(daysUntilExpiry)} Tagen ab
           </Badge>
         )}
       </div>
@@ -180,14 +181,14 @@ export default function SeedDetailPage() {
           <div className="min-w-0 flex-1">
             <p className="text-sm italic text-text-secondary">{seed.species}</p>
             {seed.variety && (
-              <p className="text-sm text-text-secondary">Variety: {seed.variety}</p>
+              <p className="text-sm text-text-secondary">Sorte: {seed.variety}</p>
             )}
             {seed.brand && (
-              <p className="text-sm text-text-secondary">Brand: {seed.brand}</p>
+              <p className="text-sm text-text-secondary">Marke: {seed.brand}</p>
             )}
             {seed.supplier && (
               <p className="text-sm text-text-secondary">
-                Supplier: {seed.supplier}
+                Anbieter: {seed.supplier}
               </p>
             )}
           </div>
@@ -197,11 +198,11 @@ export default function SeedDetailPage() {
       {/* Quantity & dates */}
       <Card className="mt-3">
         <h2 className="font-display text-base font-semibold text-text-heading">
-          Stock & Dates
+          Bestand und Daten
         </h2>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
-            <span className="text-xs text-text-secondary">Quantity Remaining</span>
+            <span className="text-xs text-text-secondary">Restmenge</span>
             <p className="text-lg font-semibold text-text-primary">
               {String(seed.quantityRemaining)}{" "}
               <span className="text-sm font-normal text-text-secondary">
@@ -211,7 +212,7 @@ export default function SeedDetailPage() {
           </div>
           {seed.germinationRate != null && (
             <div>
-              <span className="text-xs text-text-secondary">Germination Rate</span>
+              <span className="text-xs text-text-secondary">Keimrate</span>
               <p className="text-lg font-semibold text-text-primary">
                 {String(seed.germinationRate)}%
               </p>
@@ -219,25 +220,25 @@ export default function SeedDetailPage() {
           )}
           {seed.purchaseDate && (
             <div>
-              <span className="text-xs text-text-secondary">Purchased</span>
+              <span className="text-xs text-text-secondary">Gekauft</span>
               <p className="text-sm font-medium text-text-primary">
-                {format(parseISO(seed.purchaseDate), "MMM d, yyyy")}
+                {formatDate(parseISO(seed.purchaseDate), "d. MMM yyyy")}
               </p>
             </div>
           )}
           {seed.expiryDate && (
             <div>
-              <span className="text-xs text-text-secondary">Expires</span>
+              <span className="text-xs text-text-secondary">Ablauf</span>
               <p
                 className={`text-sm font-medium ${isExpired ? "text-terracotta-600" : "text-text-primary"}`}
               >
-                {format(parseISO(seed.expiryDate), "MMM d, yyyy")}
+                {formatDate(parseISO(seed.expiryDate), "d. MMM yyyy")}
               </p>
             </div>
           )}
           {seed.cost != null && (
             <div>
-              <span className="text-xs text-text-secondary">Cost</span>
+              <span className="text-xs text-text-secondary">Kosten</span>
               <p className="text-sm font-medium text-text-primary">
                 ${seed.cost.toFixed(2)}
               </p>
@@ -245,7 +246,7 @@ export default function SeedDetailPage() {
           )}
           {seed.storageLocation && (
             <div>
-              <span className="text-xs text-text-secondary">Storage Location</span>
+              <span className="text-xs text-text-secondary">Lagerort</span>
               <p className="text-sm font-medium text-text-primary">
                 {seed.storageLocation}
               </p>
@@ -258,7 +259,7 @@ export default function SeedDetailPage() {
       {seed.notes && (
         <Card className="mt-3">
           <h2 className="font-display text-base font-semibold text-text-heading">
-            Notes
+            Notizen
           </h2>
           <p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">
             {seed.notes}
@@ -269,16 +270,16 @@ export default function SeedDetailPage() {
       {/* Actions */}
       <div className="mt-6 flex flex-wrap gap-3">
         <Button onClick={() => setShowPlantModal(true)}>
-          Plant from this Seed
+          Aus diesem Saatgut pflanzen
         </Button>
         <Button
           variant="secondary"
           onClick={() => void navigate(`/seeds/${seed.id}/edit`)}
         >
-          Edit
+          Bearbeiten
         </Button>
         <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)}>
-          Delete
+          Loeschen
         </Button>
       </div>
 
@@ -292,10 +293,10 @@ export default function SeedDetailPage() {
         >
           <div className="w-full max-w-sm rounded-xl bg-surface-elevated p-6 shadow-xl">
             <h3 className="font-display text-lg font-bold text-text-heading">
-              Plant from Seed
+              Saatgut verwenden
             </h3>
             <p className="mt-1 text-sm text-text-secondary">
-              How many/much did you plant?
+              Wie viel hast du ausgesaet?
             </p>
 
             <div className="mt-4">
@@ -303,7 +304,7 @@ export default function SeedDetailPage() {
                 htmlFor="plant-amount"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Amount ({QUANTITY_UNIT_LABELS[seed.quantityUnit].toLowerCase()})
+                Menge ({QUANTITY_UNIT_LABELS[seed.quantityUnit].toLowerCase()})
               </label>
               <Input
                 id="plant-amount"
@@ -343,7 +344,7 @@ export default function SeedDetailPage() {
                 htmlFor="create-plant-toggle"
                 className="text-sm text-text-secondary"
               >
-                Create a new plant record
+                Neuen Pflanzeneintrag anlegen
               </label>
             </div>
 
@@ -352,13 +353,13 @@ export default function SeedDetailPage() {
                 onClick={() => void handlePlantFromSeed()}
                 disabled={planting}
               >
-                {planting ? "Planting..." : "Confirm"}
+                {planting ? "Speichert..." : "Bestaetigen"}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setShowPlantModal(false)}
               >
-                Cancel
+                Abbrechen
               </Button>
             </div>
           </div>
@@ -375,10 +376,10 @@ export default function SeedDetailPage() {
         >
           <div className="w-full max-w-sm rounded-xl bg-surface-elevated p-6 shadow-xl">
             <h3 className="font-display text-lg font-bold text-text-primary">
-              Delete Seed?
+              Saatgut loeschen?
             </h3>
             <p className="mt-1 text-sm text-text-secondary">
-              This will remove &ldquo;{seed.name}&rdquo; from your seed bank.
+              Dadurch wird &ldquo;{seed.name}&rdquo; aus deinem Saatgutlager entfernt.
             </p>
             <div className="mt-6 flex gap-3">
               <Button
@@ -386,13 +387,13 @@ export default function SeedDetailPage() {
                 disabled={deleting}
                 className="bg-terracotta-500 hover:bg-terracotta-600"
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? "Loescht..." : "Loeschen"}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setShowDeleteConfirm(false)}
               >
-                Cancel
+                Abbrechen
               </Button>
             </div>
           </div>
