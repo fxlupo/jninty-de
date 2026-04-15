@@ -1,0 +1,50 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+      args:
+        JNINTY_REF: main
+    environment:
+      PORT: "3001"
+      BETTER_AUTH_SECRET: "change-me-to-a-random-64-char-string"
+      BETTER_AUTH_URL: "https://garten2.creano.de"
+      FRONTEND_ORIGIN: "https://garten2.creano.de"
+      TRUSTED_ORIGINS: "https://garten2.creano.de"
+    volumes:
+      - jninty_data:/app/data
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JNINTY_REF: main
+        VITE_CLOUD_ENABLED: "true"
+    networks:
+      - proxy
+    depends_on:
+      - server
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+
+      - traefik.http.routers.jninty.rule=Host(`garten2.creano.de`)
+      - traefik.http.routers.jninty.entrypoints=https
+      - traefik.http.routers.jninty.tls=true
+      - traefik.http.routers.jninty.tls.certresolver=http
+      - traefik.http.routers.jninty.priority=10
+      - traefik.http.routers.jninty.middlewares=secHeaders@file
+
+      - traefik.http.services.jninty.loadbalancer.server.port=80
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  jninty_data:

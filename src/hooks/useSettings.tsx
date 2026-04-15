@@ -38,15 +38,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const stored = await settingsRepository.get();
-      if (cancelled) return;
-      if (stored) {
-        setSettings(stored);
-      } else {
-        const initialized = await settingsRepository.update(DEFAULT_SETTINGS);
-        if (!cancelled) setSettings(initialized);
+      try {
+        const stored = await settingsRepository.get();
+        if (cancelled) return;
+        if (stored) {
+          setSettings(stored);
+        } else {
+          const initialized = await settingsRepository.update(DEFAULT_SETTINGS);
+          if (!cancelled) setSettings(initialized);
+        }
+      } catch {
+        // API unavailable (e.g. not yet authenticated) — use defaults and proceed
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
     return () => {
       cancelled = true;

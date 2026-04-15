@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-15
+
+### Phase 5 — PouchDB vollständig entfernt, API-Architektur abgeschlossen
+
+Diese Version schließt die Migration von PouchDB/IndexedDB auf eine vollständige Client-Server-Architektur ab. Alle Datenzugriffe laufen jetzt über die Hono-REST-API (SQLite via Drizzle ORM).
+
+### Hinzugefügt
+
+- **Docker-Deployment** — `docker-compose.yml` mit Traefik-Labels für `garten2.creano.de`; separates `Dockerfile.server` für den Node.js-Backend-Container; `nginx.conf` mit `/api/*`-Proxy zum Backend
+- **API-Reset-Endpunkt** — `POST /api/reset` löscht alle Benutzerdaten (für Import-Replace und Demo-Reset); vollständig in der Test-Mock implementiert
+- **Drizzle-Migration 0001** — Korrektur der SQLite-Standardwerte für `last_frost_date` und `first_frost_date` (`"03-15"` → `"2026-04-15"` / `"11-01"` → `"2026-10-15"`)
+
+### Geändert
+
+- **Importer** (`src/services/importer.ts`) — Entity-Writes nutzen jetzt `PUT /api/{collection}/{id}` (Upsert-by-ID); `executeImportReplace` ruft `POST /api/reset` vor dem Neu-Import auf; `importPlantsFromCsv` nutzt `plantRepository.create()`
+- **Weather-Cache** (`src/services/weather.ts`) — PouchDB-Cache durch `localStorage` ersetzt (`jninty_weather_cache`)
+- **Speichernutzung** (`src/services/storageUsage.ts`) — PouchDB-Attachment-Abfragen entfernt; gibt jetzt nur noch Storage-API-Schätzwert zurück
+- **Benachrichtigungs-Listener** (`src/services/notificationListener.ts`) — `localDB.changes()`-Subscription durch Polling mit `setInterval` ersetzt
+- **Demo-Seeder** (`src/services/demoSeeder.ts`) — `destroyAndRecreate()` durch `POST /api/reset` ersetzt
+- **useSync** (`src/hooks/useSync.tsx`) — Zu No-Op-Stub umgebaut (`status: "disabled"`); `SyncProvider` bleibt als Wrapper erhalten
+- **AppShell** — `SyncStatusBadge` und `stopCloudSync`-Aufrufe entfernt
+- **App.tsx** — `startCloudSync`-Aufrufe nach Login und Session-Restore entfernt
+- **LoginModal** — `startCloudSync`-Aufruf nach erfolgreichem Login entfernt
+- **SettingsPage** — CouchDB-Sync-Karte vollständig entfernt; Sync-Zustandsvariablen und Handler bereinigt; `CloudSyncSettings` nur noch für authentifizierte Nutzer angezeigt
+- **`src/db/index.ts`** — PouchDB-Sync-Exports entfernt (`localDB`, `setupSync`, `stopSync`, `destroyAndRecreate` u.a.)
+- **useSettings** (`src/hooks/useSettings.tsx`) — `try/catch/finally` um den Lade-Block ergänzt, sodass `loading` auch bei API-Fehlern (z.B. nicht eingeloggt beim App-Start) auf `false` gesetzt wird; Server-Standardwerte für Frostdaten normalisiert
+- **Server-Settings-Route** — `normalizeFrostDate()`-Hilfsfunktion korrigiert beim ersten `GET /api/settings` automatisch veraltete `MM-DD`-Datumsformate im Bestand
+
+### Behoben
+
+- **Einstellungsseite leer nach Login** — `SettingsProvider` startet beim App-Start, bevor der Nutzer eingeloggt ist; `PUT /api/settings` warf einen Fehler (401), der `setLoading(false)` verhinderte und die Seite dauerhaft im Skeleton-Zustand ließ
+- **`npm run dev:server` schlug fehl** mit `ERR_MODULE_NOT_FOUND: Cannot find module 'watch'` — `tsx`-Unterbefehl `watch` stand hinter `--env-file` und wurde als Dateipfad interpretiert; Reihenfolge in `package.json` korrigiert
+
+### Tests
+
+- **`src/services/importer.test.ts`** vollständig neu geschrieben — nutzt jetzt Mock-API statt In-Memory-PouchDB; `seedEntity()`-Hilfsfunktion für Testdaten-Vorbereitung; Verifikation über `plantRepository.getAll()` / `settingsRepository.get()`
+- **`tests/setup.ts`** — `POST /api/reset`-Handler im Mock-Server ergänzt
+
 ### Hinzugefügt
 
 - **Mehrere Fotos pro Pflanze** — Pflanzenformular unterstützt jetzt beliebig viele Fotos (vorher max. 1)

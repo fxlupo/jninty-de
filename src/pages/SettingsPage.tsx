@@ -8,12 +8,6 @@ import Badge from "../components/ui/Badge";
 import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
 import { useSettings } from "../hooks/useSettings";
-import { useSync } from "../hooks/useSync";
-import {
-  getSyncConfig,
-  clearSyncConfig,
-  type SyncConfig,
-} from "../services/syncConfigStore";
 import { settingsRepository, seasonRepository, plantingRepository, plantRepository } from "../db/index.ts";
 import type { PlantingOutcome } from "../validation/planting.schema";
 import type { Planting } from "../validation/planting.schema";
@@ -31,12 +25,10 @@ import {
   clearWeatherCache,
   type GeoSearchResult,
 } from "../services/weather";
-import { localDB, getRemoteInfo, type RemoteDBInfo } from "../db/pouchdb/client.ts";
-import { clearAllOriginals } from "../db/pouchdb/originalsStore.ts";
 import { useNotifications } from "../hooks/useNotifications.ts";
-import CloudSyncSettings from "../components/cloud/CloudSyncSettings";
 import { useIsAuthenticated } from "../store/authStore";
-import { formatBrowserDate, formatBrowserDateTime } from "../lib/locale";
+import { formatBrowserDate } from "../lib/locale";
+import CloudSyncSettings from "../components/cloud/CloudSyncSettings";
 
 // ─── Growing zones (USDA 1a–13b) ───
 
@@ -89,7 +81,6 @@ export default function SettingsPage() {
 
   // Storage dashboard
   const [storage, setStorage] = useState<StorageUsage | null>(null);
-  const [remoteInfo, setRemoteInfo] = useState<RemoteDBInfo | null>(null);
 
   // Action states
   const [exportBusy, setExportBusy] = useState(false);
@@ -103,97 +94,6 @@ export default function SettingsPage() {
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [clearDemoBusy, setClearDemoBusy] = useState(false);
-
-  // Sync
-  const {
-    status: syncStatus,
-    lastSynced,
-    isConfigured: syncConfigured,
-    startSync,
-    stopSync,
-    testConnection,
-  } = useSync();
-
-  const [syncUrl, setSyncUrl] = useState("");
-  const [syncUsername, setSyncUsername] = useState("");
-  const [syncPassword, setSyncPassword] = useState("");
-  const [testBusy, setTestBusy] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    dbName: string;
-    docCount: number;
-  } | null>(null);
-  const [testError, setTestError] = useState<string | null>(null);
-
-  // Load sync config from localStorage on mount
-  useEffect(() => {
-    const cfg = getSyncConfig();
-    if (cfg) {
-      setSyncUrl(cfg.remoteUrl);
-      setSyncUsername(cfg.username);
-      setSyncPassword(cfg.password);
-    }
-  }, []);
-
-  const handleTestConnection = async () => {
-    if (!syncUrl.trim()) return;
-    setTestBusy(true);
-    setTestResult(null);
-    setTestError(null);
-    try {
-      const creds =
-        syncUsername && syncPassword
-          ? { username: syncUsername, password: syncPassword }
-          : undefined;
-      const info = await testConnection(syncUrl.trim(), creds);
-      setTestResult({ dbName: info.dbName, docCount: info.docCount });
-      toast("Verbindung erfolgreich", "success");
-    } catch {
-      setTestError("Verbindung fehlgeschlagen. Bitte URL und Zugangsdaten pruefen.");
-      toast("Verbindung fehlgeschlagen", "error");
-    } finally {
-      setTestBusy(false);
-    }
-  };
-
-  const handleStartSync = () => {
-    const cfg: SyncConfig = {
-      remoteUrl: syncUrl.trim(),
-      username: syncUsername,
-      password: syncPassword,
-      enabled: true,
-      lastSynced: null,
-    };
-    startSync(cfg);
-    toast("Sync gestartet", "success");
-  };
-
-  const handleStopSync = () => {
-    stopSync();
-    toast("Sync gestoppt", "success");
-  };
-
-  const handleSyncNow = () => {
-    // Restart sync to trigger a fresh replication cycle
-    const cfg: SyncConfig = {
-      remoteUrl: syncUrl.trim(),
-      username: syncUsername,
-      password: syncPassword,
-      enabled: true,
-      lastSynced: lastSynced,
-    };
-    startSync(cfg);
-  };
-
-  const handleClearSync = () => {
-    stopSync();
-    clearSyncConfig();
-    setSyncUrl("");
-    setSyncUsername("");
-    setSyncPassword("");
-    setTestResult(null);
-    setTestError(null);
-    toast("Sync-Konfiguration entfernt", "success");
-  };
 
   // Location search state
   const [locationQuery, setLocationQuery] = useState("");
@@ -217,21 +117,9 @@ export default function SettingsPage() {
     setLocalLon(settings.longitude != null ? String(settings.longitude) : "");
   }, [settings.longitude]);
 
-  // Load storage usage (local + remote)
+  // Load storage usage
   useEffect(() => {
     void getStorageUsage().then(setStorage);
-
-    // Fetch remote DB info when sync is active
-    const cfg = getSyncConfig();
-    if (cfg?.enabled) {
-      const creds =
-        cfg.username && cfg.password
-          ? { username: cfg.username, password: cfg.password }
-          : undefined;
-      void getRemoteInfo(cfg.remoteUrl, creds).then((info) => {
-        if (info) setRemoteInfo(info);
-      });
-    }
   }, []);
 
   // ─── Handlers ───
@@ -316,48 +204,7 @@ export default function SettingsPage() {
   const handleClearOriginals = async () => {
     setClearingOriginals(true);
     try {
-      // Remove all originals from the local-only store
-      await clearAllOriginals();
-
-      // Update originalStored flag on all photo docs so the app knows
-      // originals are no longer available
-      const result = await localDB.allDocs({
-        startkey: "photo:",
-        endkey: "photo:\uffff",
-        include_docs: true,
-      });
-      for (const row of result.rows) {
-        const doc = row.doc as Record<string, unknown> | undefined;
-        if (!doc) continue;
-        if (doc["originalStored"] === true) {
-          const latest = await localDB.get(row.id);
-          await localDB.put({ ...latest, originalStored: false });
-        }
-      }
-
-      // Also remove any legacy "original" attachments that may still exist
-      // in the synced PouchDB (from before the migration to local-only store)
-      for (const row of result.rows) {
-        const doc = row.doc as Record<string, unknown> | undefined;
-        if (!doc) continue;
-        const attachments = doc["_attachments"] as
-          | Record<string, unknown>
-          | undefined;
-        if (attachments?.["original"]) {
-          try {
-            const latest = await localDB.get(row.id);
-            await localDB.removeAttachment(
-              row.id,
-              "original",
-              (latest as PouchDB.Core.IdMeta & PouchDB.Core.GetMeta)._rev,
-            );
-          } catch {
-            // Attachment already removed
-          }
-        }
-      }
-
-      // Refresh storage display
+      // Original photos are stored server-side — nothing to clear locally.
       const updated = await getStorageUsage();
       setStorage(updated);
       toast("Originalfotos entfernt", "success");
@@ -1253,150 +1100,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Jninty Cloud Sync (SaaS) ── */}
-      <CloudSyncSettings />
-
-      {/* ── Multi-Device Sync (hidden for cloud users) ── */}
-      {!isCloudUser && <Card>
-        <h2 className="font-display text-lg font-semibold text-text-heading">
-          Multi-Device-Sync
-        </h2>
-        <p className="mt-1 text-xs text-text-muted">
-          Synchronisiere deine Gartendaten ueber CouchDB zwischen mehreren Geraeten
-        </p>
-
-        <div className="mt-4 space-y-4">
-          {/* Status row */}
-          <div className="flex items-center justify-between rounded-lg border border-border-default bg-surface p-3">
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-block h-2.5 w-2.5 rounded-full ${
-                  syncStatus === "syncing"
-                    ? "bg-blue-500 animate-pulse"
-                    : syncStatus === "paused"
-                      ? "bg-green-500"
-                      : syncStatus === "error"
-                        ? "bg-red-500"
-                        : syncStatus === "offline"
-                          ? "bg-amber-500"
-                          : "bg-soil-400"
-                }`}
-              />
-              <span className="text-sm font-medium text-text-primary">
-                {syncStatus === "syncing"
-                  ? "Synchronisiert..."
-                  : syncStatus === "paused"
-                    ? "Verbunden"
-                    : syncStatus === "error"
-                      ? "Fehler"
-                      : syncStatus === "offline"
-                        ? "Offline"
-                        : "Deaktiviert"}
-              </span>
-            </div>
-            {lastSynced && (
-              <span className="text-xs text-text-muted">
-                Zuletzt synchronisiert: {formatBrowserDateTime(lastSynced)}
-              </span>
-            )}
-          </div>
-
-          {/* CouchDB URL */}
-          <div>
-            <label
-              htmlFor="sync-url"
-              className="mb-1 block text-sm font-medium text-text-secondary"
-            >
-              CouchDB-Server-URL
-            </label>
-            <Input
-              id="sync-url"
-              type="url"
-              placeholder="http://192.168.1.50:5984/jninty"
-              value={syncUrl}
-              onChange={(e) => setSyncUrl(e.target.value)}
-            />
-          </div>
-
-          {/* Credentials */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label
-                htmlFor="sync-username"
-                className="mb-1 block text-sm font-medium text-text-secondary"
-              >
-                Benutzername
-              </label>
-              <Input
-                id="sync-username"
-                type="text"
-                placeholder="z. B. admin"
-                value={syncUsername}
-                onChange={(e) => setSyncUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="sync-password"
-                className="mb-1 block text-sm font-medium text-text-secondary"
-              >
-                Passwort
-              </label>
-              <Input
-                id="sync-password"
-                type="password"
-                placeholder="Passwort"
-                value={syncPassword}
-                onChange={(e) => setSyncPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Test connection */}
-          <div>
-            <Button
-              variant="secondary"
-              onClick={() => void handleTestConnection()}
-              disabled={testBusy || !syncUrl.trim()}
-            >
-              {testBusy ? "Pruefe..." : "Verbindung testen"}
-            </Button>
-            {testResult && (
-              <p className="mt-1 text-sm text-text-heading">
-                Verbunden mit <strong>{testResult.dbName}</strong> ({String(testResult.docCount)} Dokumente)
-              </p>
-            )}
-            {testError && (
-              <p className="mt-1 text-sm text-red-600">{testError}</p>
-            )}
-          </div>
-
-          {/* Start / Stop / Sync Now buttons */}
-          <div className="flex flex-wrap gap-2">
-            {syncStatus === "disabled" || !syncConfigured ? (
-              <Button
-                onClick={handleStartSync}
-                disabled={!syncUrl.trim()}
-              >
-                Sync starten
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={handleStopSync}>
-                Sync stoppen
-              </Button>
-            )}
-            {syncStatus === "paused" && (
-              <Button variant="ghost" onClick={handleSyncNow}>
-                Jetzt synchronisieren
-              </Button>
-            )}
-            {(syncConfigured || syncUrl.trim()) && (
-              <Button variant="ghost" onClick={handleClearSync}>
-                Konfiguration loeschen
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>}
+      {isCloudUser && <CloudSyncSettings />}
 
       {/* ── Data Management ── */}
       <Card>
@@ -1418,16 +1122,9 @@ export default function SettingsPage() {
                   <span>Originale: {formatBytes(storage.originalBytes)}</span>
                   <span>Daten: {formatBytes(storage.dataBytes)}</span>
                 </div>
-                {remoteInfo && remoteInfo.diskSize > 0 ? (
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm font-medium text-text-primary">
-                    <span>Lokal: {formatBytes(storage.totalBytes)}</span>
-                    <span>Remote (CouchDB): {formatBytes(remoteInfo.diskSize)}</span>
-                  </div>
-                ) : (
-                  <p className="text-sm font-medium text-text-primary">
-                    Gesamt: {formatBytes(storage.totalBytes)}
-                  </p>
-                )}
+                <p className="text-sm font-medium text-text-primary">
+                  Gesamt: {formatBytes(storage.totalBytes)}
+                </p>
                 {storage.quotaBytes > 0 && (
                   <div>
                     <div className="h-2 w-full rounded-full bg-surface-muted">

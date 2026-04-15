@@ -1,5 +1,5 @@
 // Barrel export — single import point for the entire app.
-// Points to PouchDB repositories, search, and sync.
+// Points to API-backed repositories and search.
 
 // ─── Repositories ───
 export * as plantRepository from "./pouchdb/repositories/plantRepository.ts";
@@ -18,18 +18,3 @@ export * as plantingScheduleRepository from "./pouchdb/repositories/plantingSche
 export * as scheduleTaskRepository from "./pouchdb/repositories/scheduleTaskRepository.ts";
 // ─── Search ───
 export * as search from "./pouchdb/search.ts";
-
-// ─── Sync ───
-export {
-  localDB,
-  setupSync,
-  stopSync,
-  getSyncStatus,
-  subscribeSyncStatus,
-  getLastSyncedAt,
-  testConnection,
-  destroyAndRecreate,
-} from "./pouchdb/client.ts";
-export type { SyncStatus } from "./pouchdb/client.ts";
-
-export { destroyAndRecreateOriginals } from "./pouchdb/originalsStore.ts";

@@ -8,17 +8,14 @@ import {
   type ImportResult,
   type ExportManifest,
 } from "./exporter.ts";
-import { localDB, destroyAndRecreate, setupSync } from "../db/pouchdb/client.ts";
-import { toPouchDoc } from "../db/pouchdb/utils.ts";
-import { destroyAndRecreateOriginals } from "../db/pouchdb/originalsStore.ts";
+import { post, put } from "../db/api/client.ts";
 import { photoRepository } from "../db/index.ts";
-import { ensureAllIndexes } from "../db/pouchdb/indexes.ts";
 import {
   rebuildIndex,
   startListening,
   stopListening,
 } from "../db/pouchdb/search.ts";
-import { getSyncConfig } from "./syncConfigStore.ts";
+import { plantRepository } from "../db/index.ts";
 import { plantInstanceSchema } from "../validation/plantInstance.schema.ts";
 
 // ─── Types ───
@@ -175,6 +172,40 @@ async function readZipEntry(
   return entry.async("blob");
 }
 
+// ─── docType → API collection URL mapping ───
+
+const DOC_TYPE_TO_COLLECTION: Record<string, string> = {
+  plant: "/api/plants",
+  journal: "/api/journal",
+  task: "/api/tasks",
+  gardenBed: "/api/garden-beds",
+  settings: "/api/settings",
+  season: "/api/seasons",
+  planting: "/api/plantings",
+  seed: "/api/seeds",
+  taskRule: "/api/task-rules",
+  userPlantKnowledge: "/api/knowledge",
+};
+
+/**
+ * Upsert an entity via PUT /api/{collection}/{id}, preserving the original ID.
+ * Settings use PUT /api/settings (no ID segment).
+ */
+async function upsertEntity(
+  docType: string,
+  entity: Record<string, unknown>,
+): Promise<void> {
+  const base = DOC_TYPE_TO_COLLECTION[docType];
+  if (!base) throw new Error(`Unknown docType: ${docType}`);
+
+  if (docType === "settings") {
+    await put(base, entity);
+  } else {
+    const entityId = entity["id"] as string;
+    await put(`${base}/${entityId}`, entity);
+  }
+}
+
 // ─── Write photos helper ───
 
 async function writePhotos(
@@ -283,35 +314,40 @@ export async function executeImportMerge(
 
     for (let i = 0; i < items.length; i++) {
       const entity = items[i]!;
-      const entityId = entity["id"] as string;
-
-      // Settings uses a fixed _id
-      const pouchId =
-        docType === "settings" ? "settings:singleton" : `${docType}:${entityId}`;
 
       onProgress?.(`Importing ${countKey}`, i + 1, items.length);
 
-      // Check if already exists
-      try {
-        await localDB.get(pouchId);
-        totalSkipped++;
-        continue;
-      } catch {
-        // Not found — insert
-      }
-
       try {
         if (docType === "settings") {
-          await localDB.put({
-            _id: "settings:singleton",
-            docType: "settings",
-            ...entity,
-          });
+          // Settings: always upsert (no existence check)
+          await upsertEntity(docType, entity);
+          totalInserted++;
         } else {
-          await localDB.put(toPouchDoc(entity as { id?: string }, docType));
+          const entityId = entity["id"] as string;
+          const base = DOC_TYPE_TO_COLLECTION[docType];
+          if (!base) {
+            allErrors.push(`${countKey}: unknown docType ${docType}`);
+            continue;
+          }
+
+          // Check existence via GET /api/{collection}/{id}
+          let exists = false;
+          try {
+            const res = await fetch(`${base}/${entityId}`, { credentials: "include" });
+            exists = res.ok;
+          } catch {
+            exists = false;
+          }
+
+          if (exists) {
+            totalSkipped++;
+          } else {
+            await upsertEntity(docType, entity);
+            totalInserted++;
+          }
         }
-        totalInserted++;
       } catch (err) {
+        const entityId = (entity["id"] as string | undefined) ?? "?";
         allErrors.push(
           `${countKey} ${entityId}: ${err instanceof Error ? err.message : "write failed"}`,
         );
@@ -349,28 +385,19 @@ export async function executeImportReplace(
   // 1. Stop search changes feed
   stopListening();
 
-  // 2. Destroy and recreate both databases
-  onProgress?.("Resetting database", 0, 2);
-  await destroyAndRecreate();
-  onProgress?.("Resetting database", 1, 2);
-  await destroyAndRecreateOriginals();
-  onProgress?.("Resetting database", 2, 2);
-
-  // 3. Recreate docType index
-  await ensureAllIndexes();
+  // 2. Wipe all existing data via reset endpoint
+  onProgress?.("Resetting database", 0, 1);
+  await post("/api/reset", {});
+  onProgress?.("Resetting database", 1, 1);
 
   const tableValidations = getTableValidations();
 
-  // 4. Write settings first
+  // 3. Write settings first
   const settingsItems = parsed.data["settings"] ?? [];
   if (settingsItems.length > 0) {
     const settings = settingsItems[0]!;
     try {
-      await localDB.put({
-        _id: "settings:singleton",
-        docType: "settings",
-        ...settings,
-      });
+      await upsertEntity("settings", settings);
       totalInserted++;
     } catch (err) {
       allErrors.push(
@@ -379,7 +406,7 @@ export async function executeImportReplace(
     }
   }
 
-  // 5. Write all other entities via bulkDocs per docType
+  // 4. Write all other entities
   for (const { countKey, docType } of tableValidations) {
     if (countKey === "settings" || countKey === "photos") continue;
 
@@ -388,55 +415,33 @@ export async function executeImportReplace(
 
     onProgress?.(`Importing ${countKey}`, 0, items.length);
 
-    const docs = items.map((entity) =>
-      toPouchDoc(entity as { id?: string }, docType),
-    );
-
-    try {
-      const results = await localDB.bulkDocs(docs);
-      let count = 0;
-      for (const result of results) {
-        if ("ok" in result && result.ok) {
-          count++;
-        } else if ("error" in result) {
-          const errResult = result as PouchDB.Core.Error;
-          allErrors.push(
-            `${countKey}: ${errResult.message ?? errResult.reason ?? "write failed"}`,
-          );
-        }
+    for (let i = 0; i < items.length; i++) {
+      const entity = items[i]!;
+      try {
+        await upsertEntity(docType, entity);
+        totalInserted++;
+      } catch (err) {
+        const entityId = (entity["id"] as string | undefined) ?? "?";
+        allErrors.push(
+          `${countKey} ${entityId}: ${err instanceof Error ? err.message : "write failed"}`,
+        );
       }
-      totalInserted += count;
-    } catch (err) {
-      allErrors.push(
-        `${countKey} bulkDocs: ${err instanceof Error ? err.message : "write failed"}`,
-      );
+      onProgress?.(`Importing ${countKey}`, i + 1, items.length);
     }
-
-    onProgress?.(`Importing ${countKey}`, items.length, items.length);
   }
 
-  // 6. Write photos
+  // 5. Write photos
   const photoResult = await writePhotos(parsed, onProgress, false);
   totalInserted += photoResult.inserted;
   allErrors.push(...photoResult.errors);
 
-  // 7. Rebuild search index
+  // 6. Rebuild search index
   onProgress?.("Rebuilding search index", 0, 1);
   await rebuildIndex();
   onProgress?.("Rebuilding search index", 1, 1);
 
-  // 8. Restart search changes feed
+  // 7. Restart search changes feed
   startListening();
-
-  // 9. Restart sync if configured
-  const syncConfig = getSyncConfig();
-  if (syncConfig?.enabled) {
-    const credentials =
-      syncConfig.username && syncConfig.password
-        ? { username: syncConfig.username, password: syncConfig.password }
-        : undefined;
-    setupSync(syncConfig.remoteUrl, credentials);
-  }
 
   return { inserted: totalInserted, skipped: 0, errors: allErrors };
 }
@@ -562,30 +567,47 @@ export async function importPlantsFromCsv(
   columnMap: Record<string, string>,
 ): Promise<CsvImportResult> {
   const errors: Array<{ row: number; message: string }> = [];
-  const validDocs: Array<Record<string, unknown>> = [];
-
-  const now = new Date().toISOString();
+  let inserted = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
     const mapped = mapCsvRow(row, columnMap);
 
-    // Fill defaults
+    // Fill defaults; omit id/version/timestamps so the server generates them
     const plant = {
-      id: crypto.randomUUID(),
-      version: 1,
-      createdAt: now,
-      updatedAt: now,
       isPerennial: false,
       tags: [],
       ...mapped,
     };
 
-    const result = plantInstanceSchema.safeParse(plant);
+    const result = plantInstanceSchema.safeParse({
+      id: crypto.randomUUID(),
+      version: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...plant,
+    });
+
     if (result.success) {
-      validDocs.push(
-        toPouchDoc(result.data as unknown as { id?: string }, "plant"),
-      );
+      try {
+        await plantRepository.create({
+          species: result.data.species,
+          type: result.data.type,
+          isPerennial: result.data.isPerennial,
+          source: result.data.source,
+          status: result.data.status,
+          tags: result.data.tags,
+          ...(result.data.nickname != null ? { nickname: result.data.nickname } : {}),
+          ...(result.data.variety != null ? { variety: result.data.variety } : {}),
+          ...(result.data.dateAcquired != null ? { dateAcquired: result.data.dateAcquired } : {}),
+          ...(result.data.careNotes != null ? { careNotes: result.data.careNotes } : {}),
+          ...(result.data.purchasePrice != null ? { purchasePrice: result.data.purchasePrice } : {}),
+          ...(result.data.purchaseStore != null ? { purchaseStore: result.data.purchaseStore } : {}),
+        });
+        inserted++;
+      } catch (err) {
+        errors.push({ row: i + 1, message: err instanceof Error ? err.message : "write failed" });
+      }
     } else {
       const issues = result.error.issues
         .map((iss) => `${iss.path.join(".")}: ${iss.message}`)
@@ -594,11 +616,9 @@ export async function importPlantsFromCsv(
     }
   }
 
-  // Write valid rows
-  if (validDocs.length > 0) {
-    await localDB.bulkDocs(validDocs);
+  if (inserted > 0) {
     await rebuildIndex();
   }
 
-  return { inserted: validDocs.length, errors };
+  return { inserted, errors };
 }

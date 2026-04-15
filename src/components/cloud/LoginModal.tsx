@@ -1,7 +1,6 @@
 import { useState, useRef, type FormEvent } from "react";
 import { useAuth } from "../../store/authStore";
 import { login, PaymentRequiredError } from "../../lib/apiClient";
-import { startCloudSync } from "../../lib/cloudSync";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useModalA11y } from "../../hooks/useModalA11y";
 
@@ -42,7 +41,6 @@ export default function LoginModal({
     try {
       const result = await login(email, password);
       dispatch({ type: "LOGIN", payload: { user: result.user } });
-      startCloudSync(result.user.id);
       onClose();
     } catch (err) {
       if (err instanceof PaymentRequiredError) {

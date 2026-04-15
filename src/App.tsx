@@ -37,7 +37,6 @@ import {
 } from "./services/notificationListener.ts";
 import { isCloudEnabled, apiUrl } from "./config/cloud";
 import { useAuth } from "./store/authStore";
-import { startCloudSync } from "./lib/cloudSync";
 import { normalizeUser } from "./lib/apiClient";
 import CloudGate from "./components/cloud/CloudGate";
 import { SessionProvider } from "./store/sessionStore";
@@ -110,7 +109,6 @@ export default function App() {
               type: "LOGIN",
               payload: { user },
             });
-            startCloudSync(user.id);
             window.history.replaceState({}, "", window.location.pathname);
           }
         })
@@ -120,23 +118,6 @@ export default function App() {
         });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-start cloud sync when session is restored (e.g. page reload, new tab/device)
-  const syncStartedRef = useRef(false);
-  useEffect(() => {
-    if (
-      isCloudEnabled &&
-      authState.isAuthenticated &&
-      authState.user &&
-      !syncStartedRef.current
-    ) {
-      syncStartedRef.current = true;
-      startCloudSync(authState.user.id);
-    }
-    if (!authState.isAuthenticated) {
-      syncStartedRef.current = false;
-    }
-  }, [authState.isAuthenticated, authState.user]);
 
   return (
     <SessionProvider>
