@@ -34,14 +34,14 @@ function getSeedStatus(seed: Seed): {
 
   // Expired
   if (seed.expiryDate && seed.expiryDate < today) {
-    return { label: "Expired", variant: "danger" };
+    return { label: "Abgelaufen", variant: "danger" };
   }
 
   // Expiring soon (within 30 days)
   if (seed.expiryDate) {
     const daysUntil = differenceInDays(parseISO(seed.expiryDate), new Date());
     if (daysUntil <= 30) {
-      return { label: `Expires in ${String(daysUntil)}d`, variant: "warning" };
+      return { label: `Läuft in ${String(daysUntil)}T ab`, variant: "warning" };
     }
   }
 
@@ -53,7 +53,7 @@ function getSeedStatus(seed: Seed): {
     (seed.quantityUnit === "ounces" && seed.quantityRemaining <= 10);
 
   if (isLowStock) {
-    return { label: "Low Stock", variant: "default" };
+    return { label: "Wenig Vorrat", variant: "default" };
   }
 
   return null;
@@ -149,10 +149,10 @@ export default function SeedBankPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Seed Bank
+          Saatgutbank
         </h1>
         <span className="text-sm text-text-secondary">
-          {allSeeds.length} {allSeeds.length === 1 ? "seed" : "seeds"}
+          {allSeeds.length} {allSeeds.length === 1 ? "Sorte" : "Sorten"}
         </span>
       </div>
 
@@ -160,10 +160,10 @@ export default function SeedBankPage() {
       <div className="mt-4">
         <Input
           type="search"
-          placeholder="Search seeds..."
+          placeholder="Saatgut suchen..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search seeds"
+          aria-label="Saatgut suchen"
         />
       </div>
 
@@ -175,9 +175,9 @@ export default function SeedBankPage() {
             setTypeFilter(e.target.value as SeedTypeFilter | "")
           }
           className={selectClass}
-          aria-label="Filter by type"
+          aria-label="Nach Typ filtern"
         >
-          <option value="">All types</option>
+          <option value="">Alle Typen</option>
           {ALL_SEED_TYPE_FILTERS.map((t) => (
             <option key={t} value={t}>
               {SEED_TYPE_FILTER_LABELS[t]}
@@ -189,12 +189,12 @@ export default function SeedBankPage() {
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
           className={selectClass}
-          aria-label="Sort by"
+          aria-label="Sortieren nach"
         >
-          <option value="name">Sort: Name</option>
-          <option value="species">Sort: Species</option>
-          <option value="expiryDate">Sort: Expiry Date</option>
-          <option value="quantity">Sort: Quantity</option>
+          <option value="name">Sortierung: Name</option>
+          <option value="species">Sortierung: Art</option>
+          <option value="expiryDate">Sortierung: Ablaufdatum</option>
+          <option value="quantity">Sortierung: Menge</option>
         </select>
       </div>
 
@@ -205,25 +205,25 @@ export default function SeedBankPage() {
             <>
               <SeedIcon className="mx-auto h-16 w-16 text-text-muted" />
               <p className="mt-4 text-lg font-medium text-text-secondary">
-                No seeds yet
+                Noch kein Saatgut
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Add your first seed packet to start tracking.
+                Füge dein erstes Saatgutpaket hinzu.
               </p>
               <Link
                 to="/seeds/new"
                 className="mt-4 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-on-primary transition-colors hover:bg-primary-hover"
               >
-                Add Seed
+                Saatgut hinzufügen
               </Link>
             </>
           ) : (
             <>
               <p className="text-lg font-medium text-text-secondary">
-                No seeds match your filters
+                Kein Saatgut gefunden
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Try adjusting your search or filters.
+                Passe die Suche oder Filter an.
               </p>
             </>
           )}
@@ -278,7 +278,7 @@ export default function SeedBankPage() {
       {/* Floating add button */}
       <Link
         to="/seeds/new"
-        aria-label="Add seed"
+        aria-label="Saatgut hinzufügen"
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95 md:bottom-6"
       >
         <PlusIcon className="h-7 w-7" />

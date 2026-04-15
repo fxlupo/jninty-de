@@ -61,7 +61,7 @@ export default function VarietySelector({
 
       {entries.length === 0 && (
         <p className="mt-3 text-center text-xs text-text-muted">
-          No varieties found for this crop.
+          Keine Sorten für diese Kultur gefunden.
         </p>
       )}
     </div>

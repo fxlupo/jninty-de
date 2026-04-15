@@ -261,7 +261,7 @@ export default function SeedFormPage() {
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to save seed.";
+          err instanceof Error ? err.message : "Saatgut konnte nicht gespeichert werden.";
         setErrors([message]);
       }
     } finally {

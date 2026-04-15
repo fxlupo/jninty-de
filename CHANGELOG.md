@@ -4,6 +4,27 @@ All notable changes to Jninty will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Geändert
+
+- **UI-Übersetzung (Teil 2)** — Verbliebene englische Passagen ins Deutsche übersetzt:
+  - `NotFoundPage`: "Seite nicht gefunden", "Zurück zum Dashboard"
+  - `PlantsListPage`: Überschrift, Suche, Filter, Ansichtsumschalter, leere Zustände, Buttons
+  - `GardenMapPage`: Beettypen, Sonneneinstrahlung, alle Panel- und Modal-Texte (Buttons, Platzhalter, Labels)
+  - `SeedBankPage`: Status-Badges (Abgelaufen, Wenig Vorrat, Läuft ab), Suche, Sortierung, leere Zustände
+  - `SeasonComparisonPage`: Ergebnis-Labels, Abschnittsnamen "Was gut lief" / "Was verbessert werden sollte"
+  - `QuickLogPage`, `PlantDetailPage`, `JournalPage`, `SeedFormPage`: Fehlermeldungen übersetzt
+  - `TimelineView`: Fehlermeldungen, leerer Zustand, Hinweistexte
+  - `PhotoTimelineGrid`: "Noch keine Fotos"
+  - `CropPickerSearch`, `VarietySelector`, `StepSelectVariety`: Leer-Zustände für Sorten/Kulturen
+  - `StepSelectBed`, `StepConfirm`: "Kein Beet"
+  - `CsvImportDialog`, `ImportDialog`: Import-Fehlermeldungen
+  - `SubscriptionActions`: Abo-Fehlermeldungen
+  - `useTaskSuggestions`: Aufgaben-Fehlermeldungen
+
+---
+
 ## [0.1.0] - 2026-03-03
 
 Initial open-source release. Includes all Phase 1 (MVP) features and several Phase 2 additions.

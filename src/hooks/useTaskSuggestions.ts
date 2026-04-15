@@ -65,7 +65,7 @@ export function useTaskSuggestions(): {
         });
         toast("Task added", "success");
       } catch {
-        toast("Failed to add task", "error");
+        toast("Aufgabe konnte nicht hinzugefügt werden", "error");
       }
     },
     [activeSeasonId, toast],
@@ -86,7 +86,7 @@ export function useTaskSuggestions(): {
           dismissedAt: new Date().toISOString(),
         });
       } catch {
-        toast("Failed to dismiss suggestion", "error");
+        toast("Vorschlag konnte nicht verworfen werden", "error");
       }
     },
     [toast],

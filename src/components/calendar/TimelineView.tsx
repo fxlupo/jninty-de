@@ -196,7 +196,7 @@ export default function TimelineView() {
           "success",
         );
       } catch {
-        toast("Failed to reschedule", "error");
+        toast("Umplanen fehlgeschlagen", "error");
       }
     },
     [rescheduleGroup, toast],
@@ -229,7 +229,7 @@ export default function TimelineView() {
         "success",
       );
     } catch {
-      toast("Failed to move harvest date", "error");
+      toast("Erntedatum konnte nicht verschoben werden", "error");
     }
     setHarvestDrag(null);
   }, [harvestDrag, rescheduleSingleTask, toast]);
@@ -257,7 +257,7 @@ export default function TimelineView() {
           "success",
         );
       } catch {
-        toast("Failed to update task", "error");
+        toast("Aufgabe konnte nicht aktualisiert werden", "error");
       }
     },
     [toast],
@@ -299,7 +299,7 @@ export default function TimelineView() {
         );
       } catch (err) {
         toast(
-          `Failed to create schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+          `Zeitplan konnte nicht erstellt werden: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
           "error",
         );
       }
@@ -330,10 +330,10 @@ export default function TimelineView() {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-sm text-text-secondary">
-            No scheduled tasks in this period.
+            Keine geplanten Aufgaben in diesem Zeitraum.
           </p>
           <p className="mt-1 text-xs text-text-muted">
-            Click &ldquo;Add Crop&rdquo; to create your first planting schedule.
+            Klicke auf &ldquo;Anbau hinzufügen&rdquo;, um deinen ersten Pflanzplan zu erstellen.
           </p>
         </div>
       );

@@ -35,7 +35,7 @@ export default function StepSelectVariety({
 
       {entries.length === 0 ? (
         <p className="mt-4 text-sm text-text-muted">
-          No varieties found for this crop.
+          Keine Sorten für diese Kultur gefunden.
         </p>
       ) : (
         <div className="mt-4 space-y-1.5">

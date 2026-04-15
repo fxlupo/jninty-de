@@ -42,7 +42,7 @@ export default function StepSelectBed({
               : "border-border-default hover:bg-surface-muted"
           }`}
         >
-          <span className="text-sm text-text-primary">No bed</span>
+          <span className="text-sm text-text-primary">Kein Beet</span>
         </button>
 
         {beds?.map((bed) => (

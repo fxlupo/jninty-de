@@ -42,7 +42,7 @@ export default function SubscriptionActions({ user, onUserUpdated }: Props) {
       onUserUpdated(updated);
       setActiveModal(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to cancel subscription");
+      setError(e instanceof Error ? e.message : "Abonnement konnte nicht gekündigt werden");
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +55,7 @@ export default function SubscriptionActions({ user, onUserUpdated }: Props) {
       const updated = await reactivateSubscription();
       onUserUpdated(updated);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reactivate subscription");
+      setError(e instanceof Error ? e.message : "Abonnement konnte nicht reaktiviert werden");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +70,7 @@ export default function SubscriptionActions({ user, onUserUpdated }: Props) {
       onUserUpdated(updated);
       setActiveModal(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to change plan");
+      setError(e instanceof Error ? e.message : "Tarif konnte nicht geändert werden");
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +83,7 @@ export default function SubscriptionActions({ user, onUserUpdated }: Props) {
       const { url } = await getSubscriptionPortalUrl();
       window.location.href = url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to open billing portal");
+      setError(e instanceof Error ? e.message : "Abrechnungsportal konnte nicht geöffnet werden");
     } finally {
       setPortalLoading(false);
     }

@@ -5,17 +5,17 @@ export default function NotFoundPage() {
   return (
     <div className="p-4">
       <h1 className="font-display text-2xl font-bold text-text-heading">
-        Page Not Found
+        Seite nicht gefunden
       </h1>
       <Card className="mt-4">
         <p className="text-text-secondary">
-          The page you're looking for doesn't exist.
+          Die gesuchte Seite existiert nicht.
         </p>
         <Link
           to="/"
           className="mt-3 inline-block text-sm font-medium text-text-heading hover:text-text-heading"
         >
-          Back to Dashboard
+          Zurück zum Dashboard
         </Link>
       </Card>
     </div>

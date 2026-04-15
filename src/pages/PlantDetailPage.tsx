@@ -235,7 +235,7 @@ export default function PlantDetailPage() {
       setEditingOutcome(null);
       toast("Outcome updated", "success");
     } catch {
-      toast("Failed to update outcome", "error");
+      toast("Ergebnis konnte nicht aktualisiert werden", "error");
     }
   };
 

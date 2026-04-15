@@ -25,10 +25,10 @@ const outcomeVariant: Record<
 };
 
 const outcomeLabel: Record<string, string> = {
-  thrived: "Thrived",
+  thrived: "Ausgezeichnet",
   ok: "OK",
-  failed: "Failed",
-  unknown: "Unknown",
+  failed: "Gescheitert",
+  unknown: "Unbekannt",
 };
 
 // ─── Types ───
@@ -368,7 +368,7 @@ export default function SeasonComparisonPage() {
           ) : (
             <Card>
               <p className="text-center text-sm text-text-secondary">
-                No plants were grown in both seasons.
+                In beiden Saisons wurden keine gemeinsamen Pflanzen angebaut.
               </p>
             </Card>
           )}
@@ -377,10 +377,10 @@ export default function SeasonComparisonPage() {
           {whatWorked.length > 0 && (
             <Card>
               <h2 className="font-display text-lg font-semibold text-text-heading">
-                What Worked
+                Was gut lief
               </h2>
               <p className="mt-1 text-xs text-text-secondary">
-                Plants that thrived in at least one season
+                Pflanzen, die in mindestens einer Saison ausgezeichnet waren
               </p>
               <ul className="mt-3 space-y-2">
                 {whatWorked.map((c) => {
@@ -397,7 +397,7 @@ export default function SeasonComparisonPage() {
                         {name}
                       </Link>
                       <span className="text-xs text-text-secondary">
-                        Thrived in {thrivedIn.join(" & ")}
+                        Ausgezeichnet in {thrivedIn.join(" & ")}
                       </span>
                     </li>
                   );
@@ -410,10 +410,10 @@ export default function SeasonComparisonPage() {
           {whatToChange.length > 0 && (
             <Card>
               <h2 className="font-display text-lg font-semibold text-terracotta-500">
-                What to Change
+                Was verbessert werden sollte
               </h2>
               <p className="mt-1 text-xs text-text-secondary">
-                Plants that failed in at least one season
+                Pflanzen, die in mindestens einer Saison gescheitert sind
               </p>
               <ul className="mt-3 space-y-2">
                 {whatToChange.map((c) => {
@@ -430,7 +430,7 @@ export default function SeasonComparisonPage() {
                         {name}
                       </Link>
                       <span className="text-xs text-terracotta-500">
-                        Failed in {failedIn.join(" & ")}
+                        Gescheitert in {failedIn.join(" & ")}
                       </span>
                     </li>
                   );

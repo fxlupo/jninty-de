@@ -53,7 +53,7 @@ export default function CropPickerSearch({
 
       {query.trim().length >= 2 && results.length === 0 && (
         <p className="mt-2 text-center text-xs text-text-muted">
-          No crops found for &ldquo;{query}&rdquo;
+          Keine Kulturen für &ldquo;{query}&rdquo; gefunden
         </p>
       )}
     </div>

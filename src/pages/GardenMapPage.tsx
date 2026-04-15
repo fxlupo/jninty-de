@@ -52,18 +52,18 @@ const BED_COLORS = [
 ];
 
 const BED_TYPE_LABELS: Record<BedType, string> = {
-  vegetable_bed: "Vegetable Bed",
-  flower_bed: "Flower Bed",
-  fruit_area: "Fruit Area",
-  herb_garden: "Herb Garden",
-  container: "Container",
-  other: "Other",
+  vegetable_bed: "Gemüsebeet",
+  flower_bed: "Blumenbeet",
+  fruit_area: "Obstbereich",
+  herb_garden: "Kräutergarten",
+  container: "Behälter",
+  other: "Sonstiges",
 };
 
 const SUN_LABELS: Record<BedSunExposure, string> = {
-  full_sun: "Full Sun",
-  partial_shade: "Partial Shade",
-  full_shade: "Full Shade",
+  full_sun: "Vollsonne",
+  partial_shade: "Halbschatten",
+  full_shade: "Vollschatten",
 };
 
 const PLANT_TOKEN_COLORS: Record<PlantType, string> = {
@@ -329,7 +329,7 @@ function BedDetailPanel({
             <button
               onClick={enterEditMode}
               className="rounded p-1 text-text-muted hover:bg-surface hover:text-text-secondary"
-              aria-label="Edit bed"
+              aria-label="Beet bearbeiten"
             >
               <svg
                 className="h-5 w-5"
@@ -346,7 +346,7 @@ function BedDetailPanel({
           <button
             onClick={onClose}
             className="rounded p-1 text-text-muted hover:bg-surface hover:text-text-secondary"
-            aria-label="Close panel"
+            aria-label="Panel schließen"
           >
             <svg
               className="h-5 w-5"
@@ -405,7 +405,7 @@ function BedDetailPanel({
                 }
                 className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
               >
-                <option value="">Not specified</option>
+                <option value="">Nicht angegeben</option>
                 {Object.entries(SUN_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -430,7 +430,7 @@ function BedDetailPanel({
                         : "border-transparent hover:scale-105"
                     }`}
                     style={{ backgroundColor: c }}
-                    aria-label={`Color ${c}`}
+                    aria-label={`Farbe ${c}`}
                   />
                 ))}
               </div>
@@ -445,7 +445,7 @@ function BedDetailPanel({
                 onChange={(e) => setEditNotes(e.target.value)}
                 rows={3}
                 className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
-                placeholder="Optional notes..."
+                placeholder="Optionale Notizen..."
               />
             </label>
           </div>
@@ -499,18 +499,18 @@ function BedDetailPanel({
                     >
                       <path d="M12 5v14M5 12h14" />
                     </svg>
-                    Assign Plant
+                    Pflanze zuweisen
                   </button>
                 )}
               </div>
               {!hasActiveSeason && (
                 <p className="mb-2 text-xs text-terracotta-500">
-                  Create an active season in Settings to assign plants.
+                  Erstelle eine aktive Saison in den Einstellungen, um Pflanzen zuzuweisen.
                 </p>
               )}
               {bedPlantings.length === 0 ? (
                 <p className="text-sm text-text-muted">
-                  No plants assigned yet.
+                  Noch keine Pflanzen zugewiesen.
                 </p>
               ) : (
                 <ul className="space-y-1.5">
@@ -544,7 +544,7 @@ function BedDetailPanel({
                         <span className="flex-1 text-text-primary">
                           {plant?.nickname ??
                             plant?.species ??
-                            "Unknown plant"}
+                            "Unbekannte Pflanze"}
                         </span>
                         {statusDotColor && (
                           <span
@@ -555,7 +555,7 @@ function BedDetailPanel({
                         <button
                           onClick={() => onRemovePlant(planting.id)}
                           className="rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-terracotta-500 group-hover:opacity-100"
-                          aria-label={`Remove ${plant?.nickname ?? plant?.species ?? "plant"} from bed`}
+                          aria-label={`${plant?.nickname ?? plant?.species ?? "Pflanze"} aus Beet entfernen`}
                         >
                           <svg
                             className="h-3.5 w-3.5"
@@ -588,27 +588,27 @@ function BedDetailPanel({
               disabled={!editName.trim()}
               className="w-full"
             >
-              Save
+              Speichern
             </Button>
             <Button
               variant="secondary"
               onClick={() => setIsEditing(false)}
               className="w-full"
             >
-              Cancel
+              Abbrechen
             </Button>
           </>
         ) : (
           <>
             <Button onClick={onQuickLog} className="w-full">
-              Quick Log
+              Schnelleintrag
             </Button>
             <Button
               variant="ghost"
               onClick={onDelete}
               className="w-full text-terracotta-500 hover:text-terracotta-600 hover:bg-terracotta-500/10"
             >
-              Delete Bed
+              Beet löschen
             </Button>
           </>
         )}
@@ -658,7 +658,7 @@ function NewBedModal({
         className="w-full max-w-sm rounded-xl bg-surface-elevated p-5 shadow-xl"
       >
         <h3 className="mb-4 font-display text-lg font-bold text-text-heading">
-          New Garden Bed
+          Neues Gartenbeet
         </h3>
 
         <label className="mb-3 block">
@@ -670,14 +670,14 @@ function NewBedModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
-            placeholder="e.g. Raised Bed #1"
+            placeholder="z.B. Hochbeet #1"
             autoFocus
           />
         </label>
 
         <label className="mb-3 block">
           <span className="mb-1 block text-sm font-medium text-text-secondary">
-            Type
+            Typ
           </span>
           <select
             value={type}
@@ -694,7 +694,7 @@ function NewBedModal({
 
         <label className="mb-3 block">
           <span className="mb-1 block text-sm font-medium text-text-secondary">
-            Sun Exposure
+            Sonneneinstrahlung
           </span>
           <select
             value={sunExposure}
@@ -703,7 +703,7 @@ function NewBedModal({
             }
             className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
           >
-            <option value="">Not specified</option>
+            <option value="">Nicht angegeben</option>
             {Object.entries(SUN_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -714,7 +714,7 @@ function NewBedModal({
 
         <fieldset className="mb-4">
           <legend className="mb-1.5 text-sm font-medium text-text-secondary">
-            Color
+            Farbe
           </legend>
           <div className="flex flex-wrap gap-2">
             {BED_COLORS.map((c) => (
@@ -728,7 +728,7 @@ function NewBedModal({
                     : "border-transparent hover:scale-105"
                 }`}
                 style={{ backgroundColor: c }}
-                aria-label={`Color ${c}`}
+                aria-label={`Farbe ${c}`}
               />
             ))}
           </div>
@@ -736,10 +736,10 @@ function NewBedModal({
 
         <div className="flex gap-2">
           <Button type="submit" disabled={!name.trim()} className="flex-1">
-            Create Bed
+            Beet erstellen
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>
@@ -787,14 +787,14 @@ function AssignPlantModal({
       <div className="flex max-h-[70vh] w-full max-w-sm flex-col rounded-xl bg-surface-elevated shadow-xl">
         <div className="p-5 pb-3">
           <h3 className="mb-3 font-display text-lg font-bold text-text-heading">
-            Assign Plant to {bed.name}
+            Pflanze zuweisen zu {bed.name}
           </h3>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
-            placeholder="Search plants..."
+            placeholder="Pflanzen suchen..."
             autoFocus
           />
         </div>
@@ -802,8 +802,8 @@ function AssignPlantModal({
           {availablePlants.length === 0 ? (
             <p className="py-4 text-center text-sm text-text-muted">
               {totalActive === 0
-                ? "No plants in your inventory yet. Add plants first."
-                : "All active plants are already assigned to this bed."}
+                ? "Noch keine Pflanzen im Katalog. Zuerst Pflanzen anlegen."
+                : "Alle aktiven Pflanzen sind diesem Beet bereits zugewiesen."}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -837,7 +837,7 @@ function AssignPlantModal({
         </div>
         <div className="border-t border-border-default p-4">
           <Button variant="secondary" onClick={onClose} className="w-full">
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </div>
@@ -1222,7 +1222,7 @@ export default function GardenMapPage() {
               >
                 <rect x="3" y="3" width="18" height="18" rx="2" />
               </svg>
-              Add Bed
+              Beet hinzufügen
             </span>
           </button>
         </div>
