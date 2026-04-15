@@ -187,24 +187,42 @@ async function seedPhoto(
 
 describe("exportAll", () => {
   it("creates a valid ZIP with correct structure", async () => {
-    // Seed the database via PouchDB
-    const plant = makePlant();
-    const entry = makeJournalEntry();
-    const task = makeTask();
-    const bed = makeGardenBed();
+    // Seed non-photo entities via API repositories (backed by fetch mock in tests/setup.ts)
+    const { plantRepository, journalRepository, taskRepository, gardenBedRepository, settingsRepository } =
+      await import("../db/index.ts");
 
-    await seedDoc(plant, "plant");
-    await seedDoc(entry, "journal");
-    await seedDoc(task, "task");
-    await seedDoc(bed, "gardenBed");
-
-    // Settings
-    const settings = makeSettings();
-    await testDB.put({
-      _id: "settings:singleton",
-      docType: "settings",
-      ...settings,
+    await plantRepository.create({
+      species: "Solanum lycopersicum",
+      type: "vegetable",
+      isPerennial: false,
+      source: "seed",
+      status: "active",
+      tags: ["tomato"],
     });
+    await journalRepository.create({
+      seasonId: "00000000-0000-0000-0000-000000000099",
+      activityType: "watering",
+      body: "Watered the tomatoes",
+      photoIds: [],
+      isMilestone: false,
+    });
+    await taskRepository.create({
+      title: "Water tomatoes",
+      dueDate: "2026-03-16",
+      priority: "normal",
+      isCompleted: false,
+    });
+    await gardenBedRepository.create({
+      name: "Raised Bed 1",
+      type: "vegetable_bed",
+      gridX: 0,
+      gridY: 0,
+      gridWidth: 4,
+      gridHeight: 2,
+      shape: "rectangle",
+      color: "#7dbf4e",
+    });
+    await settingsRepository.update(makeSettings());
 
     const thumbData = Buffer.from(new Uint8Array(100));
     const displayData = Buffer.from(new Uint8Array(500));

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1776249446179,
+      "tag": "0000_nervous_roland_deschain",
+      "breakpoints": true
+    }
+  ]
+}

@@ -79,7 +79,7 @@ describe("plantKnowledgeSchema", () => {
   it("rejects invalid plantType", () => {
     const result = validateEntity(
       plantKnowledgeSchema,
-      { ...validPlant, plantType: "shrub" },
+      { ...validPlant, plantType: "ficus" },
     );
     expect(result.success).toBe(false);
   });

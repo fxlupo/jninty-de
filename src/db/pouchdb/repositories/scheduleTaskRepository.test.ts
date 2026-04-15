@@ -70,7 +70,7 @@ describe("scheduleTaskRepository", () => {
     });
 
     it("throws for nonexistent task", async () => {
-      await expect(repo.update("nonexistent", { title: "x" })).rejects.toThrow("not found");
+      await expect(repo.update("nonexistent", { title: "x" })).rejects.toThrow("Not found");
     });
   });
 
@@ -216,7 +216,7 @@ describe("scheduleTaskRepository", () => {
     it("throws if any task not found", async () => {
       await expect(
         repo.updateBatch([{ id: "nonexistent", changes: { scheduledDate: "2026-07-01" } }]),
-      ).rejects.toThrow("ScheduleTask not found");
+      ).rejects.toThrow("Not found");
     });
   });
 });

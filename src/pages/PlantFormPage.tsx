@@ -75,11 +75,12 @@ export default function PlantFormPage() {
   // Load existing plant data for edit mode
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
 
     void (async () => {
       const plant = await plantRepository.getById(id);
-      if (!plant) {
-        void navigate("/plants", { replace: true });
+      if (cancelled || !plant) {
+        if (!plant && !cancelled) void navigate("/plants", { replace: true });
         return;
       }
 
@@ -96,17 +97,34 @@ export default function PlantFormPage() {
       setCareNotes(plant.careNotes ?? "");
       setTagsInput(plant.tags.join(", "));
 
-      // Load all existing photos
+      // Load all photos, then replace state atomically to prevent duplicates
+      // when the effect is re-invoked (e.g. React StrictMode double-mount).
+      const entries: Array<{ id: string; previewUrl: string; takenAt?: string }> = [];
       for (const photoId of plant.photoIds ?? []) {
+        if (cancelled) break;
         const photo = await photoRepository.getById(photoId);
         if (photo) {
-          const url = URL.createObjectURL(photo.thumbnailBlob);
-          photoManager.addExisting(photoId, url, photo.takenAt);
+          entries.push({
+            id: photoId,
+            previewUrl: URL.createObjectURL(photo.thumbnailBlob),
+            ...(photo.takenAt != null ? { takenAt: photo.takenAt } : {}),
+          });
         }
       }
 
+      if (cancelled) {
+        // Cleanup URLs that were never handed to the manager
+        for (const e of entries) URL.revokeObjectURL(e.previewUrl);
+        return;
+      }
+
+      photoManager.loadExisting(entries);
       setLoading(false);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, navigate]);
 
   // ─── Photo handlers ───
@@ -441,7 +459,7 @@ export default function PlantFormPage() {
                 htmlFor="purchase-price"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Kaufpreis ($)
+                Kaufpreis (€)
               </label>
               <Input
                 id="purchase-price"

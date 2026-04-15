@@ -61,12 +61,8 @@ describe("PouchDB userPlantKnowledgeRepository", () => {
       expect(entry.goodCompanions).toEqual(["Basil", "Carrots"]);
     });
 
-    it("stores document with correct docType in PouchDB", async () => {
-      const entry = await repo.create(baseEntry);
-      const doc = await testDB.get(`userPlantKnowledge:${entry.id}`);
-      expect(
-        (doc as unknown as Record<string, unknown>)["docType"],
-      ).toBe("userPlantKnowledge");
+    it.skip("stores document with correct docType in PouchDB", async () => {
+      // Skipped: PouchDB-specific — repository is now API-backed
     });
   });
 
@@ -87,7 +83,7 @@ describe("PouchDB userPlantKnowledgeRepository", () => {
         repo.update("00000000-0000-0000-0000-000000000000", {
           commonName: "Nope",
         }),
-      ).rejects.toThrow("UserPlantKnowledge not found");
+      ).rejects.toThrow("Not found");
     });
 
     it("throws when updating a soft-deleted entry", async () => {
@@ -96,7 +92,7 @@ describe("PouchDB userPlantKnowledgeRepository", () => {
 
       await expect(
         repo.update(entry.id, { commonName: "Nope" }),
-      ).rejects.toThrow("UserPlantKnowledge not found");
+      ).rejects.toThrow("Not found");
     });
   });
 
@@ -105,17 +101,15 @@ describe("PouchDB userPlantKnowledgeRepository", () => {
       const entry = await repo.create(baseEntry);
       await repo.softDelete(entry.id);
 
-      const raw = await testDB.get(`userPlantKnowledge:${entry.id}`);
-      expect(
-        (raw as unknown as Record<string, unknown>)["deletedAt"],
-      ).toBeDefined();
-      expect((raw as unknown as Record<string, unknown>)["version"]).toBe(2);
+      // After soft-delete, getById should return undefined
+      const found = await repo.getById(entry.id);
+      expect(found).toBeUndefined();
     });
 
     it("throws when deleting a non-existent entry", async () => {
       await expect(
         repo.softDelete("00000000-0000-0000-0000-000000000000"),
-      ).rejects.toThrow("UserPlantKnowledge not found");
+      ).rejects.toThrow("Not found");
     });
   });
 

@@ -25,6 +25,12 @@ dist-ssr
 
 # Sync server
 sync/.env
+
+# SQLite database and uploads
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/uploads/
 .certs/
 
 # wrangler files

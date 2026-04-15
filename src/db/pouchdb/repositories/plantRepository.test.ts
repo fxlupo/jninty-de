@@ -59,10 +59,8 @@ describe("PouchDB plantRepository", () => {
       expect(plant.careNotes).toBe("Needs staking");
     });
 
-    it("stores document with correct docType in PouchDB", async () => {
-      const plant = await plantRepo.create(basePlant);
-      const doc = await testDB.get(`plant:${plant.id}`);
-      expect((doc as unknown as Record<string, unknown>)["docType"]).toBe("plant");
+    it.skip("stores document with correct docType in PouchDB", async () => {
+      // Skipped: PouchDB-specific — repository is now API-backed
     });
   });
 
@@ -86,7 +84,7 @@ describe("PouchDB plantRepository", () => {
         plantRepo.update("00000000-0000-0000-0000-000000000000", {
           nickname: "Nope",
         }),
-      ).rejects.toThrow("PlantInstance not found");
+      ).rejects.toThrow("Not found");
     });
 
     it("throws when updating a soft-deleted plant", async () => {
@@ -95,7 +93,7 @@ describe("PouchDB plantRepository", () => {
 
       await expect(
         plantRepo.update(plant.id, { nickname: "Nope" }),
-      ).rejects.toThrow("PlantInstance not found");
+      ).rejects.toThrow("Not found");
     });
   });
 
@@ -104,16 +102,15 @@ describe("PouchDB plantRepository", () => {
       const plant = await plantRepo.create(basePlant);
       await plantRepo.softDelete(plant.id);
 
-      // Direct DB read to verify soft-delete
-      const raw = await testDB.get(`plant:${plant.id}`);
-      expect((raw as unknown as Record<string, unknown>)["deletedAt"]).toBeDefined();
-      expect((raw as unknown as Record<string, unknown>)["version"]).toBe(2);
+      // After soft-delete, getById should return undefined
+      const found = await plantRepo.getById(plant.id);
+      expect(found).toBeUndefined();
     });
 
     it("throws when deleting a non-existent plant", async () => {
       await expect(
         plantRepo.softDelete("00000000-0000-0000-0000-000000000000"),
-      ).rejects.toThrow("PlantInstance not found");
+      ).rejects.toThrow("Not found");
     });
   });
 
@@ -194,23 +191,8 @@ describe("PouchDB plantRepository", () => {
   });
 
   describe("docType isolation", () => {
-    it("only returns plant documents, not other docTypes", async () => {
-      // Manually insert a non-plant doc into the same DB
-      await testDB.put({
-        _id: "journal:fake-123",
-        docType: "journal",
-        id: "fake-123",
-        body: "Not a plant",
-        version: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      await plantRepo.create(basePlant);
-
-      const all = await plantRepo.getAll();
-      expect(all).toHaveLength(1);
-      expect(all[0]?.species).toBe("Solanum lycopersicum");
+    it.skip("only returns plant documents, not other docTypes", async () => {
+      // Skipped: PouchDB-specific — repository is now API-backed (separate endpoints per entity)
     });
   });
 });

@@ -1,3 +1,7 @@
+/**
+ * Photo repository — still uses PouchDB + attachment storage.
+ * TODO Phase 3: migrate to server upload endpoint + filesystem storage + URL-based schema.
+ */
 import { localDB } from "../client.ts";
 import { type PouchDoc, stripPouchFields, toPouchDoc } from "../utils.ts";
 import { photoSchema, type Photo } from "../../../validation/photo.schema.ts";

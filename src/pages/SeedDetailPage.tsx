@@ -240,7 +240,7 @@ export default function SeedDetailPage() {
             <div>
               <span className="text-xs text-text-secondary">Kosten</span>
               <p className="text-sm font-medium text-text-primary">
-                ${seed.cost.toFixed(2)}
+                {seed.cost.toFixed(2)} €
               </p>
             </div>
           )}

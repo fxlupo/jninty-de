@@ -44,6 +44,34 @@ export function usePlantPhotoManager() {
     };
   }, []);
 
+  /**
+   * Replace the entire photo list with pre-loaded existing photos (edit mode).
+   * Revokes any Object URLs that are being replaced.
+   */
+  const loadExisting = useCallback(
+    (entries: Array<{ id: string; previewUrl: string; takenAt?: string }>) => {
+      setPhotos((prev) => {
+        // Revoke URLs for photos that are being replaced
+        for (const p of prev) {
+          URL.revokeObjectURL(p.previewUrl);
+          allUrlsRef.current.delete(p.previewUrl);
+        }
+        for (const e of entries) {
+          allUrlsRef.current.add(e.previewUrl);
+        }
+        return entries.map((e) => ({
+          kind: "existing" as const,
+          id: e.id,
+          previewUrl: e.previewUrl,
+          ...(e.takenAt != null
+            ? { takenAt: e.takenAt, originalTakenAt: e.takenAt }
+            : {}),
+        }));
+      });
+    },
+    [],
+  );
+
   /** Register an already-saved photo (edit mode). */
   const addExisting = useCallback(
     (id: string, previewUrl: string, takenAt?: string) => {
@@ -65,7 +93,8 @@ export function usePlantPhotoManager() {
   const addNew = useCallback((processed: ProcessedPhoto) => {
     const previewUrl = URL.createObjectURL(processed.thumbnailBlob);
     allUrlsRef.current.add(previewUrl);
-    const takenAt = new Date().toISOString();
+    // Use EXIF DateTimeOriginal if available, otherwise fall back to now
+    const takenAt = processed.takenAt ?? new Date().toISOString();
     const localId = crypto.randomUUID();
     setPhotos((prev) => [
       ...prev,
@@ -159,6 +188,7 @@ export function usePlantPhotoManager() {
 
   return {
     photos,
+    loadExisting,
     addExisting,
     addNew,
     remove,

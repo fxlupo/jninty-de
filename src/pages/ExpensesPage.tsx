@@ -42,7 +42,7 @@ const ALL_CATEGORY_COLORS: Record<string, string> = {
 };
 
 function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
+  return `${amount.toFixed(2)} €`;
 }
 
 export default function ExpensesPage() {
