@@ -10,9 +10,7 @@ import useOnlineStatus from "../../hooks/useOnlineStatus";
 import { useSync } from "../../hooks/useSync";
 import { useKeyboardShortcuts, useShortcutsHelpState } from "../../hooks/useKeyboardShortcuts";
 import KeyboardShortcutsHelp from "../KeyboardShortcutsHelp";
-import SyncStatusBadge from "../cloud/SyncStatusBadge";
 import { useAuth } from "../../store/authStore";
-import { stopCloudSync } from "../../lib/cloudSync";
 
 // SVG icon components — inline to avoid extra dependencies
 
@@ -437,16 +435,12 @@ export default function AppShell() {
           </span>
           <span className="text-text-on-nav">
             <SyncStatusDot />
-            <SyncStatusBadge />
           </span>
           {authState.isAuthenticated && (
             <button
               type="button"
               aria-label="Abmelden"
-              onClick={() => {
-                stopCloudSync();
-                performLogout();
-              }}
+              onClick={() => performLogout()}
               className="ml-auto p-1 text-text-on-nav hover:text-text-on-primary transition-colors"
               title="Abmelden"
             >
@@ -498,16 +492,12 @@ export default function AppShell() {
             </span>
             <span className="text-text-secondary">
               <SyncStatusDot />
-              <SyncStatusBadge />
             </span>
             {authState.isAuthenticated && (
               <button
                 type="button"
                 aria-label="Abmelden"
-                onClick={() => {
-                  stopCloudSync();
-                  performLogout();
-                }}
+                onClick={() => performLogout()}
                 className="p-1 text-text-secondary hover:text-text-heading"
               >
                 <LogOutIcon className="h-4 w-4" />

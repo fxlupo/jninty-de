@@ -391,6 +391,14 @@ globalThis.fetch = vi.fn(async (
     return _jsonResponse(coll[idx]);
   }
 
+  // POST /api/reset — wipe all mock data
+  if (method === "POST" && collection === "reset" && !id) {
+    _mockDB.clear();
+    _mockSettings = null;
+    await _triggerReactivity();
+    return _jsonResponse({ ok: true });
+  }
+
   // Fallback
   return _jsonResponse({ error: `Unhandled: ${method} ${rawUrl}` }, 500);
 });

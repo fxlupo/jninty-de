@@ -15,11 +15,28 @@ type SettingsPatch = Partial<
   Omit<typeof settings.$inferInsert, "userId" | "updatedAt">
 >;
 
+/** Normalise legacy MM-DD frost dates that predate the YYYY-MM-DD requirement. */
+function normalizeFrostDate(value: string, fallback: string): string {
+  return /^\d{2}-\d{2}$/.test(value) ? `2026-${value}` : value || fallback;
+}
+
 /** GET /api/settings — returns current user's settings, creating defaults if absent */
 router.get("/", requireAuth, async (c) => {
   const userId = c.get("userId");
   const rows = await db.select().from(settings).where(eq(settings.userId, userId));
-  if (rows[0]) return c.json(rows[0]);
+  if (rows[0]) {
+    const row = rows[0];
+    const fixedLast = normalizeFrostDate(row.lastFrostDate, "2026-04-15");
+    const fixedFirst = normalizeFrostDate(row.firstFrostDate, "2026-10-15");
+    if (fixedLast !== row.lastFrostDate || fixedFirst !== row.firstFrostDate) {
+      await db
+        .update(settings)
+        .set({ lastFrostDate: fixedLast, firstFrostDate: fixedFirst })
+        .where(eq(settings.userId, userId));
+      return c.json({ ...row, lastFrostDate: fixedLast, firstFrostDate: fixedFirst });
+    }
+    return c.json(row);
+  }
 
   // Create default settings for new user
   const result = await db

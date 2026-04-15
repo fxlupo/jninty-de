@@ -1,5 +1,3 @@
-import { localDB } from "../db/pouchdb/client.ts";
-
 // ─── Types ───
 
 export type WeatherData = {
@@ -119,7 +117,7 @@ type GeocodingResponse = {
 // ─── Cache config ───
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-const CACHE_DOC_ID = "weatherCache:current";
+
 
 // In-memory cache for instant reads within a session.
 let memoryCache: {
@@ -176,12 +174,14 @@ async function fetchFromApi(
 
 // ─── Cache helpers ───
 
-type WeatherCacheDoc = PouchDB.Core.IdMeta &
-  PouchDB.Core.GetMeta & {
-    docType: string;
-    data: string;
-    fetchedAt: string;
-  };
+const LS_CACHE_KEY = "jninty_weather_cache";
+
+type WeatherCacheEntry = {
+  weather: WeatherData;
+  latitude: number;
+  longitude: number;
+  fetchedAt: number;
+};
 
 async function readCache(
   latitude: number,
@@ -197,31 +197,26 @@ async function readCache(
     return memoryCache.data;
   }
 
-  // Fall back to PouchDB
+  // Fall back to localStorage
   try {
-    const record = await localDB.get<WeatherCacheDoc>(CACHE_DOC_ID);
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if (!raw) return null;
 
-    const parsed = JSON.parse(record.data) as {
-      weather: WeatherData;
-      latitude: number;
-      longitude: number;
-    };
+    const entry = JSON.parse(raw) as WeatherCacheEntry;
 
-    // Verify coordinates match
-    if (parsed.latitude !== latitude || parsed.longitude !== longitude) {
+    if (entry.latitude !== latitude || entry.longitude !== longitude) {
       return null;
     }
 
-    const fetchedAt = new Date(record.fetchedAt).getTime();
-    if (Date.now() - fetchedAt >= CACHE_TTL_MS) return null;
+    if (Date.now() - entry.fetchedAt >= CACHE_TTL_MS) return null;
 
     memoryCache = {
-      data: parsed.weather,
-      fetchedAt,
+      data: entry.weather,
+      fetchedAt: entry.fetchedAt,
       latitude,
       longitude,
     };
-    return parsed.weather;
+    return entry.weather;
   } catch {
     return null;
   }
@@ -236,22 +231,8 @@ async function writeCache(
   memoryCache = { data, fetchedAt: now, latitude, longitude };
 
   try {
-    // Get existing _rev for update, if the doc exists
-    let rev: string | undefined;
-    try {
-      const existing = await localDB.get(CACHE_DOC_ID);
-      rev = existing._rev;
-    } catch {
-      // Doc doesn't exist yet — that's fine, we'll create it
-    }
-
-    await localDB.put({
-      _id: CACHE_DOC_ID,
-      ...(rev ? { _rev: rev } : {}),
-      docType: "weatherCache",
-      data: JSON.stringify({ weather: data, latitude, longitude }),
-      fetchedAt: new Date(now).toISOString(),
-    });
+    const entry: WeatherCacheEntry = { weather: data, latitude, longitude, fetchedAt: now };
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify(entry));
   } catch {
     // Cache write failure is non-critical
   }
@@ -342,8 +323,7 @@ export async function searchLocation(
 export async function clearWeatherCache(): Promise<void> {
   memoryCache = null;
   try {
-    const doc = await localDB.get(CACHE_DOC_ID);
-    await localDB.remove(doc);
+    localStorage.removeItem(LS_CACHE_KEY);
   } catch {
     // Non-critical
   }

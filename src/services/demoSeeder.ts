@@ -9,9 +9,8 @@ import {
   expenseRepository,
   settingsRepository,
   plantingRepository,
-  destroyAndRecreate,
 } from "../db/index.ts";
-import { destroyAndRecreateOriginals } from "../db/pouchdb/originalsStore.ts";
+import { post } from "../db/api/client.ts";
 import { rebuildIndex } from "../db/search.ts";
 
 function toDateStr(d: Date): string {
@@ -518,10 +517,8 @@ export async function loadDemoData(): Promise<void> {
 }
 
 /**
- * Wipes all data by destroying and recreating the database.
- * Same pattern as "Replace" import.
+ * Wipes all user data via the server reset endpoint.
  */
 export async function clearDemoData(): Promise<void> {
-  await destroyAndRecreate();
-  await destroyAndRecreateOriginals();
+  await post("/api/reset", {});
 }

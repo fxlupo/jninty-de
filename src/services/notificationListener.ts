@@ -1,54 +1,35 @@
 import { formatISO, startOfDay } from "date-fns";
-import { localDB } from "../db/pouchdb/client.ts";
-import { stripPouchFields, type PouchDoc } from "../db/pouchdb/utils.ts";
-import type { Task } from "../validation/task.schema.ts";
+import { taskRepository } from "../db/index.ts";
 import { notifyTaskDueToday } from "./notifications.ts";
 
-let changesListener: ReturnType<typeof localDB.changes> | null = null;
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
+const POLL_INTERVAL_MS = 60_000; // check every minute
 
 function todayDate(): string {
   return formatISO(startOfDay(new Date()), { representation: "date" });
 }
 
-function handleChange(
-  change: PouchDB.Core.ChangesResponseChange<object>,
-): void {
-  if (change.deleted) return;
-
-  const raw = change.doc;
-  if (!raw) return;
-
-  const docType = (raw as Record<string, unknown>)["docType"] as
-    | string
-    | undefined;
-  if (docType !== "task") return;
-
-  const entity = stripPouchFields(
-    raw as PouchDoc<Record<string, unknown>>,
-  ) as unknown as Task;
-
-  if (entity.deletedAt != null) return;
-  if (entity.isCompleted) return;
-  if (entity.dueDate !== todayDate()) return;
-
-  notifyTaskDueToday(entity.title);
+async function checkTasksDueToday(): Promise<void> {
+  try {
+    const today = todayDate();
+    const tasks = await taskRepository.getByDateRange(today, today);
+    for (const task of tasks) {
+      notifyTaskDueToday(task.title);
+    }
+  } catch {
+    // Polling failure is non-critical
+  }
 }
 
 export function startNotificationListening(): void {
   stopNotificationListening();
-
-  changesListener = localDB
-    .changes({
-      live: true,
-      since: "now",
-      include_docs: true,
-    })
-    .on("change", handleChange);
+  void checkTasksDueToday();
+  pollingInterval = setInterval(() => void checkTasksDueToday(), POLL_INTERVAL_MS);
 }
 
 export function stopNotificationListening(): void {
-  if (changesListener) {
-    changesListener.cancel();
-    changesListener = null;
+  if (pollingInterval !== null) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
   }
 }
