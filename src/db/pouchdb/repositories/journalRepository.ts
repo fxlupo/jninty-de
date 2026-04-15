@@ -1,13 +1,14 @@
-import { localDB } from "../client.ts";
-import { type PouchDoc, stripPouchFields, toPouchDoc } from "../utils.ts";
+/**
+ * Journal repository — API-backed implementation.
+ * Replaces the PouchDB implementation; exports the same function signatures.
+ */
+import { get, post, patch, del } from "../../api/client.ts";
 import {
-  journalEntrySchema,
   type JournalEntry,
   type ActivityType,
 } from "../../../validation/journalEntry.schema.ts";
-import { ensureAllIndexes } from "../indexes.ts";
 
-const DOC_TYPE = "journal";
+const BASE = "/api/journal";
 
 type CreateJournalInput = Omit<
   JournalEntry,
@@ -16,182 +17,46 @@ type CreateJournalInput = Omit<
 
 type UpdateJournalInput = Partial<CreateJournalInput>;
 
-function now(): string {
-  return new Date().toISOString();
+export async function create(input: CreateJournalInput): Promise<JournalEntry> {
+  return post<JournalEntry>(BASE, input);
 }
 
-export async function create(
-  input: CreateJournalInput,
-): Promise<JournalEntry> {
-  const timestamp = now();
-  const record: JournalEntry = {
-    ...input,
-    id: crypto.randomUUID(),
-    version: 1,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-
-  const parsed = journalEntrySchema.parse(record);
-  const doc = toPouchDoc(parsed, DOC_TYPE);
-  await localDB.put(doc);
-  return parsed;
-}
-
-export async function update(
-  id: string,
-  changes: UpdateJournalInput,
-): Promise<JournalEntry> {
-  const docId = `${DOC_TYPE}:${id}`;
-  let existing: PouchDoc<JournalEntry>;
-  try {
-    existing = await localDB.get<PouchDoc<JournalEntry>>(docId);
-  } catch {
-    throw new Error(`JournalEntry not found: ${id}`);
-  }
-
-  const entity = stripPouchFields(existing);
-  if (entity.deletedAt != null) {
-    throw new Error(`JournalEntry not found: ${id}`);
-  }
-
-  const updated: JournalEntry = {
-    ...entity,
-    ...changes,
-    id: entity.id,
-    version: entity.version + 1,
-    createdAt: entity.createdAt,
-    updatedAt: now(),
-  };
-
-  const parsed = journalEntrySchema.parse(updated);
-  const doc = toPouchDoc(parsed, DOC_TYPE);
-  doc._rev = existing._rev;
-  await localDB.put(doc);
-  return parsed;
+export async function update(id: string, changes: UpdateJournalInput): Promise<JournalEntry> {
+  return patch<JournalEntry>(`${BASE}/${id}`, changes);
 }
 
 export async function softDelete(id: string): Promise<void> {
-  const docId = `${DOC_TYPE}:${id}`;
-  let existing: PouchDoc<JournalEntry>;
-  try {
-    existing = await localDB.get<PouchDoc<JournalEntry>>(docId);
-  } catch {
-    throw new Error(`JournalEntry not found: ${id}`);
-  }
-
-  const entity = stripPouchFields(existing);
-  if (entity.deletedAt != null) {
-    throw new Error(`JournalEntry not found: ${id}`);
-  }
-
-  const timestamp = now();
-  const deleted = journalEntrySchema.parse({
-    ...entity,
-    deletedAt: timestamp,
-    updatedAt: timestamp,
-    version: entity.version + 1,
-  });
-
-  const doc = toPouchDoc(deleted, DOC_TYPE);
-  doc._rev = existing._rev;
-  await localDB.put(doc);
+  await del(`${BASE}/${id}`);
 }
 
-export async function getById(
-  id: string,
-): Promise<JournalEntry | undefined> {
-  const docId = `${DOC_TYPE}:${id}`;
+export async function getById(id: string): Promise<JournalEntry | undefined> {
   try {
-    const doc = await localDB.get<PouchDoc<JournalEntry>>(docId);
-    const entity = stripPouchFields(doc);
-    if (entity.deletedAt != null) return undefined;
-    return entity;
+    return await get<JournalEntry>(`${BASE}/${id}`);
   } catch {
     return undefined;
   }
 }
 
-export async function getByPlantId(
-  plantInstanceId: string,
-): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: {
-      docType: DOC_TYPE,
-      plantInstanceId,
-    },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null);
+export async function getByPlantId(plantInstanceId: string): Promise<JournalEntry[]> {
+  return get<JournalEntry[]>(`${BASE}?plantId=${plantInstanceId}`);
 }
 
 export async function getRecent(limit: number): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: { docType: DOC_TYPE },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+  return get<JournalEntry[]>(`${BASE}?limit=${limit}`);
 }
 
-export async function getByActivityType(
-  activityType: ActivityType,
-): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: {
-      docType: DOC_TYPE,
-      activityType,
-    },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null);
+export async function getByActivityType(activityType: ActivityType): Promise<JournalEntry[]> {
+  return get<JournalEntry[]>(`${BASE}?activityType=${activityType}`);
 }
 
 export async function getAll(): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: { docType: DOC_TYPE },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return get<JournalEntry[]>(BASE);
 }
 
-export async function getByDateRange(
-  start: string,
-  end: string,
-): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: {
-      docType: DOC_TYPE,
-      createdAt: { $gte: start, $lte: end },
-    },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null);
+export async function getByDateRange(start: string, end: string): Promise<JournalEntry[]> {
+  return get<JournalEntry[]>(`${BASE}?start=${start}&end=${end}`);
 }
 
-export async function getBySeasonId(
-  seasonId: string,
-): Promise<JournalEntry[]> {
-  await ensureAllIndexes();
-  const result = await localDB.find({
-    selector: {
-      docType: DOC_TYPE,
-      seasonId,
-    },
-  });
-  return (result.docs as PouchDoc<JournalEntry>[])
-    .map(stripPouchFields)
-    .filter((r) => r.deletedAt == null);
+export async function getBySeasonId(seasonId: string): Promise<JournalEntry[]> {
+  return get<JournalEntry[]>(`${BASE}?seasonId=${seasonId}`);
 }

@@ -120,7 +120,7 @@ describe("PouchDB seasonRepository", () => {
     it("throws for non-existent season", async () => {
       await expect(
         seasonRepo.setActive("nonexistent"),
-      ).rejects.toThrow("Season not found");
+      ).rejects.toThrow("Not found");
     });
   });
 });

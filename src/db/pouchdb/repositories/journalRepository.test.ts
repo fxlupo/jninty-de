@@ -65,7 +65,7 @@ describe("PouchDB journalRepository", () => {
 
       await expect(
         journalRepo.update(entry.id, { body: "Nope" }),
-      ).rejects.toThrow("JournalEntry not found");
+      ).rejects.toThrow("Not found");
     });
   });
 

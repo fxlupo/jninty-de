@@ -4,7 +4,11 @@ export interface ProcessedPhoto {
   originalFile?: Blob;
   width: number;
   height: number;
+  /** ISO timestamp extracted from EXIF DateTimeOriginal, if available. */
+  takenAt?: string;
 }
+
+import { parse as parseExif } from "exifr";
 
 const THUMBNAIL_MAX_WIDTH = 320;
 const THUMBNAIL_QUALITY = 0.7;
@@ -67,7 +71,25 @@ function resizeToBlob(
 }
 
 /**
+ * Extract the DateTimeOriginal from EXIF metadata and return it as an ISO
+ * timestamp. Returns undefined if no EXIF date is present or parsing fails
+ * (e.g. PNG, screenshots, camera-roll copies without metadata).
+ */
+async function extractExifDate(file: File | Blob): Promise<string | undefined> {
+  try {
+    const exif = await parseExif(file, ["DateTimeOriginal"]);
+    if (exif?.DateTimeOriginal instanceof Date && !isNaN(exif.DateTimeOriginal.getTime())) {
+      return exif.DateTimeOriginal.toISOString();
+    }
+  } catch {
+    // EXIF not available or unsupported format — silently ignore
+  }
+  return undefined;
+}
+
+/**
  * Process a photo file into thumbnail (320px) and display (1600px) variants.
+ * Also extracts the EXIF DateTimeOriginal (if present) as takenAt.
  *
  * Note: The design doc (§5.4) envisions staggered processing — show
  * thumbnail immediately while generating the display size in the background.
@@ -85,12 +107,19 @@ export async function processPhoto(
   const width = img.naturalWidth;
   const height = img.naturalHeight;
 
-  const [thumbnailBlob, displayBlob] = await Promise.all([
+  const [thumbnailBlob, displayBlob, takenAt] = await Promise.all([
     resizeToBlob(img, THUMBNAIL_MAX_WIDTH, THUMBNAIL_QUALITY),
     resizeToBlob(img, DISPLAY_MAX_WIDTH, DISPLAY_QUALITY),
+    extractExifDate(file),
   ]);
 
-  return { thumbnailBlob, displayBlob, width, height };
+  return {
+    thumbnailBlob,
+    displayBlob,
+    width,
+    height,
+    ...(takenAt != null ? { takenAt } : {}),
+  };
 }
 
 /**

@@ -198,7 +198,7 @@ export default function ExpenseFormPage() {
                 htmlFor="expense-amount"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Betrag ($) <span className="text-terracotta-500">*</span>
+                Betrag (€) <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="expense-amount"

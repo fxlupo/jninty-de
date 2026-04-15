@@ -90,12 +90,7 @@ describe("PouchDB docType isolation", () => {
     expect(expenses).toHaveLength(1);
     expect(expenses[0]?.name).toBe("Garden hose");
 
-    // Verify total documents in DB is 5
-    const allDocs = await testDB.allDocs();
-    const dataDocs = allDocs.rows.filter(
-      (r) => !r.id.startsWith("_design/"),
-    );
-    expect(dataDocs).toHaveLength(5);
+    // Note: total-docs-in-DB check omitted — repositories are now API-backed (no single PouchDB)
   });
 
   it("soft-deleting one type doesn't affect others", async () => {

@@ -27,7 +27,7 @@ const FIELD_LABELS: Record<string, string> = {
   purchaseDate: "Purchase Date",
   expiryDate: "Expiry Date",
   germinationRate: "Germination Rate",
-  cost: "Cost",
+  cost: "Kosten",
   storageLocation: "Storage Location",
   notes: "Notes",
 };
@@ -584,7 +584,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-cost"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Cost ($)
+                Kosten (€)
               </label>
               <Input
                 id="seed-cost"
