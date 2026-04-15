@@ -73,6 +73,8 @@ const PLANT_TOKEN_COLORS: Record<PlantType, string> = {
   ornamental: "#b87a2a",
   fruit_tree: "#9e641e",
   berry: "#e8825a",
+  shrub: "#4a7c59",
+  hedge: "#2e5e3e",
   other: "#634120",
 };
 

@@ -15,12 +15,14 @@ export type BadgeVariant = "default" | "success" | "warning" | "danger";
 // ─── Label maps ───
 
 export const TYPE_LABELS: Record<PlantType, string> = {
-  vegetable: "Gemuese",
-  herb: "Kraeuter",
+  vegetable: "Gemüse",
+  herb: "Kräuter",
   flower: "Blume",
   ornamental: "Zierpflanze",
   fruit_tree: "Obstbaum",
   berry: "Beere",
+  shrub: "Strauch",
+  hedge: "Hecke",
   other: "Sonstiges",
 };
 
@@ -71,6 +73,8 @@ export const ALL_TYPES: PlantType[] = [
   "ornamental",
   "fruit_tree",
   "berry",
+  "shrub",
+  "hedge",
   "other",
 ];
 
