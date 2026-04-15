@@ -6,9 +6,9 @@ interface TaskOriginFilterProps {
 }
 
 const OPTIONS: { value: TaskOrigin; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "manual", label: "Manual" },
-  { value: "schedule", label: "Schedule" },
+  { value: "all", label: "Alle" },
+  { value: "manual", label: "Manuell" },
+  { value: "schedule", label: "Geplant" },
 ];
 
 export default function TaskOriginFilter({

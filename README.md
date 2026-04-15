@@ -1,4 +1,6 @@
-<!-- Project logo placeholder — replace with actual logo when ready -->
+> This repository is a translated copy of the original project at https://github.com/HapiCreative/jninty and has been adapted to German.
+
+<!-- Project logo placeholder - replace with actual logo when ready -->
 
 # Jninty
 
@@ -10,65 +12,65 @@
 ![PWA](https://img.shields.io/badge/PWA-offline--ready-5A0FC8?logo=pwa&logoColor=white)
 [![Jninty Cloud](https://img.shields.io/badge/Jninty_Cloud-Sync_Anywhere-2D6A4F?style=flat&logo=cloud&logoColor=white)](https://jninty.com)
 
-**A local-first, open-source garden journal and management PWA.** All data lives on your device in IndexedDB — no account required, works offline, with optional multi-device sync via CouchDB.
+**Ein Local-First-, Open-Source-Gartenjournal und Verwaltungs-PWA.** Alle Daten liegen auf deinem Geraet in IndexedDB, es ist kein Konto erforderlich, die App funktioniert offline und kann optional ueber CouchDB zwischen mehreren Geraeten synchronisiert werden.
 
-## Features
+## Funktionen
 
-- **Plant Inventory** — Track plants with photos, species, care notes, and lifecycle status
-- **Garden Journal** — Log daily activities with photos, linked to specific plants
-- **Quick Log** — 3-tap photo-first workflow for fast field notes
-- **Plant Knowledge Base** — Built-in growing guides for vegetables, herbs, fruits, and flowers with scheduling, spacing, and companion info — plus user-contributed entries
-- **Planting Calendar** — Timeline, yearly, and monthly views for crop scheduling and season planning
-- **Task Management** — Create, prioritize, and track garden tasks with due dates
-- **Task Rules** — Automated task generation from plant care schedules
-- **Garden Map** — Visual garden bed layout editor
-- **Seed Bank** — Track seed inventory with sow-by dates and germination rates
-- **Seasons & Plantings** — Season-based planting records with frost date awareness and year-over-year comparison
-- **Expense Tracking** — Track garden spending by category and store with per-season filtering
-- **Full-Text Search** — Instant search across plants and journal entries
-- **Data Export/Import** — ZIP backup and restore
-- **Dark Mode** — System-aware and manual theme switching
-- **Accessibility** — High contrast mode, adjustable font size, keyboard shortcuts
-- **Push Notifications** — Task reminders and frost alerts
-- **Multi-Device Sync** — Optional CouchDB replication (see below)
-- **PWA** — Install on any device, full offline support
-- **No Account Required** — Everything stays on your device. Optionally sign up for [Jninty Cloud](https://jninty.com) for multi-device sync and cloud backups
+- **Pflanzenbestand** - Pflanzen mit Fotos, Art, Pflegenotizen und Lebenszyklusstatus verwalten
+- **Gartenjournal** - Taegliche Aktivitaeten mit Fotos dokumentieren und mit bestimmten Pflanzen verknuepfen
+- **Schnellprotokoll** - Foto-zentrierter 3-Tap-Ablauf fuer schnelle Notizen im Garten
+- **Wissensbasis fuer Pflanzen** - Integrierte Anbauhinweise fuer Gemuese, Kraeuter, Obst und Blumen mit Zeitplanung, Abstaenden und Mischkulturinfos sowie eigene Eintraege
+- **Pflanzkalender** - Zeitachsen-, Jahres- und Monatsansichten fuer Anbauplanung und Saisonorganisation
+- **Aufgabenverwaltung** - Gartenaufgaben anlegen, priorisieren und nachverfolgen
+- **Aufgabenregeln** - Automatische Erstellung von Aufgaben aus Pflegeplaenen
+- **Gartenkarte** - Visueller Editor fuer Beete und Gartenflaechen
+- **Saatgutbank** - Saatgutbestand mit Aussaatdaten und Keimraten verwalten
+- **Saisons und Pflanzungen** - Saisonbasierte Pflanzungsdaten mit Frostterminen und Jahresvergleich
+- **Ausgabenverwaltung** - Gartenausgaben nach Kategorien und Saison filtern
+- **Volltextsuche** - Schnelle Suche ueber Pflanzen und Journaleintraege
+- **Datenexport/-import** - ZIP-Backup und Wiederherstellung
+- **Dunkelmodus** - Systembewusstes oder manuelles Umschalten des Themes
+- **Barrierefreiheit** - Hoher Kontrast, anpassbare Schriftgroesse und Tastaturkuerzel
+- **Push-Benachrichtigungen** - Erinnerungen fuer Aufgaben und Frostwarnungen
+- **Multi-Device-Sync** - Optionale CouchDB-Replikation
+- **PWA** - Installierbar auf jedem Geraet mit voller Offline-Unterstuetzung
+- **Kein Konto erforderlich** - Alles bleibt auf deinem Geraet. Optional kannst du [Jninty Cloud](https://jninty.com) fuer Multi-Device-Sync und Cloud-Backups nutzen
 
 ## Jninty Cloud
 
-Don't want to manage your own sync server? [**Jninty Cloud**](https://jninty.com) gives you automatic multi-device sync, encrypted cloud backups, and access from anywhere — no Docker, no VPS, no setup.
+Du moechtest keinen eigenen Sync-Server betreiben? [**Jninty Cloud**](https://jninty.com) bietet automatische Synchronisation zwischen Geraeten, verschluesselte Cloud-Backups und Zugriff von ueberall, ohne Docker, VPS oder Setup.
 
-**$4.99/month or $49.99/year** — [Get started at jninty.com](https://jninty.com)
+**4,99 USD/Monat oder 49,99 USD/Jahr** - [Jetzt starten auf jninty.com](https://jninty.com)
 
-Jninty is and will always be fully open source and self-hostable. Cloud is an optional convenience for those who want it.
+Jninty ist und bleibt vollstaendig Open Source und selbst hostbar. Die Cloud ist eine optionale Komfortfunktion.
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Dashboard — weather, spending summary, suggested tasks, and recent journal entries" width="720" />
+  <img src="docs/screenshots/home.png" alt="Dashboard - Wetter, Ausgabenuersicht, empfohlene Aufgaben und aktuelle Journaleintraege" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/plants.png" alt="Plant Inventory — grid view with photos, species, and status badges" width="720" />
+  <img src="docs/screenshots/plants.png" alt="Pflanzenbestand - Rasteransicht mit Fotos, Arten und Status-Badges" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/calendar.png" alt="Planting Calendar — timeline view with color-coded crop stages" width="720" />
+  <img src="docs/screenshots/calendar.png" alt="Pflanzkalender - Zeitachsenansicht mit farbcodierten Kulturphasen" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/tasks.png" alt="Tasks — list, daily, and weekly views with smart suggestions and filters" width="720" />
+  <img src="docs/screenshots/tasks.png" alt="Aufgaben - Listen-, Tages- und Wochenansichten mit Vorschlaegen und Filtern" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/Expenses.png" alt="Expenses — spending breakdown by category with horizontal bar chart" width="720" />
+  <img src="docs/screenshots/Expenses.png" alt="Ausgaben - Aufschluesselung nach Kategorien mit horizontalem Balkendiagramm" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile.png" alt="Mobile — fully responsive PWA with bottom navigation" width="300" />
+  <img src="docs/screenshots/mobile.png" alt="Mobil - voll responsive PWA mit unterer Navigation" width="300" />
 </p>
 
-## Quick Start
+## Schnellstart
 
 ```bash
 git clone https://github.com/HapiCreative/jninty.git
@@ -77,118 +79,118 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Oeffne [http://localhost:5173](http://localhost:5173) im Browser.
 
-### Commands
+### Befehle
 
 ```bash
-npm run dev          # Vite dev server
-npm run build        # TypeScript type-check + production build
-npm run preview      # Preview production build
+npm run dev          # Vite-Entwicklungsserver
+npm run build        # TypeScript-Check + Produktions-Build
+npm run preview      # Produktions-Build lokal ansehen
 npm run lint         # ESLint
-npm run test         # Run tests (single run)
-npm run test:watch   # Run tests (watch mode)
+npm run test         # Tests einmalig ausfuehren
+npm run test:watch   # Tests im Watch-Modus ausfuehren
 ```
 
-## Tech Stack
+## Tech-Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Ebene | Technologie |
+|-------|-------------|
 | Framework | React 18 + TypeScript (strict mode) |
 | Build | Vite |
 | Styling | Tailwind CSS v4 |
-| Database | PouchDB (IndexedDB) + optional CouchDB sync |
+| Datenbank | PouchDB (IndexedDB) + optionaler CouchDB-Sync |
 | Routing | React Router DOM v7 |
-| Search | MiniSearch |
-| Validation | Zod |
-| Dates | date-fns |
-| Canvas | Konva.js (garden map) |
+| Suche | MiniSearch |
+| Validierung | Zod |
+| Datumslogik | date-fns |
+| Canvas | Konva.js (Gartenkarte) |
 | PWA | vite-plugin-pwa + Workbox |
-| Testing | Vitest + Testing Library |
+| Tests | Vitest + Testing Library |
 
-## Architecture
+## Architektur
 
-```
+```text
 src/
-  pages/              Route-level page components
-  components/         Shared UI components
-  components/ui/      Primitives (Button, Card, Input, Badge, Toast, Skeleton)
-  components/layout/  Layout (AppShell — sidebar + bottom nav)
-  db/pouchdb/         PouchDB client, repositories, search index
-  hooks/              Custom React hooks
-  services/           Business logic (calendar, taskEngine, knowledgeBase, photoProcessor, exporter)
-  validation/         Zod schemas for all entities
-  types/              TypeScript type definitions
-  constants/          Label and option constants
+  pages/              Seitenkomponenten auf Routenebene
+  components/         Gemeinsame UI-Komponenten
+  components/ui/      Primitive Bausteine (Button, Card, Input, Badge, Toast, Skeleton)
+  components/layout/  Layout (AppShell - Sidebar + Bottom Navigation)
+  db/pouchdb/         PouchDB-Client, Repositories, Suchindex
+  hooks/              Eigene React Hooks
+  services/           Fachlogik (calendar, taskEngine, knowledgeBase, photoProcessor, exporter)
+  validation/         Zod-Schemata fuer alle Entitaeten
+  types/              TypeScript-Typdefinitionen
+  constants/          Labels und Optionskonstanten
 data/
-  plants/             Built-in plant knowledge base JSON (vegetables, herbs, fruits, flowers)
+  plants/             Integrierte JSON-Wissensbasis fuer Pflanzen
 sync/
-  docker-compose.yml  CouchDB setup for multi-device sync
-  setup.sh            One-command sync server setup
+  docker-compose.yml  CouchDB-Setup fuer Multi-Device-Sync
+  setup.sh            Ein-Kommando-Setup fuer den Sync-Server
 ```
 
-All data is stored in IndexedDB via PouchDB. Documents are prefixed with a `docType` (e.g. `plant:uuid`) for type isolation in the single-database model. Every entity includes `id`, `version`, `createdAt`, `updatedAt`, and `deletedAt` fields.
+Alle Daten werden ueber PouchDB in IndexedDB gespeichert. Dokumente tragen ein `docType`-Praefix, zum Beispiel `plant:uuid`, damit Entitaeten im Ein-Datenbank-Modell sauber getrennt bleiben. Jede Entitaet enthaelt `id`, `version`, `createdAt`, `updatedAt` und `deletedAt`.
 
-## Multi-Device Sync
+## Multi-Device-Sync
 
-Want to sync your garden journal between your phone and desktop? Jninty supports optional CouchDB replication over your local network.
+Du willst dein Gartenjournal zwischen Smartphone und Desktop synchronisieren? Jninty unterstuetzt optionale CouchDB-Replikation im lokalen Netzwerk.
 
-### Setup
+### Einrichtung
 
-1. **Install Docker** if you don't have it already
-2. **Start the sync server:**
+1. **Docker installieren**, falls noch nicht vorhanden
+2. **Sync-Server starten:**
    ```bash
    cd sync
-   cp .env.example .env    # Edit credentials if desired
-   ./setup.sh              # Starts CouchDB + configures CORS
+   cp .env.example .env    # Zugangsdaten bei Bedarf anpassen
+   ./setup.sh              # Startet CouchDB und richtet CORS ein
    ```
-3. **Connect from the app:** Go to Settings > Multi-Device Sync, paste the URL printed by the setup script, and tap "Start Sync"
+3. **In der App verbinden:** Unter Einstellungen > Multi-Device-Sync die vom Script ausgegebene URL eintragen und auf `Sync starten` tippen
 
-### How It Works
+### So funktioniert es
 
-- CouchDB runs in Docker on your machine, listening on port 5984
-- The setup script configures CORS so the browser can talk to CouchDB directly
-- Jninty auto-detects your LAN IP so other devices on the same network can connect
-- Sync is bidirectional — changes on any device propagate to all others
+- CouchDB laeuft in Docker auf deinem Rechner und lauscht auf Port 5984
+- Das Setup-Script richtet CORS ein, damit der Browser direkt mit CouchDB sprechen kann
+- Jninty erkennt automatisch deine LAN-IP, damit andere Geraete im selben Netzwerk zugreifen koennen
+- Die Synchronisation ist bidirektional, Aenderungen auf einem Geraet werden auf alle anderen uebertragen
 
-### Connecting Your Phone
+### Smartphone verbinden
 
-1. Make sure your phone is on the same Wi-Fi network as your desktop
-2. Open Jninty on your phone's browser
-3. In Settings > Multi-Device Sync, enter the sync URL using your desktop's LAN IP (e.g. `http://192.168.1.100:5984/jninty`)
+1. Sicherstellen, dass das Smartphone im selben WLAN wie der Desktop ist
+2. Jninty im Browser des Smartphones oeffnen
+3. In Einstellungen > Multi-Device-Sync die Sync-URL mit der LAN-IP des Desktops eintragen, z. B. `http://192.168.1.100:5984/jninty`
 
-### Troubleshooting
+### Fehlerbehebung
 
-| Problem | Solution |
-|---------|----------|
-| Phone can't reach sync server | Check that both devices are on the same network. Ensure your firewall allows port 5984 |
-| Mixed content error (HTTPS) | The Vite dev server proxies CouchDB requests to avoid mixed-content issues. In production, serve the app over HTTP, or set up HTTPS on CouchDB |
-| Wrong LAN IP detected | Manually enter the correct IP. Find it with `ifconfig` (macOS/Linux) or `ipconfig` (Windows) |
-| Sync conflicts | Jninty uses PouchDB's automatic conflict resolution. The most recent write wins |
+| Problem | Loesung |
+|---------|---------|
+| Smartphone erreicht den Sync-Server nicht | Pruefen, ob beide Geraete im selben Netzwerk sind und die Firewall Port 5984 erlaubt |
+| Mixed-Content-Fehler (HTTPS) | Der Vite-Dev-Server kann CouchDB-Anfragen proxyen. In Produktion die App ueber HTTP ausliefern oder HTTPS fuer CouchDB einrichten |
+| Falsche LAN-IP erkannt | Korrekte IP manuell eintragen. Unter macOS/Linux mit `ifconfig`, unter Windows mit `ipconfig` |
+| Sync-Konflikte | Jninty verwendet die automatische Konfliktaufloesung von PouchDB. Der letzte Schreibvorgang gewinnt |
 
-For more details, see [sync/README.md](sync/README.md).
+Weitere Details stehen in [sync/README.md](sync/README.md).
 
-## Cloud Sync (Optional)
+## Cloud-Sync (optional)
 
-The easiest way to sync across devices is [**Jninty Cloud**](https://jninty.com) — automatic sync, encrypted backups, no setup required.
+Der einfachste Weg fuer gerateuebergreifende Synchronisation ist [**Jninty Cloud**](https://jninty.com): automatische Synchronisierung, verschluesselte Backups und kein Einrichtungsaufwand.
 
-If you prefer to self-host, you can run CouchDB on a remote server:
+Wenn du lieber selbst hostest, kannst du CouchDB auf einem entfernten Server betreiben:
 
-1. **Set up a VPS** with Docker and run the same `sync/docker-compose.yml`
-2. **Enable HTTPS** — CouchDB must be behind a reverse proxy (nginx, Caddy) with a valid TLS certificate, since browsers block mixed HTTP/HTTPS content
-3. **Update credentials** — Change the default admin password in `.env` before exposing to the internet
-4. **Point Jninty at the remote URL** — e.g. `https://couch.yourdomain.com/jninty`
+1. **VPS einrichten** und das vorhandene `sync/docker-compose.yml` verwenden
+2. **HTTPS aktivieren** - CouchDB muss hinter einem Reverse Proxy wie nginx oder Caddy mit gueltigem TLS-Zertifikat laufen, da Browser gemischte HTTP/HTTPS-Inhalte blockieren
+3. **Zugangsdaten anpassen** - Das Standard-Admin-Passwort in `.env` vor der Internetfreigabe aendern
+4. **Jninty auf die Remote-URL zeigen lassen** - zum Beispiel `https://couch.example.com/jninty`
 
-## Design Document
+## Designdokument
 
-The full project design, architecture decisions, data model, and phased roadmap are documented in [`docs/plans/Jninty-Design-v1.md`](docs/plans/Jninty-Design-v1.md).
+Das vollstaendige Projektdesign, Architekturentscheidungen, Datenmodell und die Roadmap stehen in [`docs/plans/Jninty-Design-v1.md`](docs/plans/Jninty-Design-v1.md).
 
-## Contributing
+## Mitwirken
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code guidelines, and how to submit changes.
+Beitraege sind willkommen. Siehe [CONTRIBUTING.md](CONTRIBUTING.md) fuer Entwicklungssetup, Code-Richtlinien und den Ablauf fuer Aenderungen.
 
-Plant data contributions are especially appreciated — you can add new species to the knowledge base without writing any application code.
+Besonders hilfreich sind Ergaenzungen der Pflanzendaten, neue Arten fuer die Wissensbasis koennen ohne Aenderungen an der App-Logik hinzugefuegt werden.
 
-## License
+## Lizenz
 
 [MIT](LICENSE)

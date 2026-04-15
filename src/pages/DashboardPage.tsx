@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import {
-  format,
   parseISO,
   formatISO,
   startOfDay,
   formatDistanceToNow,
 } from "date-fns";
+import { de } from "date-fns/locale";
 import { taskRepository, plantRepository, journalRepository, seedRepository } from "../db/index.ts";
 import { PRIORITY_VARIANT, PRIORITY_LABELS } from "../constants/taskLabels";
 import { ACTIVITY_LABELS } from "../constants/plantLabels";
@@ -32,6 +32,7 @@ import { formatTemp } from "../services/weather";
 import { useToast } from "../components/ui/Toast";
 import { useTaskSuggestions } from "../hooks/useTaskSuggestions.ts";
 import { useNotifications } from "../hooks/useNotifications.ts";
+import { formatDate } from "../lib/locale";
 
 function todayDate(): string {
   return formatISO(startOfDay(new Date()), { representation: "date" });
@@ -84,7 +85,7 @@ export default function DashboardPage() {
     try {
       await taskRepository.complete(taskId);
     } catch {
-      toast("Failed to complete task", "error");
+      toast("Aufgabe konnte nicht abgeschlossen werden", "error");
     }
   }
 
@@ -97,7 +98,7 @@ export default function DashboardPage() {
     expiringSoonSeeds === undefined
   ) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 p-4" role="status" aria-label="Loading dashboard">
+      <div className="mx-auto max-w-2xl space-y-4 p-4" role="status" aria-label="Dashboard wird geladen">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-16 w-full" />
@@ -116,17 +117,17 @@ export default function DashboardPage() {
           <div className="flex flex-col items-center py-2 text-center">
             <PlantPlaceholderIcon className="h-12 w-12 text-text-link" />
             <h2 className="mt-2 font-display text-lg font-bold text-text-heading">
-              Welcome to Jninty!
+              Willkommen bei Jninty!
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Start by adding your first plant.
+              Starte mit deiner ersten Pflanze.
             </p>
             <Link
               to="/plants/new"
               className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-on-primary transition-colors hover:bg-primary-hover"
             >
               <PlusIcon className="h-4 w-4" />
-              Add Plant
+              Pflanze hinzufuegen
             </Link>
           </div>
         </Card>
@@ -138,14 +139,14 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <span className="text-lg">🌱</span>
             <p className="text-sm text-text-secondary">
-              Set your growing zone in{" "}
+              Lege deine Anbauzone in den{" "}
               <Link
                 to="/settings"
                 className="font-medium text-text-heading underline hover:text-text-heading"
               >
-                Settings
+                Einstellungen
               </Link>{" "}
-              for personalized planting dates.
+              fuer persoenliche Pflanzzeiten fest.
             </p>
           </div>
         </Card>
@@ -160,13 +161,14 @@ export default function DashboardPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-base font-bold text-text-heading">
-                What&apos;s happening in your garden today?
+                Was passiert heute in deinem Garten?
               </h2>
               {lastLoggedEntry && (
                 <p className="mt-0.5 text-xs text-text-secondary">
-                  Last logged:{" "}
+                  Zuletzt erfasst:{" "}
                   {formatDistanceToNow(parseISO(lastLoggedEntry.createdAt), {
                     addSuffix: true,
+                    locale: de,
                   })}
                 </p>
               )}
@@ -186,11 +188,11 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-text-heading">
-                  Today in your garden
+                  Heute im Garten
                 </p>
                 <p className="mt-0.5 text-xs text-text-secondary">
-                  You have {tasksDueToday}{" "}
-                  {tasksDueToday === 1 ? "task" : "tasks"} due today
+                  Du hast heute {tasksDueToday}{" "}
+                  {tasksDueToday === 1 ? "Aufgabe" : "Aufgaben"} offen
                 </p>
               </div>
               <ChevronRightIcon className="h-5 w-5 shrink-0 text-green-400" />
@@ -213,7 +215,7 @@ export default function DashboardPage() {
       {suggestions && suggestions.length > 0 && (
         <section className="mt-6">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Suggested Tasks
+            Vorgeschlagene Aufgaben
           </h2>
           <div className="mt-2">
             <SuggestionsList
@@ -238,11 +240,11 @@ export default function DashboardPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary">
                     {expiringSoonSeeds.length}{" "}
-                    {expiringSoonSeeds.length === 1 ? "seed" : "seeds"} expiring
-                    soon
+                    {expiringSoonSeeds.length === 1 ? "Saatgutportion" : "Saatgutportionen"} laufen
+                    bald ab
                   </p>
                   <p className="mt-0.5 text-xs text-text-secondary">
-                    Check your seed bank before they expire
+                    Pruefe dein Saatgutlager vor dem Ablauf
                   </p>
                 </div>
                 <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-muted" />
@@ -256,20 +258,20 @@ export default function DashboardPage() {
       <section className="mt-6">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            This Week&apos;s Tasks
+            Aufgaben dieser Woche
           </h2>
           <Link
             to="/tasks"
             className="text-sm font-medium text-text-heading hover:underline"
           >
-            See all tasks &rarr;
+            Alle Aufgaben &rarr;
           </Link>
         </div>
 
         {tasks.length === 0 ? (
           <Card className="mt-2">
             <p className="text-center text-sm text-text-secondary">
-              No tasks this week 🌿
+              Diese Woche gibt es keine Aufgaben.
             </p>
           </Card>
         ) : (
@@ -289,7 +291,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => void handleCompleteTask(task.id)}
                       className="flex h-11 w-11 -m-3 shrink-0 items-center justify-center"
-                      aria-label={`Complete task: ${task.title}`}
+                      aria-label={`Aufgabe abschliessen: ${task.title}`}
                     >
                       <span className="flex h-5 w-5 items-center justify-center rounded border-2 border-focus-ring text-transparent transition-colors hover:bg-green-50 hover:text-focus-ring">
                         <CheckIcon className="h-3 w-3" />
@@ -312,8 +314,8 @@ export default function DashboardPage() {
                               : "text-text-secondary"
                           }`}
                         >
-                          {isOverdue ? "Overdue \u2014 " : ""}
-                          {format(parseISO(task.dueDate), "MMM d")}
+                          {isOverdue ? "Ueberfaellig - " : ""}
+                          {formatDate(parseISO(task.dueDate), "d. MMM")}
                         </span>
                         {task.plantInstanceId &&
                           plantNames.get(task.plantInstanceId) && (
@@ -336,20 +338,20 @@ export default function DashboardPage() {
       <section className="mt-6">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Recent Journal
+            Letzte Journaleintraege
           </h2>
           <Link
             to="/journal"
             className="text-sm font-medium text-text-heading hover:underline"
           >
-            See all entries &rarr;
+            Alle Eintraege &rarr;
           </Link>
         </div>
 
         {!recentEntries || recentEntries.length === 0 ? (
           <Card className="mt-2">
             <p className="text-center text-sm text-text-secondary">
-              Start logging your garden journey ✨
+              Starte mit deinem Gartenjournal.
             </p>
           </Card>
         ) : (
@@ -366,7 +368,7 @@ export default function DashboardPage() {
                       <PhotoThumbnail
                         photoId={firstPhotoId}
                         className="h-12 w-12 shrink-0"
-                        alt="Journal photo"
+                        alt="Journalfoto"
                       />
                     ) : (
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-text-muted">
@@ -393,6 +395,7 @@ export default function DashboardPage() {
                       <span className="text-xs text-text-muted">
                         {formatDistanceToNow(parseISO(entry.createdAt), {
                           addSuffix: true,
+                          locale: de,
                         })}
                       </span>
                     </div>
@@ -415,7 +418,7 @@ export default function DashboardPage() {
               <CameraIcon className="h-5 w-5 text-terracotta-500" />
             </div>
             <span className="text-center text-xs font-medium text-text-secondary">
-              Log Entry
+              Eintrag
             </span>
           </Link>
           <Link
@@ -426,7 +429,7 @@ export default function DashboardPage() {
               <PlantPlaceholderIcon className="h-5 w-5 text-text-link" />
             </div>
             <span className="text-center text-xs font-medium text-text-secondary">
-              Add Plant
+              Pflanze
             </span>
           </Link>
           <Link
@@ -437,7 +440,7 @@ export default function DashboardPage() {
               <ClipboardCheckIcon className="h-5 w-5 text-brown-700" />
             </div>
             <span className="text-center text-xs font-medium text-text-secondary">
-              Add Task
+              Aufgabe
             </span>
           </Link>
         </div>

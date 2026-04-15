@@ -5,6 +5,8 @@ import App from "./App.tsx";
 import { isCloudEnabled } from "./config/cloud";
 import { AuthProvider } from "./store/authStore";
 
+document.documentElement.lang = "de";
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {isCloudEnabled ? (

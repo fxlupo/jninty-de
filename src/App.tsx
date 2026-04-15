@@ -164,7 +164,7 @@ export default function App() {
                   <Suspense
                     fallback={
                       <div className="flex h-64 items-center justify-center text-text-muted">
-                        Loading map...
+                        Karte wird geladen...
                       </div>
                     }
                   >
@@ -174,12 +174,12 @@ export default function App() {
               />
               <Route path="knowledge" element={<KnowledgeHubPage />} />
               <Route path="knowledge/plants/:category" element={
-                <Suspense fallback={<div className="flex h-64 items-center justify-center text-text-muted">Loading...</div>}>
+                <Suspense fallback={<div className="flex h-64 items-center justify-center text-text-muted">Wird geladen...</div>}>
                   <KnowledgeCategoryPage />
                 </Suspense>
               } />
               <Route path="knowledge/species/:speciesSlug" element={
-                <Suspense fallback={<div className="flex h-64 items-center justify-center text-text-muted">Loading...</div>}>
+                <Suspense fallback={<div className="flex h-64 items-center justify-center text-text-muted">Wird geladen...</div>}>
                   <KnowledgeSpeciesPage />
                 </Suspense>
               } />

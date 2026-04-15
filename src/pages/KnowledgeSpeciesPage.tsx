@@ -34,7 +34,7 @@ export default function KnowledgeSpeciesPage() {
   // Loading
   if (userEntries === undefined || group === undefined) {
     return (
-      <div className="mx-auto max-w-3xl p-4" role="status" aria-label="Loading species">
+      <div className="mx-auto max-w-3xl p-4" role="status" aria-label="Art wird geladen">
         <Skeleton className="h-8 w-3/4" />
         <Skeleton className="mt-2 h-5 w-1/2" />
         <Skeleton className="mt-6 h-32 w-full" />
@@ -48,13 +48,13 @@ export default function KnowledgeSpeciesPage() {
     return (
       <div className="p-4 text-center">
         <p className="text-lg font-medium text-text-secondary">
-          Species not found
+          Art nicht gefunden
         </p>
         <Link
           to="/knowledge"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Back to Knowledge Base
+          Zurueck zur Wissensbasis
         </Link>
       </div>
     );
@@ -72,7 +72,7 @@ export default function KnowledgeSpeciesPage() {
             type="button"
             onClick={() => navigate(-1)}
             className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Go back"
+            aria-label="Zurueck"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -88,9 +88,9 @@ export default function KnowledgeSpeciesPage() {
         <div className="mt-3 flex flex-wrap gap-1.5">
           {group.family && <Badge variant="default">{group.family}</Badge>}
           <Badge variant="success">
-            {group.entries.length} {group.entries.length === 1 ? "variety" : "varieties"}
+            {group.entries.length} {group.entries.length === 1 ? "Sorte" : "Sorten"}
           </Badge>
-          {representative.isPerennial && <Badge variant="default">Perennial</Badge>}
+          {representative.isPerennial && <Badge variant="default">Mehrjaehrig</Badge>}
         </div>
       </div>
 
@@ -98,24 +98,24 @@ export default function KnowledgeSpeciesPage() {
         {/* Shared growing info */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Growing Info
+            Anbauinfos
           </h2>
           <dl className="mt-3 space-y-2">
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Sun</dt>
+              <dt className="text-sm text-text-secondary">Sonne</dt>
               <dd className="text-sm font-medium text-text-primary">
                 {SUN_LABELS[representative.sunNeeds]}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-sm text-text-secondary">Water</dt>
+              <dt className="text-sm text-text-secondary">Wasser</dt>
               <dd className="text-sm font-medium text-text-primary">
                 {WATER_LABELS[representative.waterNeeds]}
               </dd>
             </div>
             {representative.soilPreference && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Soil</dt>
+                <dt className="text-sm text-text-secondary">Boden</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {representative.soilPreference}
                 </dd>
@@ -129,11 +129,11 @@ export default function KnowledgeSpeciesPage() {
           (representative.badCompanions && representative.badCompanions.length > 0)) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Companion Planting
+              Mischkultur
             </h2>
             {representative.goodCompanions && representative.goodCompanions.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Good Companions</p>
+                <p className="text-sm font-medium text-text-secondary">Gute Nachbarn</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {representative.goodCompanions.map((c) => (
                     <Badge key={c} variant="success">{c}</Badge>
@@ -143,7 +143,7 @@ export default function KnowledgeSpeciesPage() {
             )}
             {representative.badCompanions && representative.badCompanions.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Bad Companions</p>
+                <p className="text-sm font-medium text-text-secondary">Schlechte Nachbarn</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {representative.badCompanions.map((c) => (
                     <Badge key={c} variant="danger">{c}</Badge>
@@ -159,11 +159,11 @@ export default function KnowledgeSpeciesPage() {
           (representative.commonDiseases && representative.commonDiseases.length > 0)) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Common Issues
+              Haeufige Probleme
             </h2>
             {representative.commonPests && representative.commonPests.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Pests</p>
+                <p className="text-sm font-medium text-text-secondary">Schaedlinge</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {representative.commonPests.map((p) => (
                     <Badge key={p} variant="warning">{p}</Badge>
@@ -173,7 +173,7 @@ export default function KnowledgeSpeciesPage() {
             )}
             {representative.commonDiseases && representative.commonDiseases.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Diseases</p>
+                <p className="text-sm font-medium text-text-secondary">Krankheiten</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {representative.commonDiseases.map((d) => (
                     <Badge key={d} variant="danger">{d}</Badge>
@@ -187,7 +187,7 @@ export default function KnowledgeSpeciesPage() {
         {/* Varieties grid */}
         <div>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Varieties
+            Sorten
           </h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {group.entries.map((item) => (
@@ -198,15 +198,15 @@ export default function KnowledgeSpeciesPage() {
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-xs text-text-secondary">
                     {item.data.daysToMaturity != null && (
-                      <span>{item.data.daysToMaturity}d to maturity</span>
+                      <span>{item.data.daysToMaturity} Tage bis zur Reife</span>
                     )}
                     {item.data.spacingInches != null && (
-                      <span>{item.data.spacingInches}" spacing</span>
+                      <span>{item.data.spacingInches}" Abstand</span>
                     )}
                   </div>
                   {item.data.matureHeightInches != null && (
                     <p className="mt-1 text-xs text-text-secondary">
-                      Height: {item.data.matureHeightInches}" &middot; Spread: {item.data.matureSpreadInches ?? "—"}"
+                      Hoehe: {item.data.matureHeightInches}" &middot; Breite: {item.data.matureSpreadInches ?? "-"}"
                     </p>
                   )}
                 </Card>

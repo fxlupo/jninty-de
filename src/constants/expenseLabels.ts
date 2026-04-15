@@ -1,13 +1,13 @@
 import type { ExpenseCategory } from "../validation/expense.schema.ts";
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  tools: "Tools",
-  soil_amendments: "Soil & Amendments",
-  containers: "Containers",
+  tools: "Werkzeuge",
+  soil_amendments: "Erde und Bodenhilfen",
+  containers: "Behaelter",
   infrastructure: "Infrastructure",
-  fertilizer: "Fertilizer",
-  pest_control: "Pest Control",
-  other: "Other",
+  fertilizer: "Duenger",
+  pest_control: "Schaedlingsschutz",
+  other: "Sonstiges",
 };
 
 export const ALL_EXPENSE_CATEGORIES: ExpenseCategory[] = [

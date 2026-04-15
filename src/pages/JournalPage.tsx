@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { formatDistanceToNow, startOfWeek, startOfMonth } from "date-fns";
+import { de } from "date-fns/locale";
 import { journalRepository, plantRepository, photoRepository, seasonRepository } from "../db/index.ts";
 import { removeFromIndex, serializeIndex } from "../db/search";
 import {
@@ -57,6 +58,7 @@ function EntryRow({ index, style, data }: ListChildComponentProps<RowData>) {
   const firstPhotoId = entry.photoIds[0];
   const timeAgo = formatDistanceToNow(new Date(entry.createdAt), {
     addSuffix: true,
+    locale: de,
   });
 
   return (
@@ -65,14 +67,14 @@ function EntryRow({ index, style, data }: ListChildComponentProps<RowData>) {
         type="button"
         onClick={() => data.onSelect(entry)}
         className="flex w-full gap-3 rounded-xl border border-border-default bg-surface-elevated p-3 text-left shadow-sm transition-shadow hover:shadow-md"
-        aria-label={`Journal entry: ${entry.body.slice(0, 50)}`}
+        aria-label={`Journaleintrag: ${entry.body.slice(0, 50)}`}
       >
         {/* Photo or activity placeholder */}
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface-muted">
           {firstPhotoId ? (
             <PhotoThumbnail
               photoId={firstPhotoId}
-              alt="Entry photo"
+              alt="Eintragsfoto"
               className="h-full w-full"
             />
           ) : (
@@ -176,6 +178,7 @@ function EntryDetail({
 
   const timeAgo = formatDistanceToNow(new Date(entry.createdAt), {
     addSuffix: true,
+    locale: de,
   });
 
   return (
@@ -184,7 +187,7 @@ function EntryDetail({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Journal entry detail"
+      aria-label="Journaleintrag Details"
     >
       <div
         ref={modalRef}
@@ -198,7 +201,7 @@ function EntryDetail({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Close"
+            aria-label="Schliessen"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -520,7 +523,7 @@ export default function JournalPage() {
   // Loading state
   if (allEntries === undefined) {
     return (
-      <div className="mx-auto max-w-3xl px-4 pt-4" role="status" aria-label="Loading journal">
+      <div className="mx-auto max-w-3xl px-4 pt-4" role="status" aria-label="Journal wird geladen">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="mt-4 h-10 w-full" />
         <div className="mt-4 space-y-2">
@@ -542,7 +545,7 @@ export default function JournalPage() {
           </h1>
           <span className="text-sm text-text-secondary">
             {allEntries.length}{" "}
-            {allEntries.length === 1 ? "entry" : "entries"}
+            {allEntries.length === 1 ? "Eintrag" : "Eintraege"}
           </span>
         </div>
 
@@ -550,10 +553,10 @@ export default function JournalPage() {
         <div className="mt-4">
           <Input
             type="search"
-            placeholder="Search journal..."
+            placeholder="Journal durchsuchen..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search journal"
+            aria-label="Journal durchsuchen"
           />
         </div>
 
@@ -564,9 +567,9 @@ export default function JournalPage() {
             value={effectiveSeasonFilter}
             onChange={(e) => setSeasonFilter(e.target.value)}
             className={selectClass}
-            aria-label="Filter by season"
+            aria-label="Nach Saison filtern"
           >
-            <option value="">All Seasons</option>
+            <option value="">Alle Saisons</option>
             {allSeasons?.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -579,9 +582,9 @@ export default function JournalPage() {
             value={plantFilter}
             onChange={(e) => setPlantFilter(e.target.value)}
             className={selectClass}
-            aria-label="Filter by plant"
+            aria-label="Nach Pflanze filtern"
           >
-            <option value="">All plants</option>
+            <option value="">Alle Pflanzen</option>
             {allPlants?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nickname ?? p.species}
@@ -596,9 +599,9 @@ export default function JournalPage() {
               setActivityFilter(e.target.value as ActivityType | "")
             }
             className={selectClass}
-            aria-label="Filter by activity"
+            aria-label="Nach Aktivitaet filtern"
           >
-            <option value="">All activities</option>
+            <option value="">Alle Aktivitaeten</option>
             {ALL_ACTIVITY_TYPES.map((t) => (
               <option key={t} value={t}>
                 {ACTIVITY_LABELS[t]}
@@ -620,10 +623,10 @@ export default function JournalPage() {
                 }`}
               >
                 {range === "all"
-                  ? "All"
+                  ? "Alle"
                   : range === "week"
-                    ? "This Week"
-                    : "This Month"}
+                    ? "Diese Woche"
+                    : "Diesen Monat"}
               </button>
             ))}
           </div>
@@ -637,19 +640,19 @@ export default function JournalPage() {
             <>
               <ClipboardCheckIcon className="mx-auto h-16 w-16 text-text-muted" />
               <p className="mt-4 text-lg font-medium text-text-secondary">
-                No journal entries yet
+                Noch keine Journaleintraege
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Start logging with the + button below.
+                Starte unten mit dem + deinen ersten Eintrag.
               </p>
             </>
           ) : (
             <>
               <p className="text-lg font-medium text-text-secondary">
-                No entries match your filters
+                Keine Eintraege passen zu deinen Filtern
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Try adjusting your search or filters.
+                Passe Suche oder Filter an.
               </p>
             </>
           )}

@@ -21,7 +21,7 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Calendar
+          Kalender
         </h1>
         <CalendarViewSwitcher
           activeView={activeView}

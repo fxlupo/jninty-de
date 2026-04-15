@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { format } from "date-fns";
 import ScheduleTaskItem from "./ScheduleTaskItem.tsx";
 import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
 import type { Task } from "../../types";
+import { formatDate } from "../../lib/locale";
 
 interface DailyChecklistProps {
   scheduleTasks: ScheduleTask[];
@@ -30,7 +30,7 @@ export default function DailyChecklist({
 
     for (const task of scheduleTasks) {
       if (task.scheduledDate !== today) continue;
-      const bed = task.bedName ?? "No bed";
+      const bed = task.bedName ?? "Kein Beet";
       let group = map.get(bed);
       if (!group) {
         group = { bedName: bed, scheduleTasks: [], manualTasks: [] };
@@ -41,7 +41,7 @@ export default function DailyChecklist({
 
     for (const task of manualTasks) {
       if (task.dueDate !== today) continue;
-      const bed = "No bed";
+      const bed = "Kein Beet";
       let group = map.get(bed);
       if (!group) {
         group = { bedName: bed, scheduleTasks: [], manualTasks: [] };
@@ -51,7 +51,7 @@ export default function DailyChecklist({
     }
 
     return [...map.values()].sort((a, b) =>
-      a.bedName === "No bed" ? 1 : b.bedName === "No bed" ? -1 : a.bedName.localeCompare(b.bedName),
+      a.bedName === "Kein Beet" ? 1 : b.bedName === "Kein Beet" ? -1 : a.bedName.localeCompare(b.bedName),
     );
   }, [scheduleTasks, manualTasks, today]);
 
@@ -63,12 +63,12 @@ export default function DailyChecklist({
   return (
     <div>
       <h2 className="font-display text-base font-semibold text-text-heading">
-        Today &mdash; {format(new Date(), "MMMM d, yyyy")}
+        Heute - {formatDate(new Date(), "d. MMMM yyyy")}
       </h2>
 
       {totalTasks === 0 ? (
         <p className="mt-4 text-center text-sm text-text-secondary">
-          No tasks due today.
+          Heute sind keine Aufgaben faellig.
         </p>
       ) : (
         <div className="mt-3 space-y-4">
@@ -94,7 +94,7 @@ export default function DailyChecklist({
                     <button
                       type="button"
                       onClick={() => onCompleteManualTask(task)}
-                      aria-label={task.isCompleted ? "Mark incomplete" : "Mark complete"}
+                      aria-label={task.isCompleted ? "Als unvollstaendig markieren" : "Als erledigt markieren"}
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-border-strong transition-colors hover:border-focus-ring"
                     >
                       {task.isCompleted && (

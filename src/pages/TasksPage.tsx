@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
-import { format, parseISO, formatISO, startOfDay } from "date-fns";
+import { parseISO, formatISO, startOfDay } from "date-fns";
 import {
   taskRepository,
   plantRepository,
@@ -39,6 +39,7 @@ import ScheduleTaskItem from "../components/tasks/ScheduleTaskItem.tsx";
 import DailyChecklist from "../components/tasks/DailyChecklist.tsx";
 import WeeklyChecklist from "../components/tasks/WeeklyChecklist.tsx";
 import type { ScheduleTaskType } from "../validation/scheduleTask.schema.ts";
+import { formatDate } from "../lib/locale";
 
 // ─── Constants ───
 
@@ -86,7 +87,7 @@ function TaskItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const dueDateFormatted = format(parseISO(task.dueDate), "MMM d");
+  const dueDateFormatted = formatDate(parseISO(task.dueDate), "d. MMM");
 
   return (
     <Card
@@ -104,7 +105,7 @@ function TaskItem({
             e.stopPropagation();
             onComplete();
           }}
-          aria-label={task.isCompleted ? "Mark incomplete" : "Mark complete"}
+          aria-label={task.isCompleted ? "Als unvollstaendig markieren" : "Als erledigt markieren"}
           className="flex h-11 w-11 -m-3 shrink-0 items-center justify-center"
         >
           <span
@@ -147,7 +148,7 @@ function TaskItem({
                   : "text-text-secondary"
               }`}
             >
-              {isOverdue && !task.isCompleted ? "Overdue \u2014 " : ""}
+              {isOverdue && !task.isCompleted ? "Ueberfaellig - " : ""}
               {dueDateFormatted}
             </span>
             {plantName && (
@@ -169,14 +170,14 @@ function TaskItem({
           )}
           <div className="mt-3 flex gap-2">
             <Button variant="secondary" onClick={onEdit}>
-              Edit
+              Bearbeiten
             </Button>
             <Button
               variant="ghost"
               onClick={onDelete}
               className="text-terracotta-600"
             >
-              Delete
+              Loeschen
             </Button>
           </div>
         </div>
@@ -235,11 +236,11 @@ function TaskFormModal({
     e.preventDefault();
 
     if (!title.trim()) {
-      setError("Title is required");
+      setError("Titel ist erforderlich");
       return;
     }
     if (!dueDate) {
-      setError("Due date is required");
+      setError("Faelligkeitsdatum ist erforderlich");
       return;
     }
 
@@ -269,7 +270,7 @@ function TaskFormModal({
 
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save task");
+      setError(err instanceof Error ? err.message : "Aufgabe konnte nicht gespeichert werden");
       setSaving(false);
     }
   }
@@ -280,7 +281,7 @@ function TaskFormModal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={task ? "Edit task" : "New task"}
+      aria-label={task ? "Aufgabe bearbeiten" : "Neue Aufgabe"}
     >
       <div
         ref={modalRef}
@@ -290,13 +291,13 @@ function TaskFormModal({
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            {task ? "Edit Task" : "New Task"}
+            {task ? "Aufgabe bearbeiten" : "Neue Aufgabe"}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Close"
+            aria-label="Schliessen"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -316,13 +317,13 @@ function TaskFormModal({
               htmlFor="task-title"
               className="block text-sm font-medium text-text-secondary"
             >
-              Title <span className="text-terracotta-500">*</span>
+              Titel <span className="text-terracotta-500">*</span>
             </label>
             <Input
               id="task-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Water the tomatoes"
+              placeholder="z. B. Tomaten giessen"
               className="mt-1"
               autoFocus
             />
@@ -334,14 +335,14 @@ function TaskFormModal({
               htmlFor="task-description"
               className="block text-sm font-medium text-text-secondary"
             >
-              Description
+              Beschreibung
             </label>
             <textarea
               id="task-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="Optional details..."
+              placeholder="Optionale Details..."
               className="mt-1 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
             />
           </div>
@@ -352,7 +353,7 @@ function TaskFormModal({
               htmlFor="task-due-date"
               className="block text-sm font-medium text-text-secondary"
             >
-              Due Date <span className="text-terracotta-500">*</span>
+              Faelligkeitsdatum <span className="text-terracotta-500">*</span>
             </label>
             <Input
               id="task-due-date"
@@ -369,7 +370,7 @@ function TaskFormModal({
               htmlFor="task-priority"
               className="block text-sm font-medium text-text-secondary"
             >
-              Priority
+              Prioritaet
             </label>
             <select
               id="task-priority"
@@ -377,9 +378,9 @@ function TaskFormModal({
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
               className={`mt-1 ${selectClass}`}
             >
-              <option value="urgent">Urgent</option>
+              <option value="urgent">Dringend</option>
               <option value="normal">Normal</option>
-              <option value="low">Low</option>
+              <option value="low">Niedrig</option>
             </select>
           </div>
 
@@ -389,7 +390,7 @@ function TaskFormModal({
               htmlFor="task-plant"
               className="block text-sm font-medium text-text-secondary"
             >
-              Link to Plant
+              Mit Pflanze verknuepfen
             </label>
             <select
               id="task-plant"
@@ -397,7 +398,7 @@ function TaskFormModal({
               onChange={(e) => setPlantId(e.target.value)}
               className={`mt-1 ${selectClass}`}
             >
-              <option value="">None</option>
+              <option value="">Keine</option>
               {plants.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nickname ?? p.species}
@@ -409,10 +410,10 @@ function TaskFormModal({
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : task ? "Save Changes" : "Create Task"}
+              {saving ? "Speichert..." : task ? "Aenderungen speichern" : "Aufgabe erstellen"}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
+              Abbrechen
             </Button>
           </div>
         </form>
@@ -548,7 +549,7 @@ export default function TasksPage() {
         await taskRepository.complete(task.id);
       }
     } catch {
-      toast("Failed to update task", "error");
+      toast("Aufgabe konnte nicht aktualisiert werden", "error");
     }
   }
 
@@ -562,25 +563,25 @@ export default function TasksPage() {
           const result = await completeWithPropagation(task.id, today);
           if (result) {
             toast(
-              `Downstream tasks shifted by +${result.daysDelta} day${result.daysDelta === 1 ? "" : "s"}`,
+              `Nachfolgende Aufgaben wurden um +${result.daysDelta} Tag${result.daysDelta === 1 ? "" : "e"} verschoben`,
               "info",
             );
           }
         }
       } catch {
-        toast("Failed to update task", "error");
+      toast("Aufgabe konnte nicht aktualisiert werden", "error");
       }
     },
     [completeWithPropagation, toast],
   );
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Delete this task?")) return;
+    if (!window.confirm("Diese Aufgabe loeschen?")) return;
     try {
       await taskRepository.softDelete(id);
       setExpandedTaskId(null);
     } catch {
-      toast("Failed to delete task", "error");
+      toast("Aufgabe konnte nicht geloescht werden", "error");
     }
   }
 
@@ -598,7 +599,7 @@ export default function TasksPage() {
   // Loading state
   if (allTasks === undefined || allScheduleTasks === undefined) {
     return (
-      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Loading tasks">
+      <div className="mx-auto max-w-2xl p-4" role="status" aria-label="Aufgaben werden geladen">
         <Skeleton className="h-8 w-24" />
         <div className="mt-4 space-y-2">
           {[1, 2, 3].map((i) => (
@@ -635,13 +636,13 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          Tasks
+          Aufgaben
         </h1>
         <span className="text-sm text-text-secondary">
-          {totalPending} pending
+          {totalPending} offen
           {overdueCount > 0 && (
             <span className="ml-1 text-terracotta-600">
-              ({overdueCount} overdue)
+              ({overdueCount} ueberfaellig)
             </span>
           )}
         </span>
@@ -651,9 +652,9 @@ export default function TasksPage() {
       <div className="mt-3 flex items-center gap-2">
         {(
           [
-            { value: "list" as const, label: "List" },
-            { value: "daily" as const, label: "Daily" },
-            { value: "weekly" as const, label: "Weekly" },
+            { value: "list" as const, label: "Liste" },
+            { value: "daily" as const, label: "Heute" },
+            { value: "weekly" as const, label: "Woche" },
           ] as const
         ).map((opt) => (
           <button
@@ -716,7 +717,7 @@ export default function TasksPage() {
           {allSeasons && allSeasons.length > 0 && (
             <div className="mt-3">
               <label htmlFor="season-filter" className="sr-only">
-                Filter by season
+                Nach Saison filtern
               </label>
               <select
                 id="season-filter"
@@ -724,7 +725,7 @@ export default function TasksPage() {
                 onChange={(e) => setSeasonFilter(e.target.value)}
                 className={selectClass}
               >
-                <option value="">All Seasons</option>
+                <option value="">Alle Saisons</option>
                 {allSeasons.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.year})
@@ -737,12 +738,12 @@ export default function TasksPage() {
           {/* Sort control */}
           {totalPending > 0 && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs text-text-secondary">Sort by:</span>
+              <span className="text-xs text-text-secondary">Sortieren nach:</span>
               <div className="flex overflow-hidden rounded-lg border border-border-strong">
                 {(
                   [
-                    { value: "dueDate" as const, label: "Due Date" },
-                    { value: "priority" as const, label: "Priority" },
+                    { value: "dueDate" as const, label: "Faelligkeit" },
+                    { value: "priority" as const, label: "Prioritaet" },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -766,7 +767,7 @@ export default function TasksPage() {
           {suggestions && suggestions.length > 0 && (
             <section className="mt-4">
               <h2 className="font-display text-base font-semibold text-text-heading">
-                Suggested ({suggestions.length})
+                Vorgeschlagen ({suggestions.length})
               </h2>
               <div className="mt-2">
                 <SuggestionsList
@@ -787,16 +788,16 @@ export default function TasksPage() {
             <div className="mt-12 text-center">
               <ClipboardCheckIcon className="mx-auto h-16 w-16 text-text-muted" />
               <p className="mt-4 text-lg font-medium text-text-secondary">
-                No tasks yet
+                Noch keine Aufgaben
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Add your first task with the + button below.
+                Fuege unten mit dem + deine erste Aufgabe hinzu.
               </p>
             </div>
           ) : totalPending === 0 ? (
             <Card className="mt-4">
               <p className="text-center text-sm text-text-secondary">
-                All tasks completed!
+                Alle Aufgaben erledigt!
               </p>
             </Card>
           ) : (
@@ -851,7 +852,7 @@ export default function TasksPage() {
                   }`}
                 />
                 <span className="font-display text-lg font-semibold text-text-heading">
-                  Completed
+                  Erledigt
                 </span>
                 <span className="text-sm text-text-secondary">
                   (
@@ -903,7 +904,7 @@ export default function TasksPage() {
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        aria-label="Add task"
+        aria-label="Aufgabe hinzufuegen"
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95 md:bottom-6"
       >
         <PlusIcon className="h-7 w-7" />

@@ -36,6 +36,7 @@ import { clearAllOriginals } from "../db/pouchdb/originalsStore.ts";
 import { useNotifications } from "../hooks/useNotifications.ts";
 import CloudSyncSettings from "../components/cloud/CloudSyncSettings";
 import { useIsAuthenticated } from "../store/authStore";
+import { formatBrowserDate, formatBrowserDateTime } from "../lib/locale";
 
 // ─── Growing zones (USDA 1a–13b) ───
 
@@ -145,10 +146,10 @@ export default function SettingsPage() {
           : undefined;
       const info = await testConnection(syncUrl.trim(), creds);
       setTestResult({ dbName: info.dbName, docCount: info.docCount });
-      toast("Connection successful!", "success");
+      toast("Verbindung erfolgreich", "success");
     } catch {
-      setTestError("Connection failed. Check URL and credentials.");
-      toast("Connection failed", "error");
+      setTestError("Verbindung fehlgeschlagen. Bitte URL und Zugangsdaten pruefen.");
+      toast("Verbindung fehlgeschlagen", "error");
     } finally {
       setTestBusy(false);
     }
@@ -163,12 +164,12 @@ export default function SettingsPage() {
       lastSynced: null,
     };
     startSync(cfg);
-    toast("Sync started", "success");
+    toast("Sync gestartet", "success");
   };
 
   const handleStopSync = () => {
     stopSync();
-    toast("Sync stopped", "success");
+    toast("Sync gestoppt", "success");
   };
 
   const handleSyncNow = () => {
@@ -191,7 +192,7 @@ export default function SettingsPage() {
     setSyncPassword("");
     setTestResult(null);
     setTestError(null);
-    toast("Sync configuration cleared", "success");
+    toast("Sync-Konfiguration entfernt", "success");
   };
 
   // Location search state
@@ -268,7 +269,7 @@ export default function SettingsPage() {
       const results = await searchLocation(locationQuery.trim());
       setLocationResults(results);
     } catch {
-      toast("Location search failed", "error");
+      toast("Standortsuche fehlgeschlagen", "error");
     } finally {
       setLocationSearching(false);
     }
@@ -284,7 +285,7 @@ export default function SettingsPage() {
     setLocalLon(String(result.longitude));
     setLocationResults([]);
     setLocationQuery("");
-    toast(`Location set to ${result.name}`, "success");
+    toast(`Standort gesetzt: ${result.name}`, "success");
   };
 
   const handleClearLocation = async () => {
@@ -292,7 +293,7 @@ export default function SettingsPage() {
     const updated = await settingsRepository.clearLocation();
     // Sync the context with the new settings (without lat/lon)
     await updateSettings(updated);
-    toast("Location cleared", "success");
+    toast("Standort entfernt", "success");
   };
 
   const handleExport = async () => {
@@ -303,10 +304,10 @@ export default function SettingsPage() {
       const date = new Date().toISOString().slice(0, 10);
       triggerDownload(blob, `jninty-export-${date}.zip`);
       await updateSettings({ lastExportDate: new Date().toISOString() });
-      toast("Export downloaded!", "success");
+      toast("Export heruntergeladen", "success");
     } catch {
-      setExportError("Export failed. Please try again.");
-      toast("Export failed", "error");
+      setExportError("Export fehlgeschlagen. Bitte erneut versuchen.");
+      toast("Export fehlgeschlagen", "error");
     } finally {
       setExportBusy(false);
     }
@@ -359,9 +360,9 @@ export default function SettingsPage() {
       // Refresh storage display
       const updated = await getStorageUsage();
       setStorage(updated);
-      toast("Original photos cleared", "success");
+      toast("Originalfotos entfernt", "success");
     } catch {
-      toast("Failed to clear originals", "error");
+      toast("Originalfotos konnten nicht entfernt werden", "error");
     } finally {
       setClearingOriginals(false);
     }
@@ -374,10 +375,10 @@ export default function SettingsPage() {
     try {
       const count = await rebuildIndex();
       setRebuildCount(count);
-      toast(`Indexed ${String(count)} items`, "success");
+      toast(`${String(count)} Eintraege indiziert`, "success");
     } catch {
-      setRebuildError("Rebuild failed. Please try again.");
-      toast("Rebuild failed", "error");
+      setRebuildError("Neuaufbau fehlgeschlagen. Bitte erneut versuchen.");
+      toast("Neuaufbau fehlgeschlagen", "error");
     } finally {
       setRebuildBusy(false);
     }
@@ -389,13 +390,13 @@ export default function SettingsPage() {
     try {
       const { loadDemoData } = await import("../services/demoSeeder.ts");
       await loadDemoData();
-      toast("Demo data loaded", "success");
+      toast("Demodaten geladen", "success");
       // Reload page so all queries refetch
       window.location.reload();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load demo data";
+      const msg = err instanceof Error ? err.message : "Demodaten konnten nicht geladen werden";
       setDemoError(msg);
-      toast("Failed to load demo data", "error");
+      toast("Demodaten konnten nicht geladen werden", "error");
     } finally {
       setDemoBusy(false);
     }
@@ -406,10 +407,10 @@ export default function SettingsPage() {
     try {
       const { clearDemoData } = await import("../services/demoSeeder.ts");
       await clearDemoData();
-      toast("All data cleared", "success");
+      toast("Alle Daten entfernt", "success");
       window.location.reload();
     } catch {
-      toast("Failed to clear data", "error");
+      toast("Daten konnten nicht entfernt werden", "error");
     } finally {
       setClearDemoBusy(false);
     }
@@ -476,9 +477,9 @@ export default function SettingsPage() {
       });
       setNewSeason({ name: "", year: new Date().getFullYear(), startDate: "", endDate: "" });
       setShowNewSeason(false);
-      toast("Season created", "success");
+      toast("Saison erstellt", "success");
     } catch {
-      toast("Failed to create season", "error");
+      toast("Saison konnte nicht erstellt werden", "error");
     }
   };
 
@@ -490,9 +491,9 @@ export default function SettingsPage() {
       }
       setShowEndOfSeason(false);
       await doCreateSeason();
-      toast("Outcomes saved", "success");
+      toast("Ergebnisse gespeichert", "success");
     } catch {
-      toast("Failed to save outcomes", "error");
+      toast("Ergebnisse konnten nicht gespeichert werden", "error");
     } finally {
       setSavingOutcomes(false);
     }
@@ -506,9 +507,9 @@ export default function SettingsPage() {
   const handleSetActive = async (id: string) => {
     try {
       await seasonRepository.setActive(id);
-      toast("Active season updated", "success");
+      toast("Aktive Saison aktualisiert", "success");
     } catch {
-      toast("Failed to set active season", "error");
+      toast("Aktive Saison konnte nicht gesetzt werden", "error");
     }
   };
 
@@ -531,9 +532,9 @@ export default function SettingsPage() {
         endDate: editSeason.endDate,
       });
       setEditSeasonId(null);
-      toast("Season updated", "success");
+      toast("Saison aktualisiert", "success");
     } catch {
-      toast("Failed to update season", "error");
+      toast("Saison konnte nicht aktualisiert werden", "error");
     }
   };
 
@@ -547,9 +548,9 @@ export default function SettingsPage() {
     try {
       await seasonRepository.softDelete(deleteSeasonId);
       setDeleteSeasonId(null);
-      toast("Season deleted", "success");
+      toast("Saison geloescht", "success");
     } catch {
-      toast("Failed to delete season", "error");
+      toast("Saison konnte nicht geloescht werden", "error");
     } finally {
       setDeletingSeason(false);
     }
@@ -557,7 +558,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6 p-4" role="status" aria-label="Loading settings">
+      <div className="mx-auto max-w-2xl space-y-6 p-4" role="status" aria-label="Einstellungen werden geladen">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-36 w-full" />
@@ -569,13 +570,13 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4">
       <h1 className="font-display text-2xl font-bold text-text-heading">
-        Settings
+        Einstellungen
       </h1>
 
       {/* ── Garden Information ── */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Garden Information
+          Garteninformationen
         </h2>
 
         <div className="mt-4 space-y-4">
@@ -585,7 +586,7 @@ export default function SettingsPage() {
               htmlFor="growing-zone"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              Growing Zone
+              Klimazone
             </label>
             <select
               id="growing-zone"
@@ -609,7 +610,7 @@ export default function SettingsPage() {
               htmlFor="last-frost"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              Last Spring Frost Date
+              Letzter Fruehlingsfrost
             </label>
             <Input
               id="last-frost"
@@ -629,7 +630,7 @@ export default function SettingsPage() {
               htmlFor="first-frost"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              First Fall Frost Date
+              Erster Herbstfrost
             </label>
             <Input
               id="first-frost"
@@ -649,12 +650,12 @@ export default function SettingsPage() {
               htmlFor="garden-name"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              Garden Name
+              Gartenname
             </label>
             <Input
               id="garden-name"
               type="text"
-              placeholder="e.g. Backyard Garden"
+              placeholder="z. B. Garten hinterm Haus"
               value={gardenName}
               onChange={(e) => setGardenName(e.target.value)}
               onBlur={handleGardenNameBlur}
@@ -666,10 +667,10 @@ export default function SettingsPage() {
       {/* ── Location (Weather) ── */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Location
+          Standort
         </h2>
         <p className="mt-1 text-xs text-text-muted">
-          Used for weather on the dashboard and journal entries
+          Wird fuer Wetterdaten im Dashboard und in Journaleintraegen verwendet
         </p>
 
         <div className="mt-4 space-y-4">
@@ -681,13 +682,13 @@ export default function SettingsPage() {
                   {String(settings.latitude.toFixed(4))},{" "}
                   {String(settings.longitude.toFixed(4))}
                 </p>
-                <p className="text-xs text-text-muted">Current coordinates</p>
+                <p className="text-xs text-text-muted">Aktuelle Koordinaten</p>
               </div>
               <Button
                 variant="ghost"
                 onClick={() => void handleClearLocation()}
               >
-                Clear
+                Entfernen
               </Button>
             </div>
           )}
@@ -698,13 +699,13 @@ export default function SettingsPage() {
               htmlFor="location-search"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              Search by city
+              Nach Stadt suchen
             </label>
             <div className="flex gap-2">
               <Input
                 id="location-search"
                 type="text"
-                placeholder="e.g. Portland, OR"
+                placeholder="z. B. Berlin"
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -716,7 +717,7 @@ export default function SettingsPage() {
                 onClick={() => void handleLocationSearch()}
                 disabled={locationSearching || !locationQuery.trim()}
               >
-                {locationSearching ? "..." : "Search"}
+                {locationSearching ? "..." : "Suchen"}
               </Button>
             </div>
           </div>
@@ -755,7 +756,7 @@ export default function SettingsPage() {
                 htmlFor="latitude"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Latitude
+                Breitengrad
               </label>
               <Input
                 id="latitude"
@@ -763,7 +764,7 @@ export default function SettingsPage() {
                 step="any"
                 min="-90"
                 max="90"
-                placeholder="e.g. 45.5231"
+                placeholder="z. B. 52.5200"
                 value={localLat}
                 onChange={(e) => setLocalLat(e.target.value)}
                 onBlur={handleLatBlur}
@@ -774,7 +775,7 @@ export default function SettingsPage() {
                 htmlFor="longitude"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Longitude
+                Laengengrad
               </label>
               <Input
                 id="longitude"
@@ -782,7 +783,7 @@ export default function SettingsPage() {
                 step="any"
                 min="-180"
                 max="180"
-                placeholder="e.g. -122.6765"
+                placeholder="z. B. 13.4050"
                 value={localLon}
                 onChange={(e) => setLocalLon(e.target.value)}
                 onBlur={handleLonBlur}
@@ -795,19 +796,19 @@ export default function SettingsPage() {
       {/* ── Preferences ── */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Preferences
+          Einstellungen
         </h2>
 
         <div className="mt-4 space-y-4">
           {/* Grid unit */}
           <div>
             <span className="mb-1 block text-sm font-medium text-text-secondary">
-              Grid Unit
+              Rastereinheit
             </span>
             <ToggleGroup
               options={[
-                { label: "Feet", value: "feet" as const },
-                { label: "Meters", value: "meters" as const },
+                { label: "Fuss", value: "feet" as const },
+                { label: "Meter", value: "meters" as const },
               ]}
               value={settings.gridUnit}
               onChange={(unit) => void updateSettings({ gridUnit: unit })}
@@ -817,7 +818,7 @@ export default function SettingsPage() {
           {/* Temperature unit */}
           <div>
             <span className="mb-1 block text-sm font-medium text-text-secondary">
-              Temperature
+              Temperatur
             </span>
             <ToggleGroup
               options={[
@@ -838,9 +839,9 @@ export default function SettingsPage() {
             </span>
             <ToggleGroup
               options={[
-                { label: "Light", value: "light" as const },
-                { label: "Dark", value: "dark" as const },
-                { label: "Auto", value: "auto" as const },
+                { label: "Hell", value: "light" as const },
+                { label: "Dunkel", value: "dark" as const },
+                { label: "Automatisch", value: "auto" as const },
               ]}
               value={settings.theme}
               onChange={(theme) => void updateSettings({ theme })}
@@ -851,10 +852,10 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-medium text-text-secondary">
-                High Contrast
+                Hoher Kontrast
               </span>
               <p className="text-xs text-text-muted">
-                Increases contrast for better readability
+                Erhoeht den Kontrast fuer bessere Lesbarkeit
               </p>
             </div>
             <button
@@ -883,13 +884,13 @@ export default function SettingsPage() {
           {/* Font Size */}
           <div>
             <span className="mb-1 block text-sm font-medium text-text-secondary">
-              Font Size
+              Schriftgroesse
             </span>
             <ToggleGroup
               options={[
                 { label: "Normal", value: "normal" as const },
-                { label: "Large", value: "large" as const },
-                { label: "Extra Large", value: "extra-large" as const },
+                { label: "Gross", value: "large" as const },
+                { label: "Sehr gross", value: "extra-large" as const },
               ]}
               value={settings.fontSize}
               onChange={(fontSize) => void updateSettings({ fontSize })}
@@ -897,17 +898,17 @@ export default function SettingsPage() {
           </div>
 
           <p className="text-xs text-text-muted">
-            Press <kbd className="rounded border border-border-strong bg-surface-muted px-1 py-0.5 font-mono text-[10px]">?</kbd> anywhere to view keyboard shortcuts
+            Mit <kbd className="rounded border border-border-strong bg-surface-muted px-1 py-0.5 font-mono text-[10px]">?</kbd> lassen sich ueberall die Tastaturkuerzel anzeigen.
           </p>
 
           {/* Keep original photos */}
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-medium text-text-secondary">
-                Keep Original Photos
+                Originalfotos behalten
               </span>
               <p className="text-xs text-text-muted">
-                Stores full-resolution originals (requires more space)
+                Speichert hochaufloesende Originale (benoetigt mehr Speicher)
               </p>
             </div>
             <button
@@ -938,17 +939,17 @@ export default function SettingsPage() {
       {/* ── Notifications ── */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Notifications
+          Benachrichtigungen
         </h2>
         <div className="mt-3 space-y-4">
           {/* Enable/disable toggle */}
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-medium text-text-secondary">
-                Enable Notifications
+                Benachrichtigungen aktivieren
               </span>
               <p className="text-xs text-text-muted">
-                Get reminders for tasks and frost warnings
+                Erinnerungen fuer Aufgaben und Frostwarnungen erhalten
               </p>
             </div>
             <button
@@ -960,7 +961,7 @@ export default function SettingsPage() {
                   notifications.disable();
                 } else {
                   void notifications.enable().then((ok) => {
-                    if (!ok) toast("Notification permission denied by browser", "error");
+                    if (!ok) toast("Benachrichtigungsfreigabe vom Browser abgelehnt", "error");
                   });
                 }
               }}
@@ -981,11 +982,11 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted">Status:</span>
             {!notifications.supported ? (
-              <Badge>Not Supported</Badge>
+              <Badge>Nicht unterstuetzt</Badge>
             ) : notifications.permitted ? (
-              <Badge variant="success">Granted</Badge>
+              <Badge variant="success">Erlaubt</Badge>
             ) : (
-              <Badge variant="warning">Not Granted</Badge>
+              <Badge variant="warning">Nicht erlaubt</Badge>
             )}
           </div>
 
@@ -993,8 +994,8 @@ export default function SettingsPage() {
           {notifications.isIOS && (
             <div className="rounded-lg border border-border-strong bg-surface-muted p-3">
               <p className="text-xs text-text-secondary">
-                iOS does not support web notifications. You&apos;ll see
-                in-app reminders on your dashboard instead.
+                iOS unterstuetzt keine Web-Benachrichtigungen. Stattdessen
+                werden Erinnerungen direkt im Dashboard angezeigt.
               </p>
             </div>
           )}
@@ -1006,10 +1007,10 @@ export default function SettingsPage() {
               size="sm"
               onClick={() => {
                 notifications.resetPrompt();
-                toast("Notification prompt reset", "success");
+                toast("Benachrichtigungsabfrage zurueckgesetzt", "success");
               }}
             >
-              Reset notification prompt
+              Benachrichtigungsabfrage zuruecksetzen
             </Button>
           )}
         </div>
@@ -1019,7 +1020,7 @@ export default function SettingsPage() {
       <Card>
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Seasons
+            Saisons
           </h2>
           <div className="flex items-center gap-2">
             {seasons && seasons.length >= 2 && (
@@ -1027,14 +1028,14 @@ export default function SettingsPage() {
                 to="/seasons/compare"
                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-text-heading transition-colors hover:bg-surface-muted"
               >
-                Compare
+                Vergleichen
               </Link>
             )}
             <Button
               variant="ghost"
               onClick={() => setShowNewSeason((v) => !v)}
             >
-              {showNewSeason ? "Cancel" : "New Season"}
+              {showNewSeason ? "Abbrechen" : "Neue Saison"}
             </Button>
           </div>
         </div>
@@ -1048,14 +1049,14 @@ export default function SettingsPage() {
               <Input
                 id="season-name"
                 type="text"
-                placeholder="e.g. Spring 2026"
+                placeholder="z. B. Saison 2026"
                 value={newSeason.name}
                 onChange={(e) => setNewSeason((s) => ({ ...s, name: e.target.value }))}
               />
             </div>
             <div>
               <label htmlFor="season-year" className="mb-1 block text-sm font-medium text-text-secondary">
-                Year
+                Jahr
               </label>
               <Input
                 id="season-year"
@@ -1067,7 +1068,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="season-start" className="mb-1 block text-sm font-medium text-text-secondary">
-                  Start Date
+                  Startdatum
                 </label>
                 <Input
                   id="season-start"
@@ -1078,7 +1079,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label htmlFor="season-end" className="mb-1 block text-sm font-medium text-text-secondary">
-                  End Date
+                  Enddatum
                 </label>
                 <Input
                   id="season-end"
@@ -1089,7 +1090,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <Button onClick={() => void handleCreateSeason()}>
-              Create Season
+              Saison erstellen
             </Button>
           </div>
         )}
@@ -1098,7 +1099,7 @@ export default function SettingsPage() {
           {seasons === undefined ? (
             <Skeleton className="h-12 w-full" />
           ) : seasons.length === 0 ? (
-            <p className="text-sm text-text-muted">No seasons yet. Create one to get started.</p>
+            <p className="text-sm text-text-muted">Noch keine Saisons vorhanden. Lege eine an, um zu starten.</p>
           ) : (
             seasons.map((season) => (
               <div
@@ -1124,7 +1125,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <label htmlFor={`edit-season-year-${season.id}`} className="mb-1 block text-sm font-medium text-text-secondary">
-                        Year
+                        Jahr
                       </label>
                       <Input
                         id={`edit-season-year-${season.id}`}
@@ -1136,7 +1137,7 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor={`edit-season-start-${season.id}`} className="mb-1 block text-sm font-medium text-text-secondary">
-                          Start Date
+                          Startdatum
                         </label>
                         <Input
                           id={`edit-season-start-${season.id}`}
@@ -1147,7 +1148,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <label htmlFor={`edit-season-end-${season.id}`} className="mb-1 block text-sm font-medium text-text-secondary">
-                          End Date
+                          Enddatum
                         </label>
                         <Input
                           id={`edit-season-end-${season.id}`}
@@ -1159,10 +1160,10 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={() => void handleUpdateSeason()}>
-                        Save
+                        Speichern
                       </Button>
                       <Button variant="ghost" onClick={() => setEditSeasonId(null)}>
-                        Cancel
+                        Abbrechen
                       </Button>
                     </div>
                   </div>
@@ -1172,7 +1173,7 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-text-primary">{season.name}</span>
                         <span className="text-sm text-text-secondary">{String(season.year)}</span>
-                        {season.isActive && <Badge variant="success">Active</Badge>}
+                        {season.isActive && <Badge variant="success">Aktiv</Badge>}
                       </div>
                       <p className="text-xs text-text-muted">
                         {season.startDate} &ndash; {season.endDate}
@@ -1183,14 +1184,14 @@ export default function SettingsPage() {
                         variant="ghost"
                         onClick={() => startEditSeason(season)}
                       >
-                        Edit
+                        Bearbeiten
                       </Button>
                       {!season.isActive && (
                         <Button
                           variant="ghost"
                           onClick={() => void handleSetActive(season.id)}
                         >
-                          Set Active
+                          Aktiv setzen
                         </Button>
                       )}
                       <Button
@@ -1198,7 +1199,7 @@ export default function SettingsPage() {
                         className="text-terracotta-600 hover:bg-terracotta-400/10"
                         onClick={() => setDeleteSeasonId(season.id)}
                       >
-                        Delete
+                        Loeschen
                       </Button>
                     </div>
                   </div>
@@ -1225,10 +1226,10 @@ export default function SettingsPage() {
               id="delete-season-dialog-title"
               className="font-display text-lg font-semibold text-text-primary"
             >
-              Delete {deleteSeasonName}?
+              {deleteSeasonName} loeschen?
             </h3>
             <p className="mt-2 text-sm text-text-secondary">
-              This season will be removed. This action cannot be undone.
+              Diese Saison wird entfernt. Diese Aktion kann nicht rueckgaengig gemacht werden.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <Button
@@ -1236,7 +1237,7 @@ export default function SettingsPage() {
                 onClick={() => setDeleteSeasonId(null)}
                 disabled={deletingSeason}
               >
-                Cancel
+                Abbrechen
               </Button>
               <Button
                 variant="primary"
@@ -1244,7 +1245,7 @@ export default function SettingsPage() {
                 onClick={() => void handleDeleteSeason()}
                 disabled={deletingSeason}
               >
-                {deletingSeason ? "Deleting\u2026" : "Delete"}
+                {deletingSeason ? "Loescht..." : "Loeschen"}
               </Button>
             </div>
           </Card>
@@ -1257,10 +1258,10 @@ export default function SettingsPage() {
       {/* ── Multi-Device Sync (hidden for cloud users) ── */}
       {!isCloudUser && <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Multi-Device Sync
+          Multi-Device-Sync
         </h2>
         <p className="mt-1 text-xs text-text-muted">
-          Sync your garden data across devices via CouchDB
+          Synchronisiere deine Gartendaten ueber CouchDB zwischen mehreren Geraeten
         </p>
 
         <div className="mt-4 space-y-4">
@@ -1282,19 +1283,19 @@ export default function SettingsPage() {
               />
               <span className="text-sm font-medium text-text-primary">
                 {syncStatus === "syncing"
-                  ? "Syncing..."
+                  ? "Synchronisiert..."
                   : syncStatus === "paused"
-                    ? "Connected"
+                    ? "Verbunden"
                     : syncStatus === "error"
-                      ? "Error"
+                      ? "Fehler"
                       : syncStatus === "offline"
                         ? "Offline"
-                        : "Disabled"}
+                        : "Deaktiviert"}
               </span>
             </div>
             {lastSynced && (
               <span className="text-xs text-text-muted">
-                Last synced: {new Date(lastSynced).toLocaleString()}
+                Zuletzt synchronisiert: {formatBrowserDateTime(lastSynced)}
               </span>
             )}
           </div>
@@ -1305,7 +1306,7 @@ export default function SettingsPage() {
               htmlFor="sync-url"
               className="mb-1 block text-sm font-medium text-text-secondary"
             >
-              CouchDB Server URL
+              CouchDB-Server-URL
             </label>
             <Input
               id="sync-url"
@@ -1323,12 +1324,12 @@ export default function SettingsPage() {
                 htmlFor="sync-username"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Username
+                Benutzername
               </label>
               <Input
                 id="sync-username"
                 type="text"
-                placeholder="admin"
+                placeholder="z. B. admin"
                 value={syncUsername}
                 onChange={(e) => setSyncUsername(e.target.value)}
               />
@@ -1338,12 +1339,12 @@ export default function SettingsPage() {
                 htmlFor="sync-password"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Password
+                Passwort
               </label>
               <Input
                 id="sync-password"
                 type="password"
-                placeholder="password"
+                placeholder="Passwort"
                 value={syncPassword}
                 onChange={(e) => setSyncPassword(e.target.value)}
               />
@@ -1357,11 +1358,11 @@ export default function SettingsPage() {
               onClick={() => void handleTestConnection()}
               disabled={testBusy || !syncUrl.trim()}
             >
-              {testBusy ? "Testing..." : "Test Connection"}
+              {testBusy ? "Pruefe..." : "Verbindung testen"}
             </Button>
             {testResult && (
               <p className="mt-1 text-sm text-text-heading">
-                Connected to <strong>{testResult.dbName}</strong> ({String(testResult.docCount)} docs)
+                Verbunden mit <strong>{testResult.dbName}</strong> ({String(testResult.docCount)} Dokumente)
               </p>
             )}
             {testError && (
@@ -1376,21 +1377,21 @@ export default function SettingsPage() {
                 onClick={handleStartSync}
                 disabled={!syncUrl.trim()}
               >
-                Start Sync
+                Sync starten
               </Button>
             ) : (
               <Button variant="secondary" onClick={handleStopSync}>
-                Stop Sync
+                Sync stoppen
               </Button>
             )}
             {syncStatus === "paused" && (
               <Button variant="ghost" onClick={handleSyncNow}>
-                Sync Now
+                Jetzt synchronisieren
               </Button>
             )}
             {(syncConfigured || syncUrl.trim()) && (
               <Button variant="ghost" onClick={handleClearSync}>
-                Clear Config
+                Konfiguration loeschen
               </Button>
             )}
           </div>
@@ -1400,31 +1401,31 @@ export default function SettingsPage() {
       {/* ── Data Management ── */}
       <Card>
         <h2 className="font-display text-lg font-semibold text-text-heading">
-          Data Management
+          Datenverwaltung
         </h2>
 
         <div className="mt-4 space-y-4">
           {/* Storage dashboard */}
           <div>
             <span className="mb-2 block text-sm font-medium text-text-secondary">
-              Storage
+              Speicher
             </span>
             {storage ? (
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-text-secondary">
-                  <span>Thumbnails: {formatBytes(storage.thumbnailBytes)}</span>
-                  <span>Display: {formatBytes(storage.displayBytes)}</span>
-                  <span>Originals: {formatBytes(storage.originalBytes)}</span>
-                  <span>Data: {formatBytes(storage.dataBytes)}</span>
+                  <span>Vorschaubilder: {formatBytes(storage.thumbnailBytes)}</span>
+                  <span>Anzeige: {formatBytes(storage.displayBytes)}</span>
+                  <span>Originale: {formatBytes(storage.originalBytes)}</span>
+                  <span>Daten: {formatBytes(storage.dataBytes)}</span>
                 </div>
                 {remoteInfo && remoteInfo.diskSize > 0 ? (
                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm font-medium text-text-primary">
-                    <span>Local: {formatBytes(storage.totalBytes)}</span>
+                    <span>Lokal: {formatBytes(storage.totalBytes)}</span>
                     <span>Remote (CouchDB): {formatBytes(remoteInfo.diskSize)}</span>
                   </div>
                 ) : (
                   <p className="text-sm font-medium text-text-primary">
-                    Total: {formatBytes(storage.totalBytes)}
+                    Gesamt: {formatBytes(storage.totalBytes)}
                   </p>
                 )}
                 {storage.quotaBytes > 0 && (
@@ -1438,14 +1439,14 @@ export default function SettingsPage() {
                       />
                     </div>
                     <p className="mt-1 text-xs text-text-muted">
-                      {formatBytes(storage.totalBytes)} of{" "}
-                      {formatBytes(storage.quotaBytes)} used
+                      {formatBytes(storage.totalBytes)} von{" "}
+                      {formatBytes(storage.quotaBytes)} genutzt
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">Calculating…</p>
+              <p className="text-sm text-text-muted">Wird berechnet...</p>
             )}
           </div>
 
@@ -1456,15 +1457,15 @@ export default function SettingsPage() {
               disabled={exportBusy}
               variant="secondary"
             >
-              {exportBusy ? "Exporting…" : "Export All Data"}
+              {exportBusy ? "Exportiert..." : "Alle Daten exportieren"}
             </Button>
             {exportError && (
               <p className="mt-1 text-sm text-red-600">{exportError}</p>
             )}
             {settings.lastExportDate && (
               <p className="mt-1 text-xs text-text-muted">
-                Last export:{" "}
-                {new Date(settings.lastExportDate).toLocaleDateString()}
+                Letzter Export:{" "}
+                {formatBrowserDate(settings.lastExportDate)}
               </p>
             )}
           </div>
@@ -1476,17 +1477,17 @@ export default function SettingsPage() {
                 variant="secondary"
                 onClick={() => setShowImportDialog(true)}
               >
-                Import Jninty Backup
+                Jninty-Backup importieren
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => setShowCsvDialog(true)}
               >
-                Import Plants from CSV
+                Pflanzen aus CSV importieren
               </Button>
             </div>
             <p className="mt-1 text-xs text-text-muted">
-              Restore from a backup ZIP or import plants from a CSV file
+              Backup-ZIP wiederherstellen oder Pflanzen aus einer CSV-Datei importieren
             </p>
           </div>
 
@@ -1498,7 +1499,7 @@ export default function SettingsPage() {
                 onClick={() => void handleLoadDemo()}
                 disabled={demoBusy || clearDemoBusy}
               >
-                {demoBusy ? "Loading…" : "Load Demo Data"}
+                {demoBusy ? "Laedt..." : "Demodaten laden"}
               </Button>
               <Button
                 variant="ghost"
@@ -1506,15 +1507,15 @@ export default function SettingsPage() {
                 disabled={demoBusy || clearDemoBusy}
                 className="text-red-600 hover:text-red-700"
               >
-                {clearDemoBusy ? "Clearing…" : "Clear All Data"}
+                {clearDemoBusy ? "Entfernt..." : "Alle Daten entfernen"}
               </Button>
             </div>
             {demoError && (
               <p className="mt-1 text-sm text-red-600">{demoError}</p>
             )}
             <p className="mt-1 text-xs text-text-muted">
-              Load sample plants, journal entries, tasks, and more for
-              exploration. Clear removes all data from the app.
+              Laedt Beispielpflanzen, Journaleintraege, Aufgaben und weitere
+              Daten zum Ausprobieren. Das Entfernen loescht alle App-Daten.
             </p>
           </div>
 
@@ -1526,11 +1527,11 @@ export default function SettingsPage() {
               disabled={clearingOriginals}
             >
               {clearingOriginals
-                ? "Clearing…"
-                : "Clear Original Photos"}
+                ? "Entfernt..."
+                : "Originalfotos entfernen"}
             </Button>
             <p className="mt-1 text-xs text-text-muted">
-              Removes stored full-resolution originals to reclaim space
+              Entfernt gespeicherte Originale in voller Aufloesung, um Speicherplatz freizugeben
             </p>
           </div>
 
@@ -1541,14 +1542,14 @@ export default function SettingsPage() {
               disabled={rebuildBusy}
               variant="ghost"
             >
-              {rebuildBusy ? "Rebuilding…" : "Rebuild Search Index"}
+              {rebuildBusy ? "Baut neu auf..." : "Suchindex neu aufbauen"}
             </Button>
             {rebuildError && (
               <p className="mt-1 text-sm text-red-600">{rebuildError}</p>
             )}
             {rebuildCount != null && (
               <p className="mt-1 text-sm text-text-secondary">
-                Indexed {String(rebuildCount)} items.
+                {String(rebuildCount)} Eintraege indiziert.
               </p>
             )}
           </div>
@@ -1580,11 +1581,11 @@ export default function SettingsPage() {
         >
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-surface-elevated p-6 shadow-xl">
             <h3 className="font-display text-lg font-bold text-text-heading">
-              End of Season Review
+              Saisonabschluss
             </h3>
             <p className="mt-1 text-sm text-text-secondary">
-              How did each planting do this season? Set outcomes before starting
-              a new season.
+              Wie ist jede Pflanzung in dieser Saison gelaufen? Bitte die
+              Ergebnisse festlegen, bevor eine neue Saison startet.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -1594,7 +1595,7 @@ export default function SettingsPage() {
                   className="flex items-center justify-between rounded-lg border border-border-default bg-surface p-3"
                 >
                   <span className="text-sm font-medium text-text-primary">
-                    {plantNameMap.get(planting.plantInstanceId) ?? "Unknown Plant"}
+                    {plantNameMap.get(planting.plantInstanceId) ?? "Unbekannte Pflanze"}
                   </span>
                   <div className="flex gap-1">
                     {(["thrived", "ok", "failed", "unknown"] as const).map((o) => (
@@ -1616,7 +1617,13 @@ export default function SettingsPage() {
                             : "bg-surface-muted text-text-secondary hover:bg-surface-muted"
                         }`}
                       >
-                        {o}
+                        {o === "thrived"
+                          ? "Sehr gut"
+                          : o === "ok"
+                            ? "Okay"
+                            : o === "failed"
+                              ? "Gescheitert"
+                              : "Unbekannt"}
                       </button>
                     ))}
                   </div>
@@ -1629,10 +1636,10 @@ export default function SettingsPage() {
                 onClick={() => void handleSaveOutcomesAndCreate()}
                 disabled={savingOutcomes}
               >
-                {savingOutcomes ? "Saving..." : "Save & Create Season"}
+                {savingOutcomes ? "Speichert..." : "Speichern und Saison erstellen"}
               </Button>
               <Button variant="ghost" onClick={() => void handleSkipOutcomes()}>
-                Skip
+                Ueberspringen
               </Button>
             </div>
           </div>

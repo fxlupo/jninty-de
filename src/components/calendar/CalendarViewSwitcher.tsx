@@ -6,9 +6,9 @@ interface CalendarViewSwitcherProps {
 }
 
 const VIEW_OPTIONS: { key: CalendarView; label: string }[] = [
-  { key: "timeline", label: "Timeline" },
-  { key: "monthly", label: "Monthly" },
-  { key: "yearly", label: "Yearly" },
+  { key: "timeline", label: "Zeitachse" },
+  { key: "monthly", label: "Monat" },
+  { key: "yearly", label: "Jahr" },
 ];
 
 export default function CalendarViewSwitcher({
