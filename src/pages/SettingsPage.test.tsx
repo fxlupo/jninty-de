@@ -61,22 +61,21 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Settings")).toBeInTheDocument();
+      expect(screen.getAllByText("Einstellungen").length).toBeGreaterThanOrEqual(2);
     });
 
-    expect(screen.getByText("Garden Information")).toBeInTheDocument();
-    expect(screen.getByText("Preferences")).toBeInTheDocument();
-    expect(screen.getByText("Data Management")).toBeInTheDocument();
+    expect(screen.getByText("Garteninformationen")).toBeInTheDocument();
+    expect(screen.getByText("Datenverwaltung")).toBeInTheDocument();
   });
 
   it("renders growing zone dropdown with all zones", async () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Growing Zone")).toBeInTheDocument();
+      expect(screen.getByLabelText("Klimazone")).toBeInTheDocument();
     });
 
-    const select = screen.getByLabelText("Growing Zone") as HTMLSelectElement;
+    const select = screen.getByLabelText("Klimazone") as HTMLSelectElement;
     // 13 zones × 2 subzones = 26 options
     expect(select.options.length).toBe(26);
     expect(select.options[0]?.textContent).toBe("Zone 1a");
@@ -88,12 +87,12 @@ describe("SettingsPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByLabelText("Last Spring Frost Date"),
+        screen.getByLabelText("Letzter Fruehlingsfrost"),
       ).toBeInTheDocument();
     });
 
     expect(
-      screen.getByLabelText("First Fall Frost Date"),
+      screen.getByLabelText("Erster Herbstfrost"),
     ).toBeInTheDocument();
   });
 
@@ -101,27 +100,27 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Feet")).toBeInTheDocument();
+      expect(screen.getByText("Fuss")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Meters")).toBeInTheDocument();
+    expect(screen.getByText("Meter")).toBeInTheDocument();
     expect(screen.getByText("°F")).toBeInTheDocument();
     expect(screen.getByText("°C")).toBeInTheDocument();
-    expect(screen.getByText("Light")).toBeInTheDocument();
-    expect(screen.getByText("Dark")).toBeInTheDocument();
-    expect(screen.getByText("Auto")).toBeInTheDocument();
+    expect(screen.getByText("Hell")).toBeInTheDocument();
+    expect(screen.getByText("Dunkel")).toBeInTheDocument();
+    expect(screen.getByText("Automatisch")).toBeInTheDocument();
   });
 
   it("renders storage dashboard", async () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Thumbnails:/)).toBeInTheDocument();
+      expect(screen.getByText(/Vorschaubilder:/)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Display:/)).toBeInTheDocument();
-    expect(screen.getByText(/Data:/)).toBeInTheDocument();
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
+    expect(screen.getByText(/Anzeige:/)).toBeInTheDocument();
+    expect(screen.getByText(/Daten:/)).toBeInTheDocument();
+    expect(screen.getByText(/Gesamt:/)).toBeInTheDocument();
   });
 
   it("renders app version", async () => {
@@ -137,10 +136,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Growing Zone")).toBeInTheDocument();
+      expect(screen.getByLabelText("Klimazone")).toBeInTheDocument();
     });
 
-    const select = screen.getByLabelText("Growing Zone");
+    const select = screen.getByLabelText("Klimazone");
     await user.selectOptions(select, "5b");
 
     await waitFor(async () => {
@@ -154,10 +153,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Meters")).toBeInTheDocument();
+      expect(screen.getByText("Meter")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Meters"));
+    await user.click(screen.getByText("Meter"));
 
     await waitFor(async () => {
       const stored = await settingsRepo.get();
@@ -170,10 +169,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Export All Data")).toBeInTheDocument();
+      expect(screen.getByText("Alle Daten exportieren")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Export All Data"));
+    await user.click(screen.getByText("Alle Daten exportieren"));
 
     await waitFor(() => {
       expect(exportAll).toHaveBeenCalledOnce();
@@ -187,14 +186,14 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Export All Data")).toBeInTheDocument();
+      expect(screen.getByText("Alle Daten exportieren")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Export All Data"));
+    await user.click(screen.getByText("Alle Daten exportieren"));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Export failed. Please try again."),
+        screen.getByText("Export fehlgeschlagen. Bitte erneut versuchen."),
       ).toBeInTheDocument();
     });
   });
@@ -204,14 +203,14 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Rebuild Search Index")).toBeInTheDocument();
+      expect(screen.getByText("Suchindex neu aufbauen")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Rebuild Search Index"));
+    await user.click(screen.getByText("Suchindex neu aufbauen"));
 
     await waitFor(() => {
       expect(rebuildIndex).toHaveBeenCalledOnce();
-      expect(screen.getByText("Indexed 5 items.")).toBeInTheDocument();
+      expect(screen.getByText("5 Eintraege indiziert.")).toBeInTheDocument();
     });
   });
 
@@ -221,14 +220,14 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText("Rebuild Search Index")).toBeInTheDocument();
+      expect(screen.getByText("Suchindex neu aufbauen")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Rebuild Search Index"));
+    await user.click(screen.getByText("Suchindex neu aufbauen"));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Rebuild failed. Please try again."),
+        screen.getByText("Neuaufbau fehlgeschlagen. Bitte erneut versuchen."),
       ).toBeInTheDocument();
     });
   });

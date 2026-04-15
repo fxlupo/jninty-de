@@ -53,7 +53,7 @@ describe("PlantsListPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Plant Inventory")).toBeInTheDocument();
+      expect(screen.getByText("Pflanzenkatalog")).toBeInTheDocument();
     });
   });
 
@@ -61,11 +61,11 @@ describe("PlantsListPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("No plants yet")).toBeInTheDocument();
+      expect(screen.getByText("Noch keine Pflanzen")).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText("Add your first plant to get started."),
+      screen.getByText("Füge deine erste Pflanze hinzu."),
     ).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe("PlantsListPage", () => {
     });
 
     expect(screen.getByText("Basil")).toBeInTheDocument();
-    expect(screen.getByText("2 plants")).toBeInTheDocument();
+    expect(screen.getByText("2 Pflanzen")).toBeInTheDocument();
   });
 
   it("shows species under nickname on plant cards", async () => {
@@ -104,10 +104,10 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Tomato")).toBeInTheDocument();
     });
 
-    // "Vegetable" appears in both dropdown and badge — check badge specifically
+    // "Gemüse" appears in both dropdown and badge — check badge specifically
     const card = screen.getByText("Tomato").closest("a")!;
-    expect(within(card).getByText("Vegetable")).toBeInTheDocument();
-    expect(within(card).getByText("Active")).toBeInTheDocument();
+    expect(within(card).getByText("Gemüse")).toBeInTheDocument();
+    expect(within(card).getByText("Aktiv")).toBeInTheDocument();
   });
 
   it("switches to list view", async () => {
@@ -120,7 +120,7 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Tomato")).toBeInTheDocument();
     });
 
-    const listButton = screen.getByLabelText("List view");
+    const listButton = screen.getByLabelText("Listenansicht");
     await user.click(listButton);
 
     // Plant should still be visible
@@ -139,7 +139,7 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Basil")).toBeInTheDocument();
     });
 
-    const typeFilter = screen.getByLabelText("Filter by type");
+    const typeFilter = screen.getByLabelText("Nach Typ filtern");
     await user.selectOptions(typeFilter, "herb");
 
     await waitFor(() => {
@@ -161,7 +161,7 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Dormant Plant")).toBeInTheDocument();
     });
 
-    const statusFilter = screen.getByLabelText("Filter by status");
+    const statusFilter = screen.getByLabelText("Nach Status filtern");
     await user.selectOptions(statusFilter, "dormant");
 
     await waitFor(() => {
@@ -181,12 +181,12 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Tomato")).toBeInTheDocument();
     });
 
-    const typeFilter = screen.getByLabelText("Filter by type");
+    const typeFilter = screen.getByLabelText("Nach Typ filtern");
     await user.selectOptions(typeFilter, "flower");
 
     await waitFor(() => {
       expect(
-        screen.getByText("No plants match your filters"),
+        screen.getByText("Keine Pflanzen gefunden"),
       ).toBeInTheDocument();
     });
   });
@@ -203,7 +203,7 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Basil")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByLabelText("Search plants");
+    const searchInput = screen.getByLabelText("Pflanzen suchen");
     await user.type(searchInput, "Tomato");
 
     await waitFor(() => {
@@ -216,7 +216,7 @@ describe("PlantsListPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Add plant")).toBeInTheDocument();
+      expect(screen.getByLabelText("Pflanze hinzufügen")).toBeInTheDocument();
     });
   });
 
@@ -232,8 +232,8 @@ describe("PlantsListPage", () => {
       expect(screen.getByText("Active Veggie")).toBeInTheDocument();
     });
 
-    const typeFilter = screen.getByLabelText("Filter by type");
-    const statusFilter = screen.getByLabelText("Filter by status");
+    const typeFilter = screen.getByLabelText("Nach Typ filtern");
+    const statusFilter = screen.getByLabelText("Nach Status filtern");
 
     await user.selectOptions(typeFilter, "vegetable");
     await user.selectOptions(statusFilter, "active");
@@ -253,7 +253,7 @@ describe("PlantsListPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("3 plants")).toBeInTheDocument();
+      expect(screen.getByText("3 Pflanzen")).toBeInTheDocument();
     });
   });
 
@@ -263,7 +263,7 @@ describe("PlantsListPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("1 plant")).toBeInTheDocument();
+      expect(screen.getByText("1 Pflanze")).toBeInTheDocument();
     });
   });
 });

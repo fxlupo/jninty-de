@@ -67,16 +67,16 @@ describe("JournalEntryFormPage", () => {
     renderPage();
 
     expect(
-      screen.getByRole("heading", { name: "New Journal Entry" }),
+      screen.getByRole("heading", { name: "Neuer Journaleintrag" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("group", { name: "Activity type" }),
+      screen.getByRole("group", { name: "Aktivitaetstyp" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Plant")).toBeInTheDocument();
-    expect(screen.getByLabelText("Garden Bed")).toBeInTheDocument();
-    expect(screen.getByLabelText("Title")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Body/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Milestone")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pflanze")).toBeInTheDocument();
+    expect(screen.getByLabelText("Gartenbeet")).toBeInTheDocument();
+    expect(screen.getByLabelText("Titel")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Inhalt/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Meilenstein")).toBeInTheDocument();
   });
 
   it("shows validation error when no activity type is selected", async () => {
@@ -84,12 +84,12 @@ describe("JournalEntryFormPage", () => {
     renderPage();
 
     // Fill body but skip activity type
-    await user.type(screen.getByLabelText(/Body/), "Some note");
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.type(screen.getByLabelText(/Inhalt/), "Some note");
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Activity type is required."),
+        screen.getByText("Bitte einen Aktivitaetstyp auswaehlen."),
       ).toBeInTheDocument();
     });
   });
@@ -99,12 +99,12 @@ describe("JournalEntryFormPage", () => {
     renderPage();
 
     // Select activity but leave body empty
-    await user.click(screen.getByText("Watering"));
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.click(screen.getByText("Giessen"));
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Body text is required."),
+        screen.getByText("Der Inhalt ist erforderlich."),
       ).toBeInTheDocument();
     });
   });
@@ -113,17 +113,17 @@ describe("JournalEntryFormPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    // Select "General" activity type (not Milestone, to avoid name collision)
-    await user.click(screen.getByText("General"));
-    await user.type(screen.getByLabelText(/Body/), "Big day");
+    // Select "Allgemein" activity type (not Meilenstein, to avoid name collision)
+    await user.click(screen.getByText("Allgemein"));
+    await user.type(screen.getByLabelText(/Inhalt/), "Big day");
     // Toggle milestone switch on
-    await user.click(screen.getByRole("switch", { name: "Milestone" }));
+    await user.click(screen.getByRole("switch", { name: "Meilenstein" }));
 
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(
-        screen.getByText("Select a milestone type."),
+        screen.getByText("Bitte einen Meilensteintyp auswaehlen."),
       ).toBeInTheDocument();
     });
   });
@@ -133,19 +133,19 @@ describe("JournalEntryFormPage", () => {
     renderPage();
 
     // Not visible initially
-    expect(screen.queryByLabelText("Harvest Weight (g)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Erntegewicht (g)")).not.toBeInTheDocument();
 
     // Select harvest activity
-    await user.click(screen.getByText("Harvest"));
+    await user.click(screen.getByText("Ernte"));
 
     // Now visible
-    expect(screen.getByLabelText("Harvest Weight (g)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Erntegewicht (g)")).toBeInTheDocument();
 
     // Switch to different activity
-    await user.click(screen.getByText("Watering"));
+    await user.click(screen.getByText("Giessen"));
 
     // Hidden again
-    expect(screen.queryByLabelText("Harvest Weight (g)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Erntegewicht (g)")).not.toBeInTheDocument();
   });
 
   it("shows milestone type picker when milestone is toggled on", async () => {
@@ -154,25 +154,25 @@ describe("JournalEntryFormPage", () => {
 
     // Not visible initially
     expect(
-      screen.queryByLabelText(/Milestone Type/),
+      screen.queryByLabelText(/Meilensteintyp/),
     ).not.toBeInTheDocument();
 
     // Toggle milestone on
-    await user.click(screen.getByLabelText("Milestone"));
+    await user.click(screen.getByLabelText("Meilenstein"));
 
     // Now visible
-    expect(screen.getByLabelText(/Milestone Type/)).toBeInTheDocument();
-    expect(screen.getByText("First Sprout")).toBeInTheDocument();
-    expect(screen.getByText("First Flower")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Meilensteintyp/)).toBeInTheDocument();
+    expect(screen.getByText("Erster Keimling")).toBeInTheDocument();
+    expect(screen.getByText("Erste Bluete")).toBeInTheDocument();
   });
 
   it("saves a basic entry and navigates to journal", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByText("General"));
-    await user.type(screen.getByLabelText(/Body/), "A good garden day");
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.click(screen.getByText("Allgemein"));
+    await user.type(screen.getByLabelText(/Inhalt/), "A good garden day");
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(screen.getByText("Journal Page")).toBeInTheDocument();
@@ -207,17 +207,17 @@ describe("JournalEntryFormPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByText("Watering"));
+    await user.click(screen.getByText("Giessen"));
 
     // Wait for dropdown options to load
     await waitFor(() => {
       expect(screen.getByText("Tomato")).toBeInTheDocument();
     });
 
-    await user.selectOptions(screen.getByLabelText("Plant"), plant.id);
-    await user.selectOptions(screen.getByLabelText("Garden Bed"), bed.id);
-    await user.type(screen.getByLabelText(/Body/), "Watered everything");
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.selectOptions(screen.getByLabelText("Pflanze"), plant.id);
+    await user.selectOptions(screen.getByLabelText("Gartenbeet"), bed.id);
+    await user.type(screen.getByLabelText(/Inhalt/), "Watered everything");
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(screen.getByText("Journal Page")).toBeInTheDocument();
@@ -232,10 +232,10 @@ describe("JournalEntryFormPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByText("Harvest"));
-    await user.type(screen.getByLabelText(/Body/), "Great harvest today");
-    await user.type(screen.getByLabelText("Harvest Weight (g)"), "450");
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.click(screen.getByText("Ernte"));
+    await user.type(screen.getByLabelText(/Inhalt/), "Great harvest today");
+    await user.type(screen.getByLabelText("Erntegewicht (g)"), "450");
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(screen.getByText("Journal Page")).toBeInTheDocument();
@@ -250,16 +250,16 @@ describe("JournalEntryFormPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    // Select "General" activity type first
-    await user.click(screen.getByText("General"));
-    await user.type(screen.getByLabelText(/Body/), "First flower appeared!");
+    // Select "Allgemein" activity type first
+    await user.click(screen.getByText("Allgemein"));
+    await user.type(screen.getByLabelText(/Inhalt/), "First flower appeared!");
     // Toggle milestone switch on
-    await user.click(screen.getByRole("switch", { name: "Milestone" }));
+    await user.click(screen.getByRole("switch", { name: "Meilenstein" }));
     await user.selectOptions(
-      screen.getByLabelText(/Milestone Type/),
+      screen.getByLabelText(/Meilensteintyp/),
       "first_flower",
     );
-    await user.click(screen.getByRole("button", { name: "Save Entry" }));
+    await user.click(screen.getByRole("button", { name: "Eintrag speichern" }));
 
     await waitFor(() => {
       expect(screen.getByText("Journal Page")).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe("JournalEntryFormPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Abbrechen"));
 
     await waitFor(() => {
       expect(screen.getByText("Journal Page")).toBeInTheDocument();

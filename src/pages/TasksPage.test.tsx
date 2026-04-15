@@ -40,10 +40,10 @@ describe("TasksPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("No tasks yet")).toBeInTheDocument();
+      expect(screen.getByText("Noch keine Aufgaben")).toBeInTheDocument();
     });
     expect(
-      screen.getByText("Add your first task with the + button below."),
+      screen.getByText("Fuege unten mit dem + deine erste Aufgabe hinzu."),
     ).toBeInTheDocument();
   });
 
@@ -67,9 +67,9 @@ describe("TasksPage", () => {
       expect(screen.getByText("Water tomatoes")).toBeInTheDocument();
     });
     expect(screen.getByText("Prune roses")).toBeInTheDocument();
-    expect(screen.getByText("Urgent")).toBeInTheDocument();
-    expect(screen.getByText("Low")).toBeInTheDocument();
-    expect(screen.getByText("2 pending")).toBeInTheDocument();
+    expect(screen.getByText("Dringend")).toBeInTheDocument();
+    expect(screen.getByText("Niedrig")).toBeInTheDocument();
+    expect(screen.getByText("2 offen")).toBeInTheDocument();
   });
 
   it("marks a task as complete when checkbox is clicked", async () => {
@@ -88,17 +88,17 @@ describe("TasksPage", () => {
     });
 
     // Should be in pending list
-    expect(screen.getByText("1 pending")).toBeInTheDocument();
+    expect(screen.getByText("1 offen")).toBeInTheDocument();
 
     // Click the checkbox
-    const checkbox = screen.getByLabelText("Mark complete");
+    const checkbox = screen.getByLabelText("Als erledigt markieren");
     await user.click(checkbox);
 
     // Should now be in completed section
     await waitFor(() => {
-      expect(screen.getByText("0 pending")).toBeInTheDocument();
+      expect(screen.getByText("0 offen")).toBeInTheDocument();
     });
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText("Erledigt")).toBeInTheDocument();
     expect(screen.getByText("(1)")).toBeInTheDocument();
   });
 
@@ -117,8 +117,8 @@ describe("TasksPage", () => {
     });
 
     // Verify overdue indicator text is present
-    expect(screen.getByText(/Overdue \u2014/)).toBeInTheDocument();
-    expect(screen.getByText("(1 overdue)")).toBeInTheDocument();
+    expect(screen.getByText(/Ueberfaellig -/)).toBeInTheDocument();
+    expect(screen.getByText("(1 ueberfaellig)")).toBeInTheDocument();
   });
 
   it("shows task description and actions on expand", async () => {
@@ -151,8 +151,8 @@ describe("TasksPage", () => {
         screen.getByText("This has extra details"),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText("Edit")).toBeInTheDocument();
-    expect(screen.getByText("Delete")).toBeInTheDocument();
+    expect(screen.getByText("Bearbeiten")).toBeInTheDocument();
+    expect(screen.getByText("Loeschen")).toBeInTheDocument();
   });
 
   it("creates a new task via the form modal", async () => {
@@ -160,31 +160,31 @@ describe("TasksPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("No tasks yet")).toBeInTheDocument();
+      expect(screen.getByText("Noch keine Aufgaben")).toBeInTheDocument();
     });
 
     // Click FAB
-    await user.click(screen.getByLabelText("Add task"));
+    await user.click(screen.getByLabelText("Aufgabe hinzufuegen"));
 
     // Modal should appear
     await waitFor(() => {
-      expect(screen.getByText("New Task")).toBeInTheDocument();
+      expect(screen.getByText("Neue Aufgabe")).toBeInTheDocument();
     });
 
     // Fill in form
-    await user.type(screen.getByLabelText(/Title/), "Plant basil");
-    const dateInput = screen.getByLabelText(/Due Date/);
+    await user.type(screen.getByLabelText(/Titel/), "Plant basil");
+    const dateInput = screen.getByLabelText(/Faelligkeitsdatum/);
     await user.clear(dateInput);
     await user.type(dateInput, futureDate(3));
 
     // Submit
-    await user.click(screen.getByText("Create Task"));
+    await user.click(screen.getByText("Aufgabe erstellen"));
 
     // Task should appear in the list
     await waitFor(() => {
       expect(screen.getByText("Plant basil")).toBeInTheDocument();
     });
-    expect(screen.getByText("1 pending")).toBeInTheDocument();
+    expect(screen.getByText("1 offen")).toBeInTheDocument();
   });
 
   it("shows linked plant name on task", async () => {
@@ -241,9 +241,9 @@ describe("TasksPage", () => {
 
     // Click delete
     await waitFor(() => {
-      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.getByText("Loeschen")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Loeschen"));
 
     // Task should be gone
     await waitFor(() => {

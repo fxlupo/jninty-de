@@ -106,12 +106,12 @@ describe("JournalPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("No journal entries yet"),
+        screen.getByText("Noch keine Journaleintraege"),
       ).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText("Start logging with the + button below."),
+      screen.getByText("Starte unten mit dem + deinen ersten Eintrag."),
     ).toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe("JournalPage", () => {
     });
 
     expect(screen.getByText("Basil needs water")).toBeInTheDocument();
-    expect(screen.getByText("2 entries")).toBeInTheDocument();
+    expect(screen.getByText("2 Eintraege")).toBeInTheDocument();
   });
 
   it("shows entry count", async () => {
@@ -139,7 +139,7 @@ describe("JournalPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("3 entries")).toBeInTheDocument();
+      expect(screen.getByText("3 Eintraege")).toBeInTheDocument();
     });
   });
 
@@ -149,7 +149,7 @@ describe("JournalPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("1 entry")).toBeInTheDocument();
+      expect(screen.getByText("1 Eintrag")).toBeInTheDocument();
     });
   });
 
@@ -165,8 +165,8 @@ describe("JournalPage", () => {
       expect(screen.getByText("Watered the roses")).toBeInTheDocument();
     });
 
-    // "Watering" appears in both the filter dropdown and the entry badge
-    const wateringTexts = screen.getAllByText("Watering");
+    // "Giessen" appears in both the filter dropdown and the entry badge
+    const wateringTexts = screen.getAllByText("Giessen");
     expect(wateringTexts.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -218,7 +218,7 @@ describe("JournalPage", () => {
       expect(screen.getByText("Harvest entry")).toBeInTheDocument();
     });
 
-    const activityFilter = screen.getByLabelText("Filter by activity");
+    const activityFilter = screen.getByLabelText("Nach Aktivitaet filtern");
     await user.selectOptions(activityFilter, "watering");
 
     await waitFor(() => {
@@ -264,7 +264,7 @@ describe("JournalPage", () => {
       expect(screen.getByText("Basil entry")).toBeInTheDocument();
     });
 
-    const plantFilter = screen.getByLabelText("Filter by plant");
+    const plantFilter = screen.getByLabelText("Nach Pflanze filtern");
     // Wait for plant options to populate (async via usePouchQuery)
     await waitFor(() => {
       expect(plantFilter.querySelectorAll("option").length).toBeGreaterThan(1);
@@ -292,12 +292,12 @@ describe("JournalPage", () => {
       expect(screen.getByText("A watering entry")).toBeInTheDocument();
     });
 
-    const activityFilter = screen.getByLabelText("Filter by activity");
+    const activityFilter = screen.getByLabelText("Nach Aktivitaet filtern");
     await user.selectOptions(activityFilter, "harvest");
 
     await waitFor(() => {
       expect(
-        screen.getByText("No entries match your filters"),
+        screen.getByText("Keine Eintraege passen zu deinen Filtern"),
       ).toBeInTheDocument();
     });
   });
@@ -318,7 +318,7 @@ describe("JournalPage", () => {
       ).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByLabelText("Search journal");
+    const searchInput = screen.getByLabelText("Journal durchsuchen");
     await user.type(searchInput, "Tomato");
 
     await waitFor(() => {
@@ -401,7 +401,7 @@ describe("JournalPage", () => {
     });
 
     // Close it
-    await user.click(screen.getByLabelText("Close"));
+    await user.click(screen.getByLabelText("Schliessen"));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

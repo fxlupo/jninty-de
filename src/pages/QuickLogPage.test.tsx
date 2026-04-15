@@ -35,11 +35,8 @@ vi.mock("../hooks/usePhotoCapture.ts", () => ({
 
 // Mock URL.createObjectURL/revokeObjectURL (not available in jsdom)
 let blobUrlCounter = 0;
-vi.stubGlobal("URL", {
-  ...URL,
-  createObjectURL: vi.fn(() => `blob:mock-url-${++blobUrlCounter}`),
-  revokeObjectURL: vi.fn(),
-});
+URL.createObjectURL = vi.fn(() => `blob:mock-url-${++blobUrlCounter}`);
+URL.revokeObjectURL = vi.fn();
 
 beforeEach(async () => {
   await clearPouchDB();
@@ -95,10 +92,10 @@ describe("QuickLogPage", () => {
 
     expect(screen.getByLabelText("Select plant")).toBeInTheDocument();
     expect(screen.getByLabelText("Note")).toBeInTheDocument();
-    expect(screen.getByText("Watering")).toBeInTheDocument();
-    expect(screen.getByText("Pest")).toBeInTheDocument();
-    expect(screen.getByText("Harvest")).toBeInTheDocument();
-    expect(screen.getByText("General")).toBeInTheDocument();
+    expect(screen.getByText("Giessen")).toBeInTheDocument();
+    expect(screen.getByText("Schaedlinge")).toBeInTheDocument();
+    expect(screen.getByText("Ernte")).toBeInTheDocument();
+    expect(screen.getByText("Allgemein")).toBeInTheDocument();
   });
 
   it("shows validation error when saving without photo or note", async () => {
@@ -150,7 +147,7 @@ describe("QuickLogPage", () => {
     await user.type(screen.getByLabelText("Note"), "New bloom today");
 
     // Select activity type
-    await user.click(screen.getByText("Harvest"));
+    await user.click(screen.getByText("Ernte"));
 
     // Save
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -223,7 +220,7 @@ describe("QuickLogPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    const wateringBtn = screen.getByText("Watering");
+    const wateringBtn = screen.getByText("Giessen");
 
     // Select
     await user.click(wateringBtn);

@@ -1,6 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
+import * as pouchClient from "../src/db/pouchdb/client.ts";
 
 // Mock matchMedia for jsdom (used by useTheme and InstallPrompt)
 Object.defineProperty(window, "matchMedia", {
@@ -28,6 +29,18 @@ afterEach(() => {
 
 const _mockDB = new Map<string, Record<string, unknown>[]>();
 let _mockSettings: Record<string, unknown> | null = null;
+let _triggerCounter = 0;
+
+/**
+ * Dispatch a synthetic "data-changed" event so usePouchQuery hooks
+ * re-run their queries after an API mutation.
+ */
+async function _triggerReactivity(): Promise<void> {
+  ++_triggerCounter;
+  window.dispatchEvent(new CustomEvent("data-changed"));
+  // Yield to allow React state updates to flush
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function _now(): string {
   return new Date().toISOString();
@@ -204,12 +217,15 @@ globalThis.fetch = vi.fn(async (
     const params = urlObj.searchParams;
     let limitVal: number | undefined;
 
+    let hasDateRange = false;
     for (const [key, value] of params.entries()) {
       if (key === "start") {
+        hasDateRange = true;
         results = results.filter(
           (r) => typeof r[dateField] === "string" && (r[dateField] as string) >= value,
         );
       } else if (key === "end") {
+        hasDateRange = true;
         results = results.filter(
           (r) => typeof r[dateField] === "string" && (r[dateField] as string) <= value,
         );
@@ -240,6 +256,12 @@ globalThis.fetch = vi.fn(async (
       });
     }
 
+    // For date-range queries on tasks/schedule-tasks, exclude completed items
+    // (mirrors server behaviour for getUpcoming / getByDateRange)
+    if (hasDateRange && (collection === "tasks" || collection === "schedule-tasks")) {
+      results = results.filter((r) => !r["isCompleted"]);
+    }
+
     if (limitVal !== undefined) results = results.slice(0, limitVal);
     return _jsonResponse(results);
   }
@@ -256,6 +278,7 @@ globalThis.fetch = vi.fn(async (
     const inputs = JSON.parse(bodyText as string) as Record<string, unknown>[];
     const items = inputs.map((b) => _createItem(b));
     coll.push(...items);
+    await _triggerReactivity();
     return _jsonResponse(items, 201);
   }
 
@@ -263,6 +286,7 @@ globalThis.fetch = vi.fn(async (
   if (method === "POST" && !id) {
     const item = _createItem(body);
     coll.push(item);
+    await _triggerReactivity();
     return _jsonResponse(item, 201);
   }
 
@@ -277,6 +301,7 @@ globalThis.fetch = vi.fn(async (
       version: ((prev["version"] as number) || 0) + 1,
       updatedAt: _now(),
     };
+    await _triggerReactivity();
     return _jsonResponse(coll[idx]);
   }
 
@@ -293,6 +318,7 @@ globalThis.fetch = vi.fn(async (
       updatedAt: _now(),
       version: ((prev["version"] as number) || 0) + 1,
     };
+    await _triggerReactivity();
     return _jsonResponse(coll[idx]);
   }
 
@@ -305,6 +331,7 @@ globalThis.fetch = vi.fn(async (
     delete uncompleted["completedDate"];
     delete uncompleted["completedAt"];
     coll[idx] = uncompleted;
+    await _triggerReactivity();
     return _jsonResponse(coll[idx]);
   }
 
@@ -316,6 +343,7 @@ globalThis.fetch = vi.fn(async (
     const idx = coll.findIndex((r) => r["id"] === id && !r["deletedAt"]);
     if (idx === -1) return _jsonResponse({ error: "Not found" }, 404);
     coll[idx] = { ...coll[idx]!, isActive: true, updatedAt: _now() };
+    await _triggerReactivity();
     return _jsonResponse(coll[idx]);
   }
 
@@ -329,6 +357,7 @@ globalThis.fetch = vi.fn(async (
         r["updatedAt"] = ts;
       }
     });
+    await _triggerReactivity();
     return _jsonResponse({ ok: true });
   }
 
@@ -344,6 +373,7 @@ globalThis.fetch = vi.fn(async (
       updatedAt: ts,
       version: ((prev["version"] as number) || 0) + 1,
     };
+    await _triggerReactivity();
     return _jsonResponse({ ok: true });
   }
 
@@ -353,9 +383,11 @@ globalThis.fetch = vi.fn(async (
     if (idx === -1) {
       const item = _createItem({ ...body, id });
       coll.push(item);
+      await _triggerReactivity();
       return _jsonResponse(item, 201);
     }
     coll[idx] = { ...coll[idx]!, ...body, updatedAt: _now() };
+    await _triggerReactivity();
     return _jsonResponse(coll[idx]);
   }
 

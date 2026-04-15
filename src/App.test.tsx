@@ -14,6 +14,17 @@ vi.mock("./config/cloud", () => ({
   annualPrice: "$49.99/yr",
 }));
 
+// Mock session so RequireAuth doesn't redirect to /login
+vi.mock("./store/sessionStore", () => ({
+  SessionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSession: () => ({
+    user: { id: "test-user", email: "test@example.com", name: "Test User" },
+    isLoading: false,
+    refresh: async () => {},
+    signOut: async () => {},
+  }),
+}));
+
 import App from "./App.tsx";
 
 beforeEach(async () => {
@@ -28,7 +39,7 @@ describe("App", () => {
     });
     await waitFor(() => {
       expect(
-        screen.getByText("What's happening in your garden today?"),
+        screen.getByText("Was passiert heute in deinem Garten?"),
       ).toBeInTheDocument();
     });
   });
