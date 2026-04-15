@@ -3,7 +3,7 @@
  * Replaces the PouchDB implementation; exports the same function signatures.
  */
 import { get, post, patch, del } from "../../api/client.ts";
-import { type GardenBed, type BedType } from "../../../validation/gardenBed.schema.ts";
+import { gardenBedSchema, type GardenBed, type BedType } from "../../../validation/gardenBed.schema.ts";
 
 const BASE = "/api/garden-beds";
 
@@ -14,7 +14,16 @@ type CreateGardenBedInput = Omit<
 
 type UpdateGardenBedInput = Partial<CreateGardenBedInput>;
 
+const createInputSchema = gardenBedSchema.omit({
+  id: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
+
 export async function create(input: CreateGardenBedInput): Promise<GardenBed> {
+  createInputSchema.parse(input);
   return post<GardenBed>(BASE, input);
 }
 

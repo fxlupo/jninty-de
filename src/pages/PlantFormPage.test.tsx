@@ -71,38 +71,38 @@ describe("PlantFormPage", () => {
       renderCreateForm();
 
       expect(
-        screen.getByRole("heading", { name: "Add Plant" }),
+        screen.getByRole("heading", { name: "Pflanze hinzufuegen" }),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText(/Species/)).toBeInTheDocument();
-      expect(screen.getByLabelText("Nickname")).toBeInTheDocument();
-      expect(screen.getByLabelText("Variety")).toBeInTheDocument();
-      expect(screen.getByLabelText("Type")).toBeInTheDocument();
-      expect(screen.getByLabelText("Perennial")).toBeInTheDocument();
-      expect(screen.getByLabelText("Source")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Art/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Spitzname")).toBeInTheDocument();
+      expect(screen.getByLabelText("Sorte")).toBeInTheDocument();
+      expect(screen.getByLabelText("Typ")).toBeInTheDocument();
+      expect(screen.getByLabelText("Mehrjaehrig")).toBeInTheDocument();
+      expect(screen.getByLabelText("Quelle")).toBeInTheDocument();
       expect(screen.getByLabelText("Status")).toBeInTheDocument();
-      expect(screen.getByLabelText("Date Acquired")).toBeInTheDocument();
-      expect(screen.getByLabelText("Tags")).toBeInTheDocument();
-      expect(screen.getByLabelText("Care Notes")).toBeInTheDocument();
+      expect(screen.getByLabelText("Kaufdatum")).toBeInTheDocument();
+      expect(screen.getByLabelText("Schlagwoerter")).toBeInTheDocument();
+      expect(screen.getByLabelText("Pflegenotizen")).toBeInTheDocument();
     });
 
     it("shows photo section with capture buttons", () => {
       renderCreateForm();
 
-      expect(screen.getByText("Photo")).toBeInTheDocument();
-      expect(screen.getByText("Take Photo")).toBeInTheDocument();
-      expect(screen.getByText("Choose Photo")).toBeInTheDocument();
-      expect(screen.getByText("No photo added")).toBeInTheDocument();
+      expect(screen.getByText("Fotos")).toBeInTheDocument();
+      expect(screen.getByText("Foto aufnehmen")).toBeInTheDocument();
+      expect(screen.getByText("Foto auswählen")).toBeInTheDocument();
+      expect(screen.getByText("Noch keine Fotos hinzugefügt")).toBeInTheDocument();
     });
 
     it("shows validation error when species is empty", async () => {
       const user = userEvent.setup();
       renderCreateForm();
 
-      await user.click(screen.getByRole("button", { name: "Add Plant" }));
+      await user.click(screen.getByRole("button", { name: "Pflanze hinzufuegen" }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("Species is required."),
+          screen.getByText("Die Art ist erforderlich."),
         ).toBeInTheDocument();
       });
     });
@@ -111,10 +111,10 @@ describe("PlantFormPage", () => {
       const user = userEvent.setup();
       renderCreateForm();
 
-      await user.type(screen.getByLabelText(/Species/), "Tomato");
-      await user.selectOptions(screen.getByLabelText("Type"), "vegetable");
-      await user.selectOptions(screen.getByLabelText("Source"), "seed");
-      await user.click(screen.getByRole("button", { name: "Add Plant" }));
+      await user.type(screen.getByLabelText(/Art/), "Tomato");
+      await user.selectOptions(screen.getByLabelText("Typ"), "vegetable");
+      await user.selectOptions(screen.getByLabelText("Quelle"), "seed");
+      await user.click(screen.getByRole("button", { name: "Pflanze hinzufuegen" }));
 
       // Should navigate to detail page
       await waitFor(() => {
@@ -133,18 +133,18 @@ describe("PlantFormPage", () => {
       const user = userEvent.setup();
       renderCreateForm();
 
-      await user.type(screen.getByLabelText(/Species/), "Apple");
-      await user.type(screen.getByLabelText("Nickname"), "Old Apple");
-      await user.type(screen.getByLabelText("Variety"), "Honeycrisp");
-      await user.type(screen.getByLabelText("Tags"), "orchard, heirloom");
+      await user.type(screen.getByLabelText(/Art/), "Apple");
+      await user.type(screen.getByLabelText("Spitzname"), "Old Apple");
+      await user.type(screen.getByLabelText("Sorte"), "Honeycrisp");
+      await user.type(screen.getByLabelText("Schlagwoerter"), "orchard, heirloom");
       await user.type(
-        screen.getByLabelText("Care Notes"),
+        screen.getByLabelText("Pflegenotizen"),
         "Needs yearly pruning",
       );
-      await user.selectOptions(screen.getByLabelText("Type"), "fruit_tree");
-      await user.click(screen.getByLabelText("Perennial")); // toggle on
+      await user.selectOptions(screen.getByLabelText("Typ"), "fruit_tree");
+      await user.click(screen.getByLabelText("Mehrjaehrig")); // toggle on
 
-      await user.click(screen.getByRole("button", { name: "Add Plant" }));
+      await user.click(screen.getByRole("button", { name: "Pflanze hinzufuegen" }));
 
       await waitFor(() => {
         expect(screen.getByText("Detail Page")).toBeInTheDocument();
@@ -162,7 +162,7 @@ describe("PlantFormPage", () => {
       const user = userEvent.setup();
       renderCreateForm();
 
-      await user.click(screen.getByText("Cancel"));
+      await user.click(screen.getByText("Abbrechen"));
 
       await waitFor(() => {
         expect(screen.getByText("Plants List")).toBeInTheDocument();
@@ -187,17 +187,17 @@ describe("PlantFormPage", () => {
       renderEditForm(plant.id);
 
       await waitFor(() => {
-        expect(screen.getByText("Edit Plant")).toBeInTheDocument();
+        expect(screen.getByText("Pflanze bearbeiten")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText(/Species/)).toHaveValue("Basil");
-      expect(screen.getByLabelText("Nickname")).toHaveValue("Kitchen Basil");
-      expect(screen.getByLabelText("Variety")).toHaveValue("Genovese");
-      expect(screen.getByLabelText("Type")).toHaveValue("herb");
-      expect(screen.getByLabelText("Source")).toHaveValue("nursery");
+      expect(screen.getByLabelText(/Art/)).toHaveValue("Basil");
+      expect(screen.getByLabelText("Spitzname")).toHaveValue("Kitchen Basil");
+      expect(screen.getByLabelText("Sorte")).toHaveValue("Genovese");
+      expect(screen.getByLabelText("Typ")).toHaveValue("herb");
+      expect(screen.getByLabelText("Quelle")).toHaveValue("nursery");
       expect(screen.getByLabelText("Status")).toHaveValue("active");
-      expect(screen.getByLabelText("Tags")).toHaveValue("indoor, culinary");
-      expect(screen.getByLabelText("Care Notes")).toHaveValue("Keep moist");
+      expect(screen.getByLabelText("Schlagwoerter")).toHaveValue("indoor, culinary");
+      expect(screen.getByLabelText("Pflegenotizen")).toHaveValue("Keep moist");
     });
 
     it("saves changes and navigates to detail page", async () => {
@@ -214,12 +214,12 @@ describe("PlantFormPage", () => {
       renderEditForm(plant.id);
 
       await waitFor(() => {
-        expect(screen.getByText("Edit Plant")).toBeInTheDocument();
+        expect(screen.getByText("Pflanze bearbeiten")).toBeInTheDocument();
       });
 
-      await user.clear(screen.getByLabelText(/Species/));
-      await user.type(screen.getByLabelText(/Species/), "Sweet Basil");
-      await user.click(screen.getByText("Save Changes"));
+      await user.clear(screen.getByLabelText(/Art/));
+      await user.type(screen.getByLabelText(/Art/), "Sweet Basil");
+      await user.click(screen.getByText("Aenderungen speichern"));
 
       await waitFor(() => {
         expect(screen.getByText("Detail Page")).toBeInTheDocument();

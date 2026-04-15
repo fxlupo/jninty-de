@@ -42,13 +42,13 @@ describe("DashboardPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to Jninty!")).toBeInTheDocument();
+      expect(screen.getByText("Willkommen bei Jninty!")).toBeInTheDocument();
     });
     expect(
-      screen.getByText("Start by adding your first plant."),
+      screen.getByText("Starte mit deiner ersten Pflanze."),
     ).toBeInTheDocument();
     // Welcome card + quick action both link to /plants/new
-    const addPlantLinks = screen.getAllByRole("link", { name: /Add Plant/ });
+    const addPlantLinks = screen.getAllByRole("link", { name: /Pflanze hinzufuegen/ });
     expect(addPlantLinks.length).toBeGreaterThanOrEqual(1);
     expect(addPlantLinks[0]).toHaveAttribute("href", "/plants/new");
   });
@@ -58,10 +58,10 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Set your growing zone/),
+        screen.getByText(/Lege deine Anbauzone/),
       ).toBeInTheDocument();
     });
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Einstellungen" })).toHaveAttribute(
       "href",
       "/settings",
     );
@@ -81,12 +81,12 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("What's happening in your garden today?"),
+        screen.getByText("Was passiert heute in deinem Garten?"),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByText("Welcome to Jninty!")).not.toBeInTheDocument();
+    expect(screen.queryByText("Willkommen bei Jninty!")).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/Set your growing zone/),
+      screen.queryByText(/Lege deine Anbauzone/),
     ).not.toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("What's happening in your garden today?"),
+        screen.getByText("Was passiert heute in deinem Garten?"),
       ).toBeInTheDocument();
     });
   });
@@ -114,7 +114,7 @@ describe("DashboardPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/Last logged:/)).toBeInTheDocument();
+      expect(screen.getByText(/Zuletzt erfasst:/)).toBeInTheDocument();
     });
   });
 
@@ -125,7 +125,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/No tasks this week/),
+        screen.getByText(/Diese Woche gibt es keine Aufgaben/),
       ).toBeInTheDocument();
     });
   });
@@ -165,7 +165,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Overdue watering")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Overdue \u2014/)).toBeInTheDocument();
+    expect(screen.getByText(/Ueberfaellig -/)).toBeInTheDocument();
   });
 
   it("does not show completed tasks", async () => {
@@ -181,11 +181,11 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("This Week's Tasks"),
+        screen.getByText("Aufgaben dieser Woche"),
       ).toBeInTheDocument();
     });
     expect(screen.queryByText("Done task")).not.toBeInTheDocument();
-    expect(screen.getByText(/No tasks this week/)).toBeInTheDocument();
+    expect(screen.getByText(/Diese Woche gibt es keine Aufgaben/)).toBeInTheDocument();
   });
 
   it("shows linked plant name on dashboard tasks", async () => {
@@ -221,11 +221,11 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("This Week's Tasks"),
+        screen.getByText("Aufgaben dieser Woche"),
       ).toBeInTheDocument();
     });
 
-    const link = screen.getByRole("link", { name: /See all tasks/ });
+    const link = screen.getByRole("link", { name: /Alle Aufgaben/ });
     expect(link).toHaveAttribute("href", "/tasks");
   });
 
@@ -244,7 +244,7 @@ describe("DashboardPage", () => {
     });
 
     const checkbox = screen.getByRole("button", {
-      name: /Complete task: Water the tomatoes/,
+      name: /Aufgabe abschliessen: Water the tomatoes/,
     });
     await userEvent.click(checkbox);
 
@@ -262,7 +262,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Start logging your garden journey/),
+        screen.getByText(/Starte mit deinem Gartenjournal/),
       ).toBeInTheDocument();
     });
   });
@@ -283,7 +283,7 @@ describe("DashboardPage", () => {
         screen.getByText("Watered the basil this morning"),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText("Watering")).toBeInTheDocument();
+    expect(screen.getByText("Giessen")).toBeInTheDocument();
   });
 
   it("shows plant name on journal entries", async () => {
@@ -310,17 +310,17 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Rosemary")).toBeInTheDocument();
     });
-    expect(screen.getByText("Pruning")).toBeInTheDocument();
+    expect(screen.getByText("Rueckschnitt")).toBeInTheDocument();
   });
 
   it("has a 'See all entries' link to /journal", async () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Recent Journal")).toBeInTheDocument();
+      expect(screen.getByText("Letzte Journaleintraege")).toBeInTheDocument();
     });
 
-    const link = screen.getByRole("link", { name: /See all entries/ });
+    const link = screen.getByRole("link", { name: /Alle Eintraege/ });
     expect(link).toHaveAttribute("href", "/journal");
   });
 
@@ -332,13 +332,13 @@ describe("DashboardPage", () => {
     // Wait for loading to finish (skeleton -> real content)
     await waitFor(() => {
       expect(
-        screen.getByText("What's happening in your garden today?"),
+        screen.getByText("Was passiert heute in deinem Garten?"),
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Log Entry")).toBeInTheDocument();
-    // "Add Plant" appears in both the welcome card and quick actions when no plants exist
-    expect(screen.getAllByText("Add Plant").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Add Task")).toBeInTheDocument();
+    expect(screen.getByText("Eintrag")).toBeInTheDocument();
+    // "Pflanze" appears in quick action button
+    expect(screen.getAllByText("Pflanze").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Aufgabe")).toBeInTheDocument();
   });
 });

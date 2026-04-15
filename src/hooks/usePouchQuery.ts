@@ -48,9 +48,15 @@ export function usePouchQuery<T>(
       run();
     });
 
+    // Also listen for a synthetic "data-changed" event dispatched by the
+    // test mock after API mutations (since the API layer doesn't write to PouchDB).
+    const onDataChanged = () => run();
+    window.addEventListener("data-changed", onDataChanged);
+
     return () => {
       cancelled = true;
       changes.cancel();
+      window.removeEventListener("data-changed", onDataChanged);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, stableDeps);

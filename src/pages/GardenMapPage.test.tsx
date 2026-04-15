@@ -102,7 +102,7 @@ describe("GardenMapPage", () => {
     renderMap();
 
     expect(screen.getByText("Select")).toBeInTheDocument();
-    expect(screen.getByText("Add Bed")).toBeInTheDocument();
+    expect(screen.getByText("Beet hinzufügen")).toBeInTheDocument();
   });
 
   it("shows grid unit from settings", async () => {
@@ -303,10 +303,10 @@ describe("GardenMapPage", () => {
 
       // Detail panel should show bed info
       await waitFor(() => {
-        expect(screen.getByText("Herb Garden")).toBeInTheDocument(); // type label
-        expect(screen.getByLabelText("Close panel")).toBeInTheDocument();
-        expect(screen.getByText("Quick Log")).toBeInTheDocument();
-        expect(screen.getByText("Delete Bed")).toBeInTheDocument();
+        expect(screen.getByText("Kräutergarten")).toBeInTheDocument(); // type label
+        expect(screen.getByLabelText("Panel schließen")).toBeInTheDocument();
+        expect(screen.getByText("Schnelleintrag")).toBeInTheDocument();
+        expect(screen.getByText("Beet löschen")).toBeInTheDocument();
       });
     });
 
@@ -336,15 +336,15 @@ describe("GardenMapPage", () => {
       await user.click(bedRect!);
 
       await waitFor(() => {
-        expect(screen.getByLabelText("Close panel")).toBeInTheDocument();
+        expect(screen.getByLabelText("Panel schließen")).toBeInTheDocument();
       });
 
       // Close it
-      await user.click(screen.getByLabelText("Close panel"));
+      await user.click(screen.getByLabelText("Panel schließen"));
 
-      // Panel should be gone — "Close panel" button should no longer exist
+      // Panel should be gone — "Panel schließen" button should no longer exist
       await waitFor(() => {
-        expect(screen.queryByLabelText("Close panel")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Panel schließen")).not.toBeInTheDocument();
       });
     });
   });
@@ -354,7 +354,7 @@ describe("GardenMapPage", () => {
       const user = userEvent.setup();
       renderMap();
 
-      const addBedBtn = screen.getByText("Add Bed");
+      const addBedBtn = screen.getByText("Beet hinzufügen");
       await user.click(addBedBtn);
 
       // Tool should be active (has active styles)
@@ -408,12 +408,12 @@ describe("GardenMapPage", () => {
       await user.click(bedRect!);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Bed")).toBeInTheDocument();
+        expect(screen.getByText("Beet löschen")).toBeInTheDocument();
       });
 
       // Mock window.confirm to reject
       const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-      await user.click(screen.getByText("Delete Bed"));
+      await user.click(screen.getByText("Beet löschen"));
 
       expect(confirmSpy).toHaveBeenCalledWith(
         'Delete "Confirm Delete Bed"? This cannot be undone.',
@@ -425,7 +425,7 @@ describe("GardenMapPage", () => {
 
       // Now confirm the delete
       confirmSpy.mockReturnValue(true);
-      await user.click(screen.getByText("Delete Bed"));
+      await user.click(screen.getByText("Beet löschen"));
 
       await waitFor(async () => {
         const allAfterDelete = await gardenBedRepository.getAll();

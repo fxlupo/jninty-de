@@ -50,11 +50,11 @@ describe("PlantDetailPage", () => {
     renderDetailPage("non-existent-id");
 
     await waitFor(() => {
-      expect(screen.getByText("Plant not found")).toBeInTheDocument();
+      expect(screen.getByText("Pflanze nicht gefunden")).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText("Back to Plant Inventory"),
+      screen.getByText("Zurueck zur Pflanzenliste"),
     ).toBeInTheDocument();
   });
 
@@ -94,8 +94,8 @@ describe("PlantDetailPage", () => {
       expect(screen.getByText("Tomato")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Vegetable")).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Gemüse")).toBeInTheDocument();
+    expect(screen.getByText("Aktiv")).toBeInTheDocument();
   });
 
   it("displays plant details card", async () => {
@@ -118,9 +118,9 @@ describe("PlantDetailPage", () => {
     });
 
     expect(screen.getByText("Honeycrisp")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument(); // isPerennial
-    expect(screen.getByText("Nursery")).toBeInTheDocument(); // source
-    expect(screen.getByText("Jun 15, 2024")).toBeInTheDocument(); // formatted date
+    expect(screen.getByText("Ja")).toBeInTheDocument(); // isPerennial
+    expect(screen.getByText("Gaertnerei")).toBeInTheDocument(); // source
+    expect(screen.getByText("15. Juni 2024")).toBeInTheDocument(); // formatted date
     expect(screen.getByText("Needs annual pruning")).toBeInTheDocument();
   });
 
@@ -203,7 +203,7 @@ describe("PlantDetailPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("No journal entries yet."),
+        screen.getByText("Noch keine Journaleintraege."),
       ).toBeInTheDocument();
     });
   });
@@ -233,8 +233,8 @@ describe("PlantDetailPage", () => {
       expect(screen.getByText("Water the tomato")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("1 pending")).toBeInTheDocument();
-    expect(screen.getByText("Due: Mar 1, 2026")).toBeInTheDocument();
+    expect(screen.getByText("1 offen")).toBeInTheDocument();
+    expect(screen.getByText("Faellig: 1. März 2026")).toBeInTheDocument();
   });
 
   it("shows Edit Plant and Delete buttons", async () => {
@@ -250,10 +250,10 @@ describe("PlantDetailPage", () => {
     renderDetailPage(plant.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Edit Plant")).toBeInTheDocument();
+      expect(screen.getByText("Pflanze bearbeiten")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Delete")).toBeInTheDocument();
+    expect(screen.getByText("Loeschen")).toBeInTheDocument();
   });
 
   it("opens delete confirmation dialog", async () => {
@@ -270,17 +270,17 @@ describe("PlantDetailPage", () => {
     renderDetailPage(plant.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.getByText("Loeschen")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Loeschen"));
 
     await waitFor(() => {
-      expect(screen.getByText("Delete Tomato?")).toBeInTheDocument();
+      expect(screen.getByText("Tomato loeschen?")).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText(/This plant will be removed/),
+      screen.getByText(/Diese Pflanze wird aus deinem Bestand entfernt/),
     ).toBeInTheDocument();
   });
 
@@ -298,19 +298,19 @@ describe("PlantDetailPage", () => {
     renderDetailPage(plant.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.getByText("Loeschen")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Loeschen"));
 
     await waitFor(() => {
-      expect(screen.getByText("Delete Tomato?")).toBeInTheDocument();
+      expect(screen.getByText("Tomato loeschen?")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Abbrechen"));
 
     await waitFor(() => {
-      expect(screen.queryByText("Delete Tomato?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tomato loeschen?")).not.toBeInTheDocument();
     });
   });
 
@@ -329,14 +329,14 @@ describe("PlantDetailPage", () => {
     renderDetailPage(plant.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.getByText("Loeschen")).toBeInTheDocument();
     });
 
     // Open dialog and confirm delete
-    await user.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Loeschen"));
 
     await waitFor(() => {
-      expect(screen.getByText("Delete Tomato?")).toBeInTheDocument();
+      expect(screen.getByText("Tomato loeschen?")).toBeInTheDocument();
     });
 
     // Click the Delete button inside the dialog (not the one that opens it)
@@ -372,19 +372,19 @@ describe("PlantDetailPage", () => {
     renderDetailPage(plant.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.getByText("Loeschen")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Loeschen"));
 
     await waitFor(() => {
-      expect(screen.getByText("Delete Tomato?")).toBeInTheDocument();
+      expect(screen.getByText("Tomato loeschen?")).toBeInTheDocument();
     });
 
     await user.keyboard("{Escape}");
 
     await waitFor(() => {
-      expect(screen.queryByText("Delete Tomato?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tomato loeschen?")).not.toBeInTheDocument();
     });
   });
 });
