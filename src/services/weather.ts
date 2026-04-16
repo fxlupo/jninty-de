@@ -23,38 +23,38 @@ export type GeoSearchResult = {
 // ─── WMO weather code mapping ───
 
 const WMO_CONDITIONS: Record<number, string> = {
-  0: "Clear sky",
-  1: "Mainly clear",
-  2: "Partly cloudy",
-  3: "Overcast",
-  45: "Fog",
-  48: "Rime fog",
-  51: "Light drizzle",
-  53: "Drizzle",
-  55: "Heavy drizzle",
-  56: "Light freezing drizzle",
-  57: "Freezing drizzle",
-  61: "Light rain",
-  63: "Rain",
-  65: "Heavy rain",
-  66: "Light freezing rain",
-  67: "Freezing rain",
-  71: "Light snow",
-  73: "Snow",
-  75: "Heavy snow",
-  77: "Snow grains",
-  80: "Light showers",
-  81: "Showers",
-  82: "Heavy showers",
-  85: "Light snow showers",
-  86: "Heavy snow showers",
-  95: "Thunderstorm",
-  96: "Thunderstorm with hail",
-  99: "Severe thunderstorm",
+  0: "Klarer Himmel",
+  1: "Überwiegend klar",
+  2: "Teilweise bewölkt",
+  3: "Bedeckt",
+  45: "Nebel",
+  48: "Reifnebel",
+  51: "Leichter Nieselregen",
+  53: "Nieselregen",
+  55: "Starker Nieselregen",
+  56: "Leichter gefrierender Nieselregen",
+  57: "Gefrierender Nieselregen",
+  61: "Leichter Regen",
+  63: "Regen",
+  65: "Starker Regen",
+  66: "Leichter gefrierender Regen",
+  67: "Gefrierender Regen",
+  71: "Leichter Schneefall",
+  73: "Schneefall",
+  75: "Starker Schneefall",
+  77: "Schneekörner",
+  80: "Leichte Schauer",
+  81: "Schauer",
+  82: "Starke Schauer",
+  85: "Leichte Schneeschauer",
+  86: "Starke Schneeschauer",
+  95: "Gewitter",
+  96: "Gewitter mit Hagel",
+  99: "Schweres Gewitter",
 };
 
 export function getConditionLabel(code: number): string {
-  return WMO_CONDITIONS[code] ?? "Unknown";
+  return WMO_CONDITIONS[code] ?? "Unbekannt";
 }
 
 export function getConditionEmoji(code: number, isDay: boolean): string {
@@ -292,7 +292,7 @@ export async function searchLocation(
     const params = new URLSearchParams({
       name: query.trim(),
       count: "5",
-      language: "en",
+      language: "de",
       format: "json",
     });
 
