@@ -11,6 +11,7 @@ import { useSync } from "../../hooks/useSync";
 import { useKeyboardShortcuts, useShortcutsHelpState } from "../../hooks/useKeyboardShortcuts";
 import KeyboardShortcutsHelp from "../KeyboardShortcutsHelp";
 import { useAuth } from "../../store/authStore";
+import { useSession } from "../../store/sessionStore";
 
 // SVG icon components — inline to avoid extra dependencies
 
@@ -375,7 +376,12 @@ export default function AppShell() {
   const isOnline = useOnlineStatus();
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const { state: authState, performLogout } = useAuth();
+  const { state: authState } = useAuth();
+  const session = useSession();
+
+  const handleLogout = () => {
+    void session.signOut().then(() => void navigate("/login", { replace: true }));
+  };
   const shortcutsHelp = useShortcutsHelpState();
   useKeyboardShortcuts(shortcutsHelp.show);
   const overdueTasks = usePouchQuery(() => taskRepository.getOverdue());
@@ -436,11 +442,11 @@ export default function AppShell() {
           <span className="text-text-on-nav">
             <SyncStatusDot />
           </span>
-          {authState.isAuthenticated && (
+          {(session.user != null || authState.isAuthenticated) && (
             <button
               type="button"
               aria-label="Abmelden"
-              onClick={() => performLogout()}
+              onClick={handleLogout}
               className="ml-auto p-1 text-text-on-nav hover:text-text-on-primary transition-colors"
               title="Abmelden"
             >
@@ -493,11 +499,11 @@ export default function AppShell() {
             <span className="text-text-secondary">
               <SyncStatusDot />
             </span>
-            {authState.isAuthenticated && (
+            {(session.user != null || authState.isAuthenticated) && (
               <button
                 type="button"
                 aria-label="Abmelden"
-                onClick={() => performLogout()}
+                onClick={handleLogout}
                 className="p-1 text-text-secondary hover:text-text-heading"
               >
                 <LogOutIcon className="h-4 w-4" />
