@@ -11,8 +11,14 @@ if (!secret) {
   );
 }
 
+// When running behind a reverse proxy (Traefik → nginx → server), the
+// incoming request is HTTP even though the public URL is HTTPS.
+// Force secure cookies so the browser accepts them on the HTTPS domain.
+const isProduction = (process.env["BETTER_AUTH_URL"] ?? "").startsWith("https://");
+
 export const auth = betterAuth({
   secret,
+  baseURL: process.env["BETTER_AUTH_URL"],
   database: drizzleAdapter(db, {
     provider: "sqlite",
     schema: {
@@ -32,6 +38,9 @@ export const auth = betterAuth({
       enabled: true,
       maxAge: 60 * 5, // 5 minutes client-side cache
     },
+  },
+  advanced: {
+    useSecureCookies: isProduction,
   },
   trustedOrigins: (process.env["TRUSTED_ORIGINS"] ?? "http://localhost:5173")
     .split(",")
