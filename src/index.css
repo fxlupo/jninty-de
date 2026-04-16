@@ -230,9 +230,6 @@
 }
 
 html {
-  /* Prevent any content from causing horizontal scroll that expands the
-     viewport on mobile — once the viewport widens, fixed-positioned elements
-     (bottom nav) shift and all subsequent pages appear broken. */
   overflow-x: hidden;
   max-width: 100%;
 }
@@ -245,4 +242,19 @@ body {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── iOS viewport-zoom prevention ──────────────────────────────────────────
+   iOS Safari (and Chrome on iOS, which uses WebKit) automatically zooms the
+   viewport when a text input with font-size < 16px is focused. After the
+   keyboard closes the zoom often doesn't fully reset, making the page appear
+   wider than the screen and breaking fixed-positioned elements (bottom nav).
+   Forcing 16px on mobile prevents the zoom without changing desktop styling.
+   ─────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
