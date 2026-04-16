@@ -417,7 +417,7 @@ export default function AppShell() {
   }, [seasonPlantings, allPlants, settings]);
 
   return (
-    <div className="flex min-h-svh flex-col md:flex-row">
+    <div className="flex min-h-svh w-full flex-col overflow-x-hidden md:flex-row">
       {/* Skip to main content — visible only on keyboard focus */}
       <a
         href="#main-content"
@@ -483,7 +483,7 @@ export default function AppShell() {
       </aside>
 
       {/* ── Main content area ── */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header */}
         <header className="flex items-center justify-between border-b border-border-default bg-surface-elevated px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
@@ -583,7 +583,7 @@ export default function AppShell() {
         )}
 
         {/* Page content */}
-        <main id="main-content" className="flex-1 pb-20 md:pb-0">
+        <main id="main-content" className="min-w-0 flex-1 pb-20 md:pb-0">
           <Outlet />
         </main>
       </div>

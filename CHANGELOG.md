@@ -10,6 +10,15 @@ Versioning-Regel: `feat:` → MINOR-Bump (0.x.0) · `fix:`/`chore:` → PATCH-Bu
 
 ---
 
+## [0.9.5] - 2026-04-16
+
+### Behoben
+
+- **Foto-Upload auf Mobile (hängende Buttons)** — Datei-Input wurde nicht ins DOM eingefügt; auf Android-WebView und älterem iOS feuerten `change`-Events dann nicht zuverlässig → `isProcessing` blieb dauerhaft `true`; Input wird jetzt ins `document.body` gehängt und nach Abschluss entfernt; `visibilitychange` als Fallback-Abbrucherkennung ergänzt (für Browser ohne `cancel`-Event)
+- **Mobiles Layout bricht nach Formular-Navigation** — fehlende `overflow-x: hidden` auf `html`/`body` ließ breite Formularelemente den Viewport dauerhaft erweitern; danach „schwammen" fixierte Elemente (Bottom-Nav) und nachfolgende Seiten passten sich nicht mehr an; `min-w-0` in der AppShell-Flex-Kette verhindert jetzt das unkontrollierte Wachsen
+
+---
+
 ## [0.9.4] - 2026-04-16
 
 ### Behoben

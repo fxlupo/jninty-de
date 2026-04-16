@@ -153,10 +153,14 @@ export async function processPhotoWithOriginal(
 
 /**
  * Open a hidden file input, wait for the user to pick a file.
- * Uses the `cancel` event (Chrome 113+, Safari 16.4+) for reliable
- * cancellation detection, with no fallback rejection for older browsers
- * (the promise simply never settles — callers should handle this via
- * AbortController or UI-level timeouts if needed).
+ *
+ * Mobile-compatible implementation:
+ * - The input is appended to the DOM (detached inputs don't reliably fire
+ *   events on Android WebView and older mobile browsers).
+ * - Uses the `cancel` event (Chrome 113+, Safari 16.4+) where available.
+ * - Falls back to `visibilitychange`: when the page becomes visible again
+ *   after the picker closes, waits 400 ms for a `change` event before
+ *   treating the dismissal as a cancellation.
  */
 export function openFileInput(options: {
   capture?: string;
@@ -168,23 +172,46 @@ export function openFileInput(options: {
     if (options.capture) {
       input.capture = options.capture;
     }
+    // Keep off-screen but in the DOM so mobile browsers fire events.
+    input.style.cssText =
+      "position:fixed;top:-1000px;left:-1000px;opacity:0;pointer-events:none;";
+
+    let settled = false;
+    let cancelTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (cancelTimer !== null) clearTimeout(cancelTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      try { document.body.removeChild(input); } catch { /* already removed */ }
+      fn();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Give the `change` event 400 ms to fire before concluding cancellation.
+        cancelTimer = setTimeout(() => {
+          settle(() => reject(new Error("Auswahl abgebrochen")));
+        }, 400);
+      }
+    };
 
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (file) {
-        resolve(file);
+        settle(() => resolve(file));
       } else {
-        reject(new Error("No file selected"));
+        settle(() => reject(new Error("Keine Datei ausgewählt")));
       }
     });
 
-    // The `cancel` event fires when the user dismisses the file picker.
-    // Supported in Chrome 113+, Safari 16.4+. On older browsers the
-    // promise simply never settles if the user cancels.
     input.addEventListener("cancel", () => {
-      reject(new Error("File selection cancelled"));
+      settle(() => reject(new Error("Auswahl abgebrochen")));
     });
 
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.body.appendChild(input);
     input.click();
   });
 }
