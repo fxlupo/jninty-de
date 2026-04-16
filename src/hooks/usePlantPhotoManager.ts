@@ -31,6 +31,8 @@ export function entryId(entry: PhotoEntry): string {
 export function usePlantPhotoManager() {
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const allUrlsRef = useRef<Set<string>>(new Set());
   const removedExistingIdsRef = useRef<string[]>([]);
 
@@ -148,6 +150,8 @@ export function usePlantPhotoManager() {
    */
   const saveAll = useCallback(async (): Promise<string[]> => {
     setSaving(true);
+    setUploadProgress({});
+    setUploadErrors({});
     const ids: string[] = [];
     try {
       for (const entry of photos) {
@@ -162,17 +166,31 @@ export function usePlantPhotoManager() {
           }
           ids.push(entry.id);
         } else {
-          const saved = await photoRepository.createWithFiles({
-            thumbnailBlob: entry.processed.thumbnailBlob,
-            displayBlob: entry.processed.displayBlob,
-            ...(entry.processed.originalFile
-              ? { originalFile: entry.processed.originalFile }
-              : {}),
-            width: entry.processed.width,
-            height: entry.processed.height,
-            takenAt: entry.takenAt,
-          });
-          ids.push(saved.id);
+          const localId = entry.localId;
+          try {
+            const saved = await photoRepository.createWithFiles(
+              {
+                thumbnailBlob: entry.processed.thumbnailBlob,
+                displayBlob: entry.processed.displayBlob,
+                ...(entry.processed.originalFile
+                  ? { originalFile: entry.processed.originalFile }
+                  : {}),
+                width: entry.processed.width,
+                height: entry.processed.height,
+                takenAt: entry.takenAt,
+              },
+              (percent) => {
+                setUploadProgress((prev) => ({ ...prev, [localId]: percent }));
+              },
+            );
+            setUploadProgress((prev) => ({ ...prev, [localId]: 100 }));
+            ids.push(saved.id);
+          } catch (err) {
+            const msg =
+              err instanceof Error ? err.message : "Upload fehlgeschlagen";
+            setUploadErrors((prev) => ({ ...prev, [localId]: msg }));
+            // Continue uploading remaining photos
+          }
         }
       }
       // Clean up deleted existing photos from DB
@@ -196,5 +214,7 @@ export function usePlantPhotoManager() {
     updateTakenAt,
     saveAll,
     saving,
+    uploadProgress,
+    uploadErrors,
   };
 }

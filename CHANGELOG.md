@@ -10,6 +10,18 @@ Versioning-Regel: `feat:` → MINOR-Bump (0.x.0) · `fix:`/`chore:` → PATCH-Bu
 
 ---
 
+## [0.9.4] - 2026-04-16
+
+### Behoben
+
+- **Ausgaben-Widget** — Betrag wurde in `$` statt `€` angezeigt; Leerstand-Icon (`$` → `€`) und Texte ins Deutsche übersetzt („Gartenausgaben verfolgen", „Saisonausgaben")
+- **Saatgut-Formular** — alle englischen Texte ins Deutsche übersetzt (Seitenüberschrift, Feldbezeichnungen, Platzhalter, Schaltflächen, Fehlermeldungen)
+- **Foto-Upload** — HEIC-Fotos werden mit verständlicher Fehlermeldung abgelehnt; nicht unterstützte Formate zeigen den MIME-Typ; „Failed to load image" auf Deutsch
+- **Foto-Upload** — Fortschrittsanzeige (0–100 %) je Foto während des Uploads via XHR statt fetch
+- **Foto-Upload** — Fehlermeldung pro Foto bei Upload-Fehler; übrige Fotos werden trotzdem hochgeladen
+
+---
+
 ## [0.9.3] - 2026-04-16
 
 ### Behoben

@@ -33,9 +33,11 @@ export type PhotoMeta = {
 
 /**
  * Upload thumbnail + display (+ optional original) and create the photo record.
+ * Accepts an optional onProgress callback that receives 0–100 percent values.
  */
-export async function createWithFiles(
+export function createWithFiles(
   input: CreatePhotoWithFilesInput,
+  onProgress?: (percent: number) => void,
 ): Promise<Photo> {
   const form = new FormData();
   form.append("thumbnail", input.thumbnailBlob, "thumbnail.jpg");
@@ -47,17 +49,46 @@ export async function createWithFiles(
   if (input.height > 0) form.append("height", String(input.height));
   if (input.takenAt != null) form.append("takenAt", input.takenAt);
 
-  const res = await fetch(`${BASE}/upload`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
+  return new Promise<Photo>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.withCredentials = true;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    throw new Error(err.error ?? res.statusText);
-  }
-  return res.json() as Promise<Photo>;
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as Photo);
+        } catch {
+          reject(new Error("Ungültige Serverantwort"));
+        }
+      } else {
+        try {
+          const body = JSON.parse(xhr.responseText) as { error?: string };
+          reject(new Error(body.error ?? `${xhr.status} ${xhr.statusText}`));
+        } catch {
+          reject(new Error(`${xhr.status} ${xhr.statusText}`));
+        }
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Netzwerkfehler beim Upload. Bitte Verbindung prüfen."));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload abgebrochen."));
+    });
+
+    xhr.open("POST", `${BASE}/upload`);
+    xhr.send(form);
+  });
 }
 
 export async function getById(id: string): Promise<Photo | undefined> {
