@@ -229,7 +229,17 @@
   }
 }
 
+html {
+  /* Prevent any content from causing horizontal scroll that expands the
+     viewport on mobile — once the viewport widens, fixed-positioned elements
+     (bottom nav) shift and all subsequent pages appear broken. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
+  overflow-x: hidden;
+  max-width: 100%;
   background-color: var(--color-surface);
   color: var(--color-text-primary);
   font-size: 16px;
