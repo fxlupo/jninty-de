@@ -10,6 +10,16 @@ Versioning-Regel: `feat:` → MINOR-Bump (0.x.0) · `fix:`/`chore:` → PATCH-Bu
 
 ---
 
+## [0.9.7] - 2026-04-16
+
+### Geändert
+
+- **Wetter-Widget** — alle UI-Strings ins Deutsche übersetzt: Frostwarnung, Tiefstwert, Luftfeuchte, Standort-Hinweis, Fehlermeldung
+- **WMO-Wettercodes** — alle 29 Wettercode-Bezeichnungen ins Deutsche übersetzt (z. B. „Partly cloudy" → „Teilweise bewölkt")
+- **Geocoding-Suche** — Ortssuche über Open-Meteo läuft jetzt auf `language=de` statt `en`
+
+---
+
 ## [0.9.6] - 2026-04-16
 
 ### Behoben

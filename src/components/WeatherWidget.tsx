@@ -62,7 +62,7 @@ function WeatherFetcher({
         <div className="flex items-center gap-3">
           <span className="text-2xl">{"\uD83C\uDF25\uFE0F"}</span>
           <p className="text-sm text-text-secondary">
-            Weather unavailable — check your connection
+            Wetter nicht verfügbar — Verbindung prüfen
           </p>
         </div>
       </Card>
@@ -78,11 +78,10 @@ function WeatherFetcher({
           <div className="flex items-center gap-2">
             <span className="text-lg">{"\u2744\uFE0F"}</span>
             <div>
-              <p className="text-sm font-bold text-red-800">Frost Warning</p>
+              <p className="text-sm font-bold text-red-800">Frostwarnung</p>
               <p className="text-xs text-red-600">
-                Tonight&apos;s low is{" "}
-                {formatTemp(weather.lowC, temperatureUnit)} — protect sensitive
-                plants
+                Tiefstwert heute Nacht:{" "}
+                {formatTemp(weather.lowC, temperatureUnit)} — empfindliche Pflanzen schützen
               </p>
             </div>
           </div>
@@ -103,15 +102,15 @@ function WeatherFetcher({
             </div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-text-secondary">
               <span>
-                H: {formatTemp(weather.highC, temperatureUnit)} / L:{" "}
+                H: {formatTemp(weather.highC, temperatureUnit)} / T:{" "}
                 {formatTemp(weather.lowC, temperatureUnit)}
               </span>
               {weather.precipitationMm > 0 && (
                 <span>
-                  {"\uD83D\uDCA7"} {String(weather.precipitationMm)}mm
+                  {"\uD83D\uDCA7"} {String(weather.precipitationMm)} mm
                 </span>
               )}
-              <span>Humidity: {String(weather.humidity)}%</span>
+              <span>Luftfeuchte: {String(weather.humidity)} %</span>
             </div>
           </div>
         </div>
@@ -131,10 +130,10 @@ export default function WeatherWidget() {
             <span className="text-2xl">{"\uD83C\uDF24\uFE0F"}</span>
             <div>
               <p className="text-sm font-medium text-text-secondary">
-                Set your location for weather
+                Standort für Wetter festlegen
               </p>
               <p className="text-xs text-text-secondary">
-                Tap to add your coordinates in Settings
+                Tippen, um Koordinaten in den Einstellungen einzutragen
               </p>
             </div>
           </div>
