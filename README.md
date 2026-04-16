@@ -1,195 +1,263 @@
-> This repository is a translated copy of the original project at https://github.com/HapiCreative/jninty and has been adapted to German.
-
-<!-- Project logo placeholder - replace with actual logo when ready -->
+> This repository is a translated and adapted copy of the original project at https://github.com/HapiCreative/jninty — UI and documentation have been translated to German, and the backend has been migrated from PouchDB to a Hono/Drizzle/SQLite API server with better-auth authentication.
 
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/HapiCreative/jninty/actions/workflows/ci.yml/badge.svg)](https://github.com/HapiCreative/jninty/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline--ready-5A0FC8?logo=pwa&logoColor=white)
-[![Jninty Cloud](https://img.shields.io/badge/Jninty_Cloud-Sync_Anywhere-2D6A4F?style=flat&logo=cloud&logoColor=white)](https://jninty.com)
 
-**Ein Local-First-, Open-Source-Gartenjournal und Verwaltungs-PWA.** Alle Daten liegen auf deinem Geraet in IndexedDB, es ist kein Konto erforderlich, die App funktioniert offline und kann optional ueber CouchDB zwischen mehreren Geraeten synchronisiert werden.
+**Persönliches Gartenjournal und Verwaltungs-PWA — komplett selbst gehostet.**  
+Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben und Wetter in einer App. Mehrere Benutzer werden unterstützt — jeder sieht nur seine eigenen Daten.
+
+---
 
 ## Funktionen
 
-- **Pflanzenbestand** - Pflanzen mit Fotos, Art, Pflegenotizen und Lebenszyklusstatus verwalten
-- **Gartenjournal** - Taegliche Aktivitaeten mit Fotos dokumentieren und mit bestimmten Pflanzen verknuepfen
-- **Schnellprotokoll** - Foto-zentrierter 3-Tap-Ablauf fuer schnelle Notizen im Garten
-- **Wissensbasis fuer Pflanzen** - Integrierte Anbauhinweise fuer Gemuese, Kraeuter, Obst und Blumen mit Zeitplanung, Abstaenden und Mischkulturinfos sowie eigene Eintraege
-- **Pflanzkalender** - Zeitachsen-, Jahres- und Monatsansichten fuer Anbauplanung und Saisonorganisation
-- **Aufgabenverwaltung** - Gartenaufgaben anlegen, priorisieren und nachverfolgen
-- **Aufgabenregeln** - Automatische Erstellung von Aufgaben aus Pflegeplaenen
-- **Gartenkarte** - Visueller Editor fuer Beete und Gartenflaechen
-- **Saatgutbank** - Saatgutbestand mit Aussaatdaten und Keimraten verwalten
-- **Saisons und Pflanzungen** - Saisonbasierte Pflanzungsdaten mit Frostterminen und Jahresvergleich
-- **Ausgabenverwaltung** - Gartenausgaben nach Kategorien und Saison filtern
-- **Volltextsuche** - Schnelle Suche ueber Pflanzen und Journaleintraege
-- **Datenexport/-import** - ZIP-Backup und Wiederherstellung
-- **Dunkelmodus** - Systembewusstes oder manuelles Umschalten des Themes
-- **Barrierefreiheit** - Hoher Kontrast, anpassbare Schriftgroesse und Tastaturkuerzel
-- **Push-Benachrichtigungen** - Erinnerungen fuer Aufgaben und Frostwarnungen
-- **Multi-Device-Sync** - Optionale CouchDB-Replikation
-- **PWA** - Installierbar auf jedem Geraet mit voller Offline-Unterstuetzung
-- **Kein Konto erforderlich** - Alles bleibt auf deinem Geraet. Optional kannst du [Jninty Cloud](https://jninty.com) fuer Multi-Device-Sync und Cloud-Backups nutzen
+- **Pflanzenbestand** — Pflanzen mit Fotos, Art, Sorte, Pflegenotizen und Lebenszyklusstatus verwalten
+- **Gartenjournal** — Tägliche Aktivitäten mit Fotos dokumentieren, optional mit Wetter-Snapshot
+- **Schnellprotokoll** — Foto-zentrierter 3-Tap-Ablauf für schnelle Notizen im Garten
+- **Wissensbasis** — Integrierte Anbauhinweise für Gemüse, Kräuter, Obst und Blumen mit Zeitplanung, Abständen und Mischkulturinfos; eigene Einträge möglich
+- **Pflanzkalender** — Zeitachsen-, Jahres- und Monatsansichten für Anbauplanung und Saisonorganisation
+- **Aufgabenverwaltung** — Aufgaben anlegen, priorisieren und nachverfolgen; automatische Erstellung aus Pflegeplänen
+- **Gartenkarte** — Visueller Editor für Beete und Gartenflächen (Konva.js)
+- **Saatgutbank** — Saatgutbestand mit Kaufdatum, Ablaufdatum und Keimraten verwalten
+- **Saisons & Pflanzungen** — Saisonbasierte Pflanzungsdaten mit Frostterminen und Jahresvergleich
+- **Ausgaben** — Gartenausgaben nach Kategorien und Saison erfassen und filtern
+- **Wetter** — Aktuelles Wetter und Frostwarnungen über [Open-Meteo](https://open-meteo.com) (kein API-Key nötig)
+- **Volltextsuche** — Schnelle Suche über Pflanzen und Journaleinträge (MiniSearch)
+- **Datenexport/-import** — ZIP-Backup und Wiederherstellung
+- **Mehrere Benutzer** — Jeder Benutzer hat ein eigenes Login, Daten sind vollständig getrennt
+- **PWA** — Installierbar auf jedem Gerät, funktioniert im Browser und als Home-Screen-App
+- **Dark Mode & Barrierefreiheit** — Systemthema oder manuell; hoher Kontrast, anpassbare Schriftgröße, Tastaturkürzel
 
-## Jninty Cloud
+---
 
-Du moechtest keinen eigenen Sync-Server betreiben? [**Jninty Cloud**](https://jninty.com) bietet automatische Synchronisation zwischen Geraeten, verschluesselte Cloud-Backups und Zugriff von ueberall, ohne Docker, VPS oder Setup.
+## Technischer Aufbau
 
-**4,99 USD/Monat oder 49,99 USD/Jahr** - [Jetzt starten auf jninty.com](https://jninty.com)
-
-Jninty ist und bleibt vollstaendig Open Source und selbst hostbar. Die Cloud ist eine optionale Komfortfunktion.
-
-## Screenshots
-
-<p align="center">
-  <img src="docs/screenshots/home.png" alt="Dashboard - Wetter, Ausgabenuersicht, empfohlene Aufgaben und aktuelle Journaleintraege" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/plants.png" alt="Pflanzenbestand - Rasteransicht mit Fotos, Arten und Status-Badges" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/calendar.png" alt="Pflanzkalender - Zeitachsenansicht mit farbcodierten Kulturphasen" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/tasks.png" alt="Aufgaben - Listen-, Tages- und Wochenansichten mit Vorschlaegen und Filtern" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/Expenses.png" alt="Ausgaben - Aufschluesselung nach Kategorien mit horizontalem Balkendiagramm" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/mobile.png" alt="Mobil - voll responsive PWA mit unterer Navigation" width="300" />
-</p>
-
-## Schnellstart
-
-```bash
-git clone https://github.com/HapiCreative/jninty.git
-cd jninty
-npm install
-npm run dev
+```
+┌─────────────────────────────────┐     ┌──────────────────────────────────┐
+│         Frontend (nginx)        │     │         Backend (Node.js)         │
+│                                 │     │                                  │
+│  React 18 + TypeScript          │────▶│  Hono API-Server                 │
+│  Tailwind CSS v4                │     │  Drizzle ORM + SQLite            │
+│  React Router DOM v7            │     │  better-auth (Session-Cookies)   │
+│  Vite PWA                       │     │  Foto-Uploads auf Dateisystem    │
+└─────────────────────────────────┘     └──────────────────────────────────┘
+        Port 80 (nginx)                          Port 3001 (intern)
 ```
 
-Oeffne [http://localhost:5173](http://localhost:5173) im Browser.
+| Schicht | Technologie |
+|---------|-------------|
+| Frontend-Framework | React 18 + TypeScript (strict) |
+| Build | Vite 7 |
+| Styling | Tailwind CSS v4 (kein config-File, alles in `index.css`) |
+| Routing | React Router DOM v7 |
+| Backend | Hono auf Node.js 22 |
+| Datenbank | SQLite via Drizzle ORM (`data/jninty.db`) |
+| Authentifizierung | better-auth (E-Mail + Passwort, Session-Cookies) |
+| Fotos | Multipart-Upload → Dateisystem (`data/uploads/`) |
+| Suche | MiniSearch (client-seitig) |
+| Validierung | Zod |
+| Karteeditor | Konva.js |
+| Tests | Vitest + Testing Library |
+| Wetter | Open-Meteo (kostenlos, kein Key) |
+
+### Verzeichnisstruktur
+
+```
+src/
+  pages/              Seitenkomponenten (eine Datei pro Route)
+  components/         Gemeinsame UI-Komponenten
+  components/ui/      Primitive Bausteine (Button, Card, Input, Badge …)
+  components/layout/  AppShell (Sidebar + Bottom-Navigation)
+  db/                 API-Client, Repositories, Suchindex
+  hooks/              React Hooks
+  services/           Fachlogik (Kalender, Aufgaben, Fotos, Export/Import)
+  validation/         Zod-Schemata für alle Entitäten
+  store/              Auth-State (sessionStore, authStore)
+
+server/src/
+  routes/             Hono-Router je Entität (/api/plants, /api/journal …)
+  db/                 Drizzle-Client + Schema + Migrationen
+  middleware/         requireAuth (Session-Prüfung)
+  auth.ts             better-auth Konfiguration
+
+data/                 (Laufzeit, nicht im Repo)
+  jninty.db           SQLite-Datenbankdatei
+  uploads/            Hochgeladene Fotos
+```
+
+### Datentrennung
+
+Alle Tabellen (Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Saisons …) enthalten eine `userId`-Spalte. Die `requireAuth`-Middleware setzt `userId` aus der Session; jede Datenbankabfrage filtert automatisch nach diesem Wert — Benutzer können nie auf Daten anderer zugreifen.
+
+---
+
+## Docker-Deployment
+
+### Voraussetzungen
+
+- Docker + Docker Compose
+- Ein Reverse Proxy (z. B. Traefik) der HTTPS terminiert, oder ein eigener nginx/Caddy
+- Eine Domain oder Subdomain die auf den Server zeigt
+
+### Dateien
+
+Die folgenden drei Dateien müssen im Projektverzeichnis liegen (alle befinden sich bereits im Repository):
+
+| Datei | Funktion |
+|-------|----------|
+| `Dockerfile` | Baut das Frontend (React → nginx) |
+| `Dockerfile.server` | Baut den API-Server (Node.js + Hono) |
+| `docker-compose.yml` | Verbindet beide Container, Traefik-Labels, Volume |
+
+### docker-compose.yml anpassen
+
+Öffne `docker-compose.yml` und ersetze die Platzhalter:
+
+```yaml
+services:
+  server:
+    environment:
+      BETTER_AUTH_SECRET: "<zufälliger 64-Zeichen-String>"   # ← ändern
+      BETTER_AUTH_URL: "https://deine-domain.de"              # ← ändern
+      FRONTEND_ORIGIN: "https://deine-domain.de"              # ← ändern
+      TRUSTED_ORIGINS: "https://deine-domain.de"              # ← ändern
+
+  frontend:
+    labels:
+      - traefik.http.routers.jninty.rule=Host(`deine-domain.de`)  # ← ändern
+```
+
+Einen sicheren `BETTER_AUTH_SECRET` generieren:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Starten
+
+```bash
+docker compose up -d
+```
+
+Beim ersten Start führt der Server-Container automatisch alle Datenbank-Migrationen aus (`npm run db:migrate`), bevor der API-Server hochfährt.
+
+### Traefik-Voraussetzungen
+
+Das `docker-compose.yml` setzt ein bestehendes Traefik-Setup voraus:
+
+- Externes Docker-Netzwerk `proxy` muss existieren: `docker network create proxy`
+- Traefik muss auf diesem Netzwerk lauschen und HTTPS terminieren
+- Der `certresolver` heißt in der Beispielkonfiguration `http` — ggf. an die eigene Konfiguration anpassen
+
+Ohne Traefik kann stattdessen ein Port-Mapping ergänzt werden:
+
+```yaml
+  frontend:
+    ports:
+      - "80:80"
+```
+
+---
+
+## Benutzer verwalten
+
+Die App hat keine öffentliche Registrierung. Neue Benutzer werden von einem bereits eingeloggten Benutzer über die API angelegt.
+
+### Ersten Benutzer anlegen
+
+Da beim allerersten Start noch kein eingeloggter Benutzer existiert, gibt es einen Bootstrap-Endpunkt der **nur greift, wenn die Datenbank noch keine Benutzer enthält**:
+
+```bash
+curl -X POST https://deine-domain.de/api/auth/sign-up/email \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Admin","email":"admin@example.com","password":"sicheres-passwort"}'
+```
+
+> **Hinweis:** Dieser Endpunkt wird von better-auth bereitgestellt. Er akzeptiert nur dann neue Registrierungen, wenn `emailAndPassword.enabled: true` gesetzt ist. In der aktuellen Konfiguration ist die öffentliche Selbstregistrierung bewusst nicht abgesperrt — wer Selbstregistrierung verhindern möchte, kann `disableSignUp: true` in `server/src/auth.ts` ergänzen.
+
+### Weitere Benutzer anlegen
+
+Weitere Benutzer legt ein bereits eingeloggter Benutzer über den Admin-Endpunkt an. Zunächst einloggen und den Session-Cookie speichern:
+
+```bash
+# Einloggen und Cookie speichern
+curl -c cookies.txt -X POST https://deine-domain.de/api/auth/sign-in/email \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"sicheres-passwort"}'
+
+# Neuen Benutzer anlegen
+curl -b cookies.txt -X POST https://deine-domain.de/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Zweiter User","email":"user2@example.com","password":"passwort123"}'
+```
+
+### Benutzer löschen
+
+```bash
+# ID des Benutzers aus der Benutzerliste holen
+curl -b cookies.txt https://deine-domain.de/api/users
+
+# Benutzer löschen (eigener Account kann nicht gelöscht werden)
+curl -b cookies.txt -X DELETE https://deine-domain.de/api/users/<user-id>
+```
+
+### Passwort zurücksetzen
+
+Better-auth bietet einen Passwort-Reset-Flow via E-Mail — dieser setzt einen konfigurierten SMTP-Server voraus. Alternativ kann das Passwort direkt über die better-auth-API gesetzt werden (wenn man bereits eingeloggt ist):
+
+```bash
+curl -b cookies.txt -X POST https://deine-domain.de/api/auth/change-password \
+  -H "Content-Type: application/json" \
+  -d '{"currentPassword":"altes-passwort","newPassword":"neues-passwort"}'
+```
+
+---
+
+## Lokale Entwicklung
+
+```bash
+git clone https://github.com/fxlupo/jninty-de.git
+cd jninty-de
+npm install
+
+# .env anlegen (Vorlage anpassen)
+cp .env.example .env
+
+# Frontend + Backend gleichzeitig starten
+npm run dev:full
+```
+
+Öffne [http://localhost:5173](http://localhost:5173) im Browser.
 
 ### Befehle
 
 ```bash
-npm run dev          # Vite-Entwicklungsserver
-npm run build        # TypeScript-Check + Produktions-Build
-npm run preview      # Produktions-Build lokal ansehen
-npm run lint         # ESLint
-npm run test         # Tests einmalig ausfuehren
-npm run test:watch   # Tests im Watch-Modus ausfuehren
+npm run dev            # Nur Vite-Frontend (Port 5173)
+npm run dev:server     # Nur API-Server (Port 3001, tsx watch)
+npm run dev:full       # Beides parallel
+npm run build          # TypeScript-Check + Produktions-Build
+npm run build:check    # Nur TypeScript-Check (frontend + server)
+npm run lint           # ESLint
+npm run test           # Tests einmalig ausführen
+npm run test:watch     # Tests im Watch-Modus
+npm run db:generate    # Drizzle-Migration generieren
+npm run db:migrate     # Migrationen anwenden
+npm run db:studio      # Drizzle Studio öffnen
 ```
 
-## Tech-Stack
+### .env für Entwicklung
 
-| Ebene | Technologie |
-|-------|-------------|
-| Framework | React 18 + TypeScript (strict mode) |
-| Build | Vite |
-| Styling | Tailwind CSS v4 |
-| Datenbank | PouchDB (IndexedDB) + optionaler CouchDB-Sync |
-| Routing | React Router DOM v7 |
-| Suche | MiniSearch |
-| Validierung | Zod |
-| Datumslogik | date-fns |
-| Canvas | Konva.js (Gartenkarte) |
-| PWA | vite-plugin-pwa + Workbox |
-| Tests | Vitest + Testing Library |
-
-## Architektur
-
-```text
-src/
-  pages/              Seitenkomponenten auf Routenebene
-  components/         Gemeinsame UI-Komponenten
-  components/ui/      Primitive Bausteine (Button, Card, Input, Badge, Toast, Skeleton)
-  components/layout/  Layout (AppShell - Sidebar + Bottom Navigation)
-  db/pouchdb/         PouchDB-Client, Repositories, Suchindex
-  hooks/              Eigene React Hooks
-  services/           Fachlogik (calendar, taskEngine, knowledgeBase, photoProcessor, exporter)
-  validation/         Zod-Schemata fuer alle Entitaeten
-  types/              TypeScript-Typdefinitionen
-  constants/          Labels und Optionskonstanten
-data/
-  plants/             Integrierte JSON-Wissensbasis fuer Pflanzen
-sync/
-  docker-compose.yml  CouchDB-Setup fuer Multi-Device-Sync
-  setup.sh            Ein-Kommando-Setup fuer den Sync-Server
+```env
+BETTER_AUTH_SECRET=beliebiger-lokaler-string
+BETTER_AUTH_URL=http://localhost:3001
+TRUSTED_ORIGINS=http://localhost:5173
 ```
 
-Alle Daten werden ueber PouchDB in IndexedDB gespeichert. Dokumente tragen ein `docType`-Praefix, zum Beispiel `plant:uuid`, damit Entitaeten im Ein-Datenbank-Modell sauber getrennt bleiben. Jede Entitaet enthaelt `id`, `version`, `createdAt`, `updatedAt` und `deletedAt`.
-
-## Multi-Device-Sync
-
-Du willst dein Gartenjournal zwischen Smartphone und Desktop synchronisieren? Jninty unterstuetzt optionale CouchDB-Replikation im lokalen Netzwerk.
-
-### Einrichtung
-
-1. **Docker installieren**, falls noch nicht vorhanden
-2. **Sync-Server starten:**
-   ```bash
-   cd sync
-   cp .env.example .env    # Zugangsdaten bei Bedarf anpassen
-   ./setup.sh              # Startet CouchDB und richtet CORS ein
-   ```
-3. **In der App verbinden:** Unter Einstellungen > Multi-Device-Sync die vom Script ausgegebene URL eintragen und auf `Sync starten` tippen
-
-### So funktioniert es
-
-- CouchDB laeuft in Docker auf deinem Rechner und lauscht auf Port 5984
-- Das Setup-Script richtet CORS ein, damit der Browser direkt mit CouchDB sprechen kann
-- Jninty erkennt automatisch deine LAN-IP, damit andere Geraete im selben Netzwerk zugreifen koennen
-- Die Synchronisation ist bidirektional, Aenderungen auf einem Geraet werden auf alle anderen uebertragen
-
-### Smartphone verbinden
-
-1. Sicherstellen, dass das Smartphone im selben WLAN wie der Desktop ist
-2. Jninty im Browser des Smartphones oeffnen
-3. In Einstellungen > Multi-Device-Sync die Sync-URL mit der LAN-IP des Desktops eintragen, z. B. `http://192.168.1.100:5984/jninty`
-
-### Fehlerbehebung
-
-| Problem | Loesung |
-|---------|---------|
-| Smartphone erreicht den Sync-Server nicht | Pruefen, ob beide Geraete im selben Netzwerk sind und die Firewall Port 5984 erlaubt |
-| Mixed-Content-Fehler (HTTPS) | Der Vite-Dev-Server kann CouchDB-Anfragen proxyen. In Produktion die App ueber HTTP ausliefern oder HTTPS fuer CouchDB einrichten |
-| Falsche LAN-IP erkannt | Korrekte IP manuell eintragen. Unter macOS/Linux mit `ifconfig`, unter Windows mit `ipconfig` |
-| Sync-Konflikte | Jninty verwendet die automatische Konfliktaufloesung von PouchDB. Der letzte Schreibvorgang gewinnt |
-
-Weitere Details stehen in [sync/README.md](sync/README.md).
-
-## Cloud-Sync (optional)
-
-Der einfachste Weg fuer gerateuebergreifende Synchronisation ist [**Jninty Cloud**](https://jninty.com): automatische Synchronisierung, verschluesselte Backups und kein Einrichtungsaufwand.
-
-Wenn du lieber selbst hostest, kannst du CouchDB auf einem entfernten Server betreiben:
-
-1. **VPS einrichten** und das vorhandene `sync/docker-compose.yml` verwenden
-2. **HTTPS aktivieren** - CouchDB muss hinter einem Reverse Proxy wie nginx oder Caddy mit gueltigem TLS-Zertifikat laufen, da Browser gemischte HTTP/HTTPS-Inhalte blockieren
-3. **Zugangsdaten anpassen** - Das Standard-Admin-Passwort in `.env` vor der Internetfreigabe aendern
-4. **Jninty auf die Remote-URL zeigen lassen** - zum Beispiel `https://couch.example.com/jninty`
-
-## Designdokument
-
-Das vollstaendige Projektdesign, Architekturentscheidungen, Datenmodell und die Roadmap stehen in [`docs/plans/Jninty-Design-v1.md`](docs/plans/Jninty-Design-v1.md).
-
-## Mitwirken
-
-Beitraege sind willkommen. Siehe [CONTRIBUTING.md](CONTRIBUTING.md) fuer Entwicklungssetup, Code-Richtlinien und den Ablauf fuer Aenderungen.
-
-Besonders hilfreich sind Ergaenzungen der Pflanzendaten, neue Arten fuer die Wissensbasis koennen ohne Aenderungen an der App-Logik hinzugefuegt werden.
+---
 
 ## Lizenz
 
