@@ -36,22 +36,37 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+/** Notify all usePouchQuery subscribers that data has changed. */
+function notifyDataChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("data-changed"));
+  }
+}
+
 export async function get<T>(path: string): Promise<T> {
   return request<T>(path);
 }
 
 export async function post<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, { method: "POST", body: JSON.stringify(body) });
+  const result = await request<T>(path, { method: "POST", body: JSON.stringify(body) });
+  notifyDataChanged();
+  return result;
 }
 
 export async function put<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, { method: "PUT", body: JSON.stringify(body) });
+  const result = await request<T>(path, { method: "PUT", body: JSON.stringify(body) });
+  notifyDataChanged();
+  return result;
 }
 
 export async function patch<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+  const result = await request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+  notifyDataChanged();
+  return result;
 }
 
 export async function del<T = { ok: boolean }>(path: string): Promise<T> {
-  return request<T>(path, { method: "DELETE" });
+  const result = await request<T>(path, { method: "DELETE" });
+  notifyDataChanged();
+  return result;
 }
