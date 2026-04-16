@@ -29,6 +29,9 @@ interface PlantPhotoManagerProps {
   onSelectPhoto: () => Promise<void>;
   isProcessing: boolean;
   error?: Error | null;
+  saving?: boolean;
+  uploadProgress?: Record<string, number>;
+  uploadErrors?: Record<string, string>;
 }
 
 // ─── Component ───
@@ -42,6 +45,9 @@ export default function PlantPhotoManager({
   onSelectPhoto,
   isProcessing,
   error,
+  saving,
+  uploadProgress,
+  uploadErrors,
 }: PlantPhotoManagerProps) {
   return (
     <div>
@@ -53,6 +59,11 @@ export default function PlantPhotoManager({
             const isCover = index === 0;
             const dateValue = entry.takenAt ? entry.takenAt.slice(0, 10) : "";
 
+            const localId = entry.kind === "pending" ? entry.localId : null;
+            const progress = localId != null ? (uploadProgress?.[localId] ?? null) : null;
+            const uploadError = localId != null ? (uploadErrors?.[localId] ?? null) : null;
+            const isUploading = saving && localId != null && progress !== null && progress < 100;
+
             return (
               <div key={id} className="flex flex-col gap-1.5">
                 {/* Thumbnail with action overlays */}
@@ -60,11 +71,35 @@ export default function PlantPhotoManager({
                   <img
                     src={entry.previewUrl}
                     alt="Pflanzenfoto"
-                    className="h-full w-full object-cover"
+                    className={`h-full w-full object-cover ${uploadError ? "opacity-40" : ""}`}
                   />
 
+                  {/* Upload progress overlay */}
+                  {isUploading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-soil-900/50">
+                      <div className="w-3/4 overflow-hidden rounded-full bg-white/30">
+                        <div
+                          className="h-1.5 rounded-full bg-white transition-all duration-200"
+                          style={{ width: `${progress ?? 0}%` }}
+                        />
+                      </div>
+                      <span className="mt-1 text-[10px] font-medium text-white">
+                        {progress ?? 0} %
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Upload error overlay */}
+                  {uploadError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-terracotta-600/70 p-1">
+                      <span className="text-center text-[10px] font-medium leading-tight text-white">
+                        Fehler
+                      </span>
+                    </div>
+                  )}
+
                   {/* Cover badge */}
-                  {isCover && (
+                  {isCover && !uploadError && (
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-text-on-primary">
                       <StarIcon className="h-2.5 w-2.5" />
                       Titelbild
@@ -82,7 +117,7 @@ export default function PlantPhotoManager({
                   </button>
 
                   {/* Set cover button (only on non-cover photos) */}
-                  {!isCover && (
+                  {!isCover && !uploadError && (
                     <button
                       type="button"
                       onClick={() => onSetCover(id)}
@@ -93,6 +128,11 @@ export default function PlantPhotoManager({
                     </button>
                   )}
                 </div>
+
+                {/* Upload error message */}
+                {uploadError && (
+                  <p className="text-[10px] leading-tight text-terracotta-600">{uploadError}</p>
+                )}
 
                 {/* Aufnahmedatum */}
                 <input

@@ -11,7 +11,7 @@ import Card from "./ui/Card";
 import { ChevronRightIcon } from "./icons";
 
 function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount);
 }
 
 export default function SpendingWidget() {
@@ -46,14 +46,14 @@ export default function SpendingWidget() {
         <Card className="border-border-strong bg-brown-50/30 transition-shadow hover:shadow-md">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brown-100 text-lg">
-              $
+              €
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-text-primary">
-                Track your garden spending
+                Gartenausgaben verfolgen
               </p>
               <p className="mt-0.5 text-xs text-text-secondary">
-                Add expenses to see spending insights
+                Ausgaben hinzufügen, um Einblicke zu erhalten
               </p>
             </div>
             <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-muted" />
@@ -68,7 +68,7 @@ export default function SpendingWidget() {
       <Card className="transition-shadow hover:shadow-md">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-text-secondary">Season Spending</p>
+            <p className="text-xs text-text-secondary">Saisonausgaben</p>
             <p className="font-display text-xl font-bold text-text-heading">
               {formatCurrency(total)}
             </p>

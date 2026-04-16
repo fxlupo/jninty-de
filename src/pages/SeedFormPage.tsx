@@ -18,18 +18,18 @@ const selectClass =
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
-  species: "Species",
-  variety: "Variety",
-  brand: "Brand",
-  supplier: "Supplier",
-  quantityRemaining: "Quantity",
-  quantityUnit: "Unit",
-  purchaseDate: "Purchase Date",
-  expiryDate: "Expiry Date",
-  germinationRate: "Germination Rate",
+  species: "Art",
+  variety: "Sorte",
+  brand: "Marke",
+  supplier: "Lieferant",
+  quantityRemaining: "Menge",
+  quantityUnit: "Einheit",
+  purchaseDate: "Kaufdatum",
+  expiryDate: "Ablaufdatum",
+  germinationRate: "Keimrate",
   cost: "Kosten",
-  storageLocation: "Storage Location",
-  notes: "Notes",
+  storageLocation: "Lagerort",
+  notes: "Notizen",
 };
 
 export default function SeedFormPage() {
@@ -184,17 +184,17 @@ export default function SeedFormPage() {
     setErrors([]);
 
     if (!name.trim()) {
-      setErrors(["Name is required."]);
+      setErrors(["Name ist erforderlich."]);
       return;
     }
     if (!species.trim()) {
-      setErrors(["Species is required."]);
+      setErrors(["Art ist erforderlich."]);
       return;
     }
 
     const qty = Number(quantityRemaining);
     if (Number.isNaN(qty) || qty < 0) {
-      setErrors(["Quantity must be a non-negative number."]);
+      setErrors(["Menge muss eine nicht-negative Zahl sein."]);
       return;
     }
 
@@ -291,12 +291,12 @@ export default function SeedFormPage() {
           type="button"
           onClick={() => void navigate(backPath)}
           className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-          aria-label="Go back"
+          aria-label="Zurück"
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
         <h1 className="font-display text-2xl font-bold text-text-heading">
-          {isEditing ? "Edit Seed" : "Add Seed"}
+          {isEditing ? "Saatgut bearbeiten" : "Saatgut hinzufügen"}
         </h1>
       </div>
 
@@ -304,7 +304,7 @@ export default function SeedFormPage() {
         {/* Seed identification */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Seed Information
+            Saatgut-Informationen
           </h2>
 
           <div className="mt-4 space-y-4">
@@ -319,7 +319,7 @@ export default function SeedFormPage() {
               <Input
                 id="seed-name"
                 type="text"
-                placeholder='e.g. "San Marzano Tomato Seeds"'
+                placeholder='z. B. "San Marzano Tomatensamen"'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -331,13 +331,13 @@ export default function SeedFormPage() {
                 htmlFor="seed-species"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Species <span className="text-terracotta-500">*</span>
+                Art <span className="text-terracotta-500">*</span>
               </label>
               <div ref={speciesWrapperRef} className="relative">
                 <input
                   id="seed-species"
                   type="text"
-                  placeholder="e.g. Solanum lycopersicum"
+                  placeholder="z. B. Solanum lycopersicum"
                   value={species}
                   onChange={(e) => handleSpeciesChange(e.target.value)}
                   onFocus={() => {
@@ -378,13 +378,13 @@ export default function SeedFormPage() {
                 htmlFor="seed-variety"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Variety
+                Sorte
               </label>
               <div ref={varietyWrapperRef} className="relative">
                 <input
                   id="seed-variety"
                   type="text"
-                  placeholder="e.g. San Marzano"
+                  placeholder="z. B. San Marzano"
                   value={variety}
                   onChange={(e) => handleVarietyChange(e.target.value)}
                   onFocus={() => {
@@ -419,12 +419,12 @@ export default function SeedFormPage() {
                 htmlFor="seed-brand"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Brand
+                Marke
               </label>
               <Input
                 id="seed-brand"
                 type="text"
-                placeholder="e.g. Burpee"
+                placeholder="z. B. Quedlinburger"
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
               />
@@ -436,12 +436,12 @@ export default function SeedFormPage() {
                 htmlFor="seed-supplier"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Supplier
+                Lieferant
               </label>
               <Input
                 id="seed-supplier"
                 type="text"
-                placeholder="e.g. Local garden center"
+                placeholder="z. B. lokales Gartencenter"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
               />
@@ -452,7 +452,7 @@ export default function SeedFormPage() {
         {/* Quantity & unit */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
-            Quantity
+            Menge
           </h2>
 
           <div className="mt-4 grid grid-cols-2 gap-4">
@@ -461,7 +461,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-quantity"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Amount <span className="text-terracotta-500">*</span>
+                Anzahl <span className="text-terracotta-500">*</span>
               </label>
               <Input
                 id="seed-quantity"
@@ -479,7 +479,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-unit"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Unit
+                Einheit
               </label>
               <select
                 id="seed-unit"
@@ -510,7 +510,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-purchase-date"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Purchase Date
+                Kaufdatum
               </label>
               <Input
                 id="seed-purchase-date"
@@ -526,7 +526,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-expiry-date"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Expiry Date
+                Ablaufdatum
               </label>
               <Input
                 id="seed-expiry-date"
@@ -542,7 +542,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-germination"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Germination Rate (%)
+                Keimrate (%)
               </label>
               {germinationRate ? (
                 <div className="flex items-center gap-3">
@@ -563,7 +563,7 @@ export default function SeedFormPage() {
                     onClick={() => setGerminationRate("")}
                     className="text-xs text-text-secondary hover:text-text-secondary"
                   >
-                    Clear
+                    Löschen
                   </button>
                 </div>
               ) : (
@@ -573,7 +573,7 @@ export default function SeedFormPage() {
                   onClick={() => setGerminationRate("50")}
                   className="text-sm text-text-link hover:underline"
                 >
-                  Set germination rate
+                  Keimrate festlegen
                 </button>
               )}
             </div>
@@ -603,7 +603,7 @@ export default function SeedFormPage() {
                 htmlFor="seed-purchase-store"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Purchased At
+                Gekauft bei
               </label>
               <StoreAutosuggest
                 id="seed-purchase-store"
@@ -618,12 +618,12 @@ export default function SeedFormPage() {
                 htmlFor="seed-storage"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Storage Location
+                Lagerort
               </label>
               <Input
                 id="seed-storage"
                 type="text"
-                placeholder='e.g. "Fridge box A", "Shed drawer 3"'
+                placeholder='z. B. „Kühlschrankbox A", „Schuppenschublade 3"'
                 value={storageLocation}
                 onChange={(e) => setStorageLocation(e.target.value)}
               />
@@ -635,12 +635,12 @@ export default function SeedFormPage() {
                 htmlFor="seed-notes"
                 className="mb-1 block text-sm font-medium text-text-secondary"
               >
-                Notes
+                Notizen
               </label>
               <textarea
                 id="seed-notes"
                 rows={3}
-                placeholder="Any notes about this seed..."
+                placeholder="Beliebige Notizen zu diesem Saatgut …"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
@@ -664,17 +664,17 @@ export default function SeedFormPage() {
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
             {saving
-              ? "Saving..."
+              ? "Wird gespeichert …"
               : isEditing
-                ? "Save Changes"
-                : "Add Seed"}
+                ? "Änderungen speichern"
+                : "Saatgut hinzufügen"}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => void navigate(backPath)}
           >
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </form>

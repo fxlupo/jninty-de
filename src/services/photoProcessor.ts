@@ -28,7 +28,7 @@ function loadImage(source: File | Blob): Promise<HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image"));
+      reject(new Error("Das Bild konnte nicht geladen werden. Möglicherweise ist das Format nicht unterstützt."));
     };
     img.src = url;
   });
@@ -99,8 +99,21 @@ async function extractExifDate(file: File | Blob): Promise<string | undefined> {
 export async function processPhoto(
   file: File | Blob,
 ): Promise<ProcessedPhoto> {
+  const fileName = file instanceof File ? file.name.toLowerCase() : "";
+  const isHeic =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    fileName.endsWith(".heic") ||
+    fileName.endsWith(".heif");
+  if (isHeic) {
+    throw new Error(
+      "HEIC-Fotos werden im Browser nicht unterstützt. Bitte konvertiere das Foto zuerst in JPEG oder PNG.",
+    );
+  }
   if (!file.type.startsWith("image/")) {
-    throw new Error(`File is not an image: ${file.type}`);
+    throw new Error(
+      `Das Dateiformat wird nicht unterstützt (${file.type || "unbekannt"}). Bitte verwende JPEG, PNG oder WebP.`,
+    );
   }
 
   const img = await loadImage(file);

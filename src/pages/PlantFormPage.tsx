@@ -286,6 +286,9 @@ export default function PlantFormPage() {
               onSelectPhoto={handleSelectPhoto}
               isProcessing={isProcessing}
               error={photoError}
+              saving={photoManager.saving}
+              uploadProgress={photoManager.uploadProgress}
+              uploadErrors={photoManager.uploadErrors}
             />
           </div>
         </Card>
