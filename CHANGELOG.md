@@ -10,6 +10,16 @@ Versioning-Regel: `feat:` → MINOR-Bump (0.x.0) · `fix:`/`chore:` → PATCH-Bu
 
 ---
 
+## [0.9.6] - 2026-04-16
+
+### Behoben
+
+- **iOS-Layout (Safari & Chrome)** — `font-size < 16px` auf Inputs löst automatischen Viewport-Zoom aus; nach Tastatur-Schließen setzt iOS den Zoom oft nicht zurück → Layout wird breiter, Bottom-Nav schwimmt; CSS-Regel `font-size: 16px !important` für alle `input`/`textarea`/`select`-Elemente auf Mobilgeräten behebt den Zoom
+- **Foto-Upload: kein Feedback bei Fehler** — `saveAll()` schluckte Upload-Fehler; Pflanze wurde trotzdem gespeichert und App navigierte weg → Benutzer sah weder Fehler noch Foto-Verlust; jetzt: nach allen Uploads wird geworfen wenn mindestens ein Foto fehlschlug → Formular bleibt offen, Fehlermeldung erscheint, fehlgeschlagene Fotos sind rot markiert
+- **Foto-Upload: kein Fortschrittsbalken** — Fortschritt startete bei `null` statt `0`, dadurch war `isUploading = false` bis zum ersten XHR-Progress-Event; Progress wird jetzt sofort auf `0` gesetzt wenn der Upload beginnt
+
+---
+
 ## [0.9.5] - 2026-04-16
 
 ### Behoben

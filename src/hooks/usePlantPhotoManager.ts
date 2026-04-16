@@ -153,6 +153,7 @@ export function usePlantPhotoManager() {
     setUploadProgress({});
     setUploadErrors({});
     const ids: string[] = [];
+    const newErrors: Record<string, string> = {};
     try {
       for (const entry of photos) {
         if (entry.kind === "existing") {
@@ -167,6 +168,8 @@ export function usePlantPhotoManager() {
           ids.push(entry.id);
         } else {
           const localId = entry.localId;
+          // Show the bar immediately (not waiting for first progress event)
+          setUploadProgress((prev) => ({ ...prev, [localId]: 0 }));
           try {
             const saved = await photoRepository.createWithFiles(
               {
@@ -188,8 +191,8 @@ export function usePlantPhotoManager() {
           } catch (err) {
             const msg =
               err instanceof Error ? err.message : "Upload fehlgeschlagen";
+            newErrors[localId] = msg;
             setUploadErrors((prev) => ({ ...prev, [localId]: msg }));
-            // Continue uploading remaining photos
           }
         }
       }
@@ -198,6 +201,15 @@ export function usePlantPhotoManager() {
         await photoRepository.removeWithFiles(id);
       }
       removedExistingIdsRef.current = [];
+
+      // After processing all photos, throw if any failed so the caller
+      // (PlantFormPage) can display the error and prevent navigation.
+      const failCount = Object.keys(newErrors).length;
+      if (failCount > 0) {
+        throw new Error(
+          `${failCount} Foto${failCount > 1 ? "s" : ""} konnte${failCount > 1 ? "n" : ""} nicht hochgeladen werden. Bitte die markierten Fotos entfernen oder erneut speichern.`,
+        );
+      }
     } finally {
       setSaving(false);
     }
