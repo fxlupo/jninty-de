@@ -168,44 +168,24 @@ function userEntryToItem(entry: UserPlantKnowledge): KnowledgeBaseItem {
 }
 
 /**
- * Merge built-in plant knowledge with user-created entries into a unified list.
+ * Convert all user-created knowledge entries into KnowledgeBaseItems.
  * Sorted alphabetically by commonName.
  */
 export function loadAllKnowledgeItems(
   userEntries: UserPlantKnowledge[],
 ): KnowledgeBaseItem[] {
-  const builtIn = loadKnowledgeBase();
-
-  const builtInItems: KnowledgeBaseItem[] = builtIn.map((data) => ({
-    id: builtInEntryId(data.species, data.variety),
-    source: "builtin" as const,
-    data,
-  }));
-
-  const customItems: KnowledgeBaseItem[] = userEntries.map(userEntryToItem);
-
-  return [...builtInItems, ...customItems].sort((a, b) =>
+  return userEntries.map(userEntryToItem).sort((a, b) =>
     a.data.commonName.localeCompare(b.data.commonName),
   );
 }
 
 /**
- * Find a knowledge item by ID. Built-in IDs start with "builtin-",
- * custom entries are UUIDs.
+ * Find a knowledge item by UUID from user entries.
  */
 export function findKnowledgeItemById(
   id: string,
   userEntries: UserPlantKnowledge[],
 ): KnowledgeBaseItem | undefined {
-  if (id.startsWith("builtin-")) {
-    const builtIn = loadKnowledgeBase();
-    const entry = builtIn.find(
-      (p) => builtInEntryId(p.species, p.variety) === id,
-    );
-    if (!entry) return undefined;
-    return { id, source: "builtin", data: entry };
-  }
-
   const userEntry = userEntries.find((e) => e.id === id);
   if (!userEntry) return undefined;
   return userEntryToItem(userEntry);

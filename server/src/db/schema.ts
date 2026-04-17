@@ -112,6 +112,7 @@ export const plants = sqliteTable("plant", {
     .$type<string[]>()
     .notNull()
     .default(sql`'[]'`),
+  knowledgeId: text("knowledge_id"),
 });
 
 export const photos = sqliteTable("photo", {
@@ -391,6 +392,41 @@ export const userPlantKnowledge = sqliteTable("user_plant_knowledge", {
   badCompanions: text("bad_companions", { mode: "json" }).$type<string[] | null>(),
   commonPests: text("common_pests", { mode: "json" }).$type<string[] | null>(),
   commonDiseases: text("common_diseases", { mode: "json" }).$type<string[] | null>(),
+  // NaturaDB-style ornamental garden fields
+  bloomMonths: text("bloom_months", { mode: "json" }).$type<number[] | null>(),
+  flowerColors: text("flower_colors", { mode: "json" }).$type<string[] | null>(),
+  winterHardinessC: integer("winter_hardiness_c"),
+  usageTypes: text("usage_types", { mode: "json" }).$type<string[] | null>(),
+  growthHabit: text("growth_habit"),
+  nativeRegion: text("native_region"),
+  heightCm: integer("height_cm"),
+  spreadCm: integer("spread_cm"),
+  spacingCm: integer("spacing_cm"),
+  plantingMonths: text("planting_months", { mode: "json" }).$type<number[] | null>(),
+  pruningMonths: text("pruning_months", { mode: "json" }).$type<number[] | null>(),
+  careNotes: text("care_notes"),
+  sourceUrl: text("source_url"),
+  standortInfo: text("standort_info"),
+  schnittInfo: text("schnitt_info"),
+  vermehrung: text("vermehrung", { mode: "json" }).$type<string[] | null>(),
+  vermehrungInfo: text("vermehrung_info"),
+  verwendungInfo: text("verwendung_info"),
+  schaedlingeInfo: text("schaedlinge_info"),
+});
+
+export const gardenMapPins = sqliteTable("garden_map_pin", {
+  id: text("id").primaryKey(),
+  version: integer("version").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+  userId: text("user_id").notNull(),
+  // Pin fields
+  plantInstanceId: text("plant_instance_id").notNull(),
+  gridX: real("grid_x").notNull(),
+  gridY: real("grid_y").notNull(),
+  sizeM: real("size_m").notNull().default(0.5),
+  label: text("label"),
 });
 
 // ─── Settings (per-user singleton, no baseEntity base) ───────────────────────

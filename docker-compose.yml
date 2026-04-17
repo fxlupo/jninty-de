@@ -7,10 +7,10 @@ services:
         JNINTY_REF: main
     environment:
       PORT: "3001"
-      BETTER_AUTH_SECRET: "change-me-to-a-random-64-char-string"
-      BETTER_AUTH_URL: "https://your-domain.example.com"
-      FRONTEND_ORIGIN: "https://your-domain.example.com"
-      TRUSTED_ORIGINS: "https://your-domain.example.com"
+      BETTER_AUTH_SECRET: "<change-me-to-a-random-64-char-string>"
+      BETTER_AUTH_URL: "https://<your-tld>"
+      FRONTEND_ORIGIN: "https://<your-tld>"
+      TRUSTED_ORIGINS: "https://<your-tld>"
     volumes:
       - jninty_data:/app/data
     networks:

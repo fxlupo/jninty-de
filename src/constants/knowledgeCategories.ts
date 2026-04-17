@@ -18,28 +18,40 @@ export interface KnowledgeSection {
 
 export const PLANT_CATEGORIES: PlantCategory[] = [
   {
-    slug: "vegetables",
-    label: "Vegetables",
-    description: "Edible crops, roots, and leafy greens",
-    plantTypes: ["vegetable"],
+    slug: "blumen",
+    label: "Blumen",
+    description: "Einjährige und mehrjährige Blütenpflanzen",
+    plantTypes: ["flower"],
   },
   {
-    slug: "fruits",
-    label: "Fruits",
-    description: "Fruit trees, berries, and vine fruits",
+    slug: "zierpflanzen",
+    label: "Zierpflanzen",
+    description: "Ornamentale Pflanzen und Ziergräser",
+    plantTypes: ["ornamental"],
+  },
+  {
+    slug: "straeucher",
+    label: "Sträucher",
+    description: "Sträucher, Hecken und Gehölze",
+    plantTypes: ["shrub", "hedge"],
+  },
+  {
+    slug: "obstbaum",
+    label: "Obstbaum",
+    description: "Obstbäume, Beerensträucher und Kletterfrüchte",
     plantTypes: ["fruit_tree", "berry"],
   },
   {
-    slug: "flowers",
-    label: "Flowers",
-    description: "Annuals, perennials, and ornamental blooms",
-    plantTypes: ["flower", "ornamental"],
+    slug: "gemuese-kraeuter",
+    label: "Gemüse/Kräuter",
+    description: "Gemüse, Salate, Kräuter und Heilpflanzen",
+    plantTypes: ["vegetable", "herb"],
   },
   {
-    slug: "herbs",
-    label: "Herbs",
-    description: "Culinary and medicinal herbs",
-    plantTypes: ["herb"],
+    slug: "sonstiges",
+    label: "Sonstiges",
+    description: "Alle übrigen Pflanzen",
+    plantTypes: ["other"],
   },
 ];
 
@@ -47,8 +59,8 @@ export const PLANT_CATEGORIES: PlantCategory[] = [
 export const ALL_KNOWLEDGE_SECTIONS: KnowledgeSection[] = [
   {
     slug: "plants",
-    label: "Plants",
-    description: "Browse plant species and varieties",
+    label: "Pflanzen",
+    description: "Pflanzenarten und Sorten durchsuchen",
     route: "/knowledge",
   },
 ];

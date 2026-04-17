@@ -21,6 +21,7 @@ import plantingSchedulesRouter from "./routes/plantingSchedules.ts";
 import taskRulesRouter from "./routes/taskRules.ts";
 import knowledgeRouter from "./routes/knowledge.ts";
 import photosRouter from "./routes/photos.ts";
+import gardenMapPinsRouter from "./routes/gardenMapPins.ts";
 import resetRouter from "./routes/reset.ts";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
@@ -68,6 +69,7 @@ app.route("/api/planting-schedules", plantingSchedulesRouter);
 app.route("/api/task-rules", taskRulesRouter);
 app.route("/api/knowledge", knowledgeRouter);
 app.route("/api/photos", photosRouter);
+app.route("/api/garden-map-pins", gardenMapPinsRouter);
 app.route("/api/reset", resetRouter);
 
 // ─── Serve uploaded photos as static files ────────────────────────────────────
