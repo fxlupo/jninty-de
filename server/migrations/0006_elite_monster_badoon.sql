@@ -1,0 +1,1 @@
+ALTER TABLE `garden_map_pin` ADD `size_m` real DEFAULT 0.5 NOT NULL;

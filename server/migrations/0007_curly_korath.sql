@@ -1,0 +1,1 @@
+ALTER TABLE `plant` ADD `knowledge_id` text;

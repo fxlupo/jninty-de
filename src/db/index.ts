@@ -14,6 +14,7 @@ export * as seedRepository from "./pouchdb/repositories/seedRepository.ts";
 export * as taskRuleRepository from "./pouchdb/repositories/taskRuleRepository.ts";
 export * as expenseRepository from "./pouchdb/repositories/expenseRepository.ts";
 export * as userPlantKnowledgeRepository from "./pouchdb/repositories/userPlantKnowledgeRepository.ts";
+export * as gardenMapPinRepository from "./pouchdb/repositories/gardenMapPinRepository.ts";
 export * as plantingScheduleRepository from "./pouchdb/repositories/plantingScheduleRepository.ts";
 export * as scheduleTaskRepository from "./pouchdb/repositories/scheduleTaskRepository.ts";
 // ─── Search ───

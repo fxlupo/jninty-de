@@ -7,10 +7,10 @@ services:
         JNINTY_REF: main
     environment:
       PORT: "3001"
-      BETTER_AUTH_SECRET: "change-me-to-a-random-64-char-string"
-      BETTER_AUTH_URL: "https://garten2.creano.de"
-      FRONTEND_ORIGIN: "https://garten2.creano.de"
-      TRUSTED_ORIGINS: "https://garten2.creano.de"
+      BETTER_AUTH_SECRET: "<change-me-to-a-random-64-char-string>"
+      BETTER_AUTH_URL: "https://<your-tld>"
+      FRONTEND_ORIGIN: "https://<your-tld>"
+      TRUSTED_ORIGINS: "https://<your-tld>"
     volumes:
       - jninty_data:/app/data
     networks:

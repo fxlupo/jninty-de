@@ -2,13 +2,12 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { userPlantKnowledgeRepository } from "../db/index.ts";
-import { findKnowledgeItemById, getCropGroup, builtInEntryId } from "../services/knowledgeBase";
+import { findKnowledgeItemById } from "../services/knowledgeBase";
 import { TYPE_LABELS } from "../constants/plantLabels";
 import {
   SUN_LABELS,
   WATER_LABELS,
   GROWTH_RATE_LABELS,
-  SOURCE_LABELS,
 } from "../constants/knowledgeLabels";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -30,6 +29,14 @@ export default function KnowledgeDetailPage() {
     if (!id || userEntries === undefined) return undefined;
     return findKnowledgeItemById(id, userEntries) ?? null;
   }, [id, userEntries]);
+
+  // Related entries with the same cropGroup (other user entries)
+  const relatedEntries = useMemo(() => {
+    if (!item || !userEntries) return [];
+    return userEntries.filter(
+      (e) => e.cropGroup === item.data.cropGroup && e.id !== id,
+    );
+  }, [item, userEntries, id]);
 
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -66,14 +73,14 @@ export default function KnowledgeDetailPage() {
   }, [showDeleteConfirm]);
 
   const handleDelete = async () => {
-    if (!id || !item || item.source !== "custom") return;
+    if (!id || !item) return;
     setDeleting(true);
     try {
       await userPlantKnowledgeRepository.softDelete(id);
-      toast("Eintrag geloescht", "success");
+      toast("Eintrag gelöscht", "success");
       void navigate("/knowledge", { replace: true });
     } catch {
-      toast("Eintrag konnte nicht geloescht werden", "error");
+      toast("Eintrag konnte nicht gelöscht werden", "error");
       setDeleting(false);
     }
   };
@@ -103,13 +110,13 @@ export default function KnowledgeDetailPage() {
           to="/knowledge"
           className="mt-2 inline-block text-sm text-text-heading hover:underline"
         >
-          Zurueck zur Wissensbasis
+          Zurück zur Wissensbasis
         </Link>
       </div>
     );
   }
 
-  const { data, source } = item;
+  const { data } = item;
 
   return (
     <div className="mx-auto max-w-2xl pb-8">
@@ -120,7 +127,7 @@ export default function KnowledgeDetailPage() {
             type="button"
             onClick={() => navigate(-1)}
             className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Zurueck zur Wissensbasis"
+            aria-label="Zurück zur Wissensbasis"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -136,15 +143,46 @@ export default function KnowledgeDetailPage() {
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge>{TYPE_LABELS[data.plantType]}</Badge>
-          <Badge variant={source === "builtin" ? "success" : "warning"}>
-            {SOURCE_LABELS[source]}
-          </Badge>
-          {data.isPerennial && <Badge variant="default">Mehrjaehrig</Badge>}
+          {data.isPerennial && <Badge variant="default">Mehrjährig</Badge>}
           {data.family && <Badge variant="default">{data.family}</Badge>}
         </div>
       </div>
 
       <div className="space-y-4 px-4">
+        {/* Quick stats */}
+        {(data.bloomMonths?.length || data.plantingMonths?.length || data.pruningMonths?.length) && (() => {
+          const MONTH_SHORT = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+          function MonthBar({ months, color, label }: { months: number[]; color: string; label: string }) {
+            if (months.length === 0) return null;
+            return (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-text-secondary">{label}</p>
+                <div className="flex gap-0.5">
+                  {MONTH_SHORT.map((m, i) => {
+                    const active = months.includes(i + 1);
+                    return (
+                      <div key={m} className="flex flex-col items-center gap-0.5" style={{ flex: 1 }}>
+                        <div className={`h-4 w-full rounded-sm ${active ? color : "bg-surface-muted"}`} />
+                        <span className="text-[9px] text-text-secondary">{m}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <Card>
+              <h2 className="font-display text-lg font-semibold text-text-heading">Kalender</h2>
+              <div className="mt-3 space-y-4">
+                <MonthBar months={data.bloomMonths ?? []} color="bg-pink-400" label="Blütezeit" />
+                <MonthBar months={data.plantingMonths ?? []} color="bg-green-500" label="Pflanzzeit" />
+                <MonthBar months={data.pruningMonths ?? []} color="bg-amber-400" label="Schnittzeit" />
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* Growing Info */}
         <Card>
           <h2 className="font-display text-lg font-semibold text-text-heading">
@@ -171,40 +209,151 @@ export default function KnowledgeDetailPage() {
                 </dd>
               </div>
             )}
+            {data.winterHardinessC != null && (
+              <div className="flex justify-between">
+                <dt className="text-sm text-text-secondary">Winterhärte</dt>
+                <dd className="text-sm font-medium text-text-primary">
+                  bis {data.winterHardinessC} °C
+                </dd>
+              </div>
+            )}
+            {data.growthHabit && (
+              <div className="flex justify-between">
+                <dt className="text-sm text-text-secondary">Wuchsform</dt>
+                <dd className="text-sm font-medium text-text-primary">
+                  {data.growthHabit}
+                </dd>
+              </div>
+            )}
             {data.growthRate && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Wachstum</dt>
+                <dt className="text-sm text-text-secondary">Wachstumsrate</dt>
                 <dd className="text-sm font-medium text-text-primary">
                   {GROWTH_RATE_LABELS[data.growthRate]}
                 </dd>
               </div>
             )}
-            {data.matureHeightInches != null && (
+            {(data.heightCm != null || data.matureHeightInches != null) && (
               <div className="flex justify-between">
-                <dt className="text-sm text-text-secondary">Hoehe</dt>
+                <dt className="text-sm text-text-secondary">Höhe</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {data.matureHeightInches}"
+                  {data.heightCm != null ? `${data.heightCm} cm` : `${data.matureHeightInches!}"`}
                 </dd>
               </div>
             )}
-            {data.matureSpreadInches != null && (
+            {(data.spreadCm != null || data.matureSpreadInches != null) && (
               <div className="flex justify-between">
                 <dt className="text-sm text-text-secondary">Breite</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {data.matureSpreadInches}"
+                  {data.spreadCm != null ? `${data.spreadCm} cm` : `${data.matureSpreadInches!}"`}
                 </dd>
               </div>
             )}
-            {data.spacingInches != null && (
+            {(data.spacingCm != null || data.spacingInches != null) && (
               <div className="flex justify-between">
                 <dt className="text-sm text-text-secondary">Abstand</dt>
                 <dd className="text-sm font-medium text-text-primary">
-                  {data.spacingInches}"
+                  {data.spacingCm != null ? `${data.spacingCm} cm` : `${data.spacingInches!}"`}
+                </dd>
+              </div>
+            )}
+            {data.nativeRegion && (
+              <div className="flex justify-between">
+                <dt className="text-sm text-text-secondary">Herkunft</dt>
+                <dd className="text-sm font-medium text-text-primary">
+                  {data.nativeRegion}
                 </dd>
               </div>
             )}
           </dl>
+          {data.flowerColors && data.flowerColors.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-text-secondary">Blütenfarben</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {data.flowerColors.map((c) => (
+                  <Badge key={c} variant="default">{c}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {data.usageTypes && data.usageTypes.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-text-secondary">Verwendung</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {data.usageTypes.map((u) => (
+                  <Badge key={u} variant="success">{u}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
+
+        {/* Verwendung */}
+        {data.verwendungInfo && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Verwendung</h2>
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">{data.verwendungInfo}</p>
+          </Card>
+        )}
+
+        {/* Standort */}
+        {data.standortInfo && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Standort</h2>
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">{data.standortInfo}</p>
+          </Card>
+        )}
+
+        {/* Schnitt */}
+        {data.schnittInfo && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Schnitt</h2>
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">{data.schnittInfo}</p>
+          </Card>
+        )}
+
+        {/* Vermehrung */}
+        {(data.vermehrung && data.vermehrung.length > 0 || data.vermehrungInfo) && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Vermehrung</h2>
+            {data.vermehrung && data.vermehrung.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {data.vermehrung.map((v) => (
+                  <Badge key={v} variant="default">{v}</Badge>
+                ))}
+              </div>
+            )}
+            {data.vermehrungInfo && (
+              <p className="mt-3 text-sm text-text-secondary leading-relaxed">{data.vermehrungInfo}</p>
+            )}
+          </Card>
+        )}
+
+        {/* Care Notes */}
+        {data.careNotes && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Pflegehinweise</h2>
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">{data.careNotes}</p>
+            {data.sourceUrl && (
+              <a
+                href={data.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-block text-xs text-text-secondary underline hover:text-text-primary"
+              >
+                Quelle: {data.sourceUrl}
+              </a>
+            )}
+          </Card>
+        )}
+        {!data.careNotes && data.sourceUrl && (
+          <p className="px-1 text-xs text-text-secondary">
+            Quelle:{" "}
+            <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-text-primary">
+              {data.sourceUrl}
+            </a>
+          </p>
+        )}
 
         {/* Planting Timing */}
         {(data.indoorStartWeeksBeforeLastFrost != null ||
@@ -381,14 +530,15 @@ export default function KnowledgeDetailPage() {
 
         {/* Common Issues */}
         {((data.commonPests && data.commonPests.length > 0) ||
-          (data.commonDiseases && data.commonDiseases.length > 0)) && (
+          (data.commonDiseases && data.commonDiseases.length > 0) ||
+          data.schaedlingeInfo) && (
           <Card>
             <h2 className="font-display text-lg font-semibold text-text-heading">
-              Haeufige Probleme
+              Schädlinge & Krankheiten
             </h2>
             {data.commonPests && data.commonPests.length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium text-text-secondary">Schaedlinge</p>
+                <p className="text-sm font-medium text-text-secondary">Schädlinge</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {data.commonPests.map((p) => (
                     <Badge key={p} variant="warning">
@@ -410,53 +560,45 @@ export default function KnowledgeDetailPage() {
                 </div>
               </div>
             )}
+            {data.schaedlingeInfo && (
+              <p className="mt-3 text-sm text-text-secondary leading-relaxed">{data.schaedlingeInfo}</p>
+            )}
           </Card>
         )}
 
-        {/* Related Varieties */}
-        {(() => {
-          const siblings = getCropGroup(data.cropGroup).filter(
-            (s) => builtInEntryId(s.species, s.variety) !== id,
-          );
-          if (siblings.length === 0) return null;
-          return (
-            <Card>
-              <h2 className="font-display text-lg font-semibold text-text-heading">
-                Verwandte Sorten
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {siblings.map((s) => (
-                  <Link
-                    key={builtInEntryId(s.species, s.variety)}
-                    to={`/knowledge/${builtInEntryId(s.species, s.variety)}`}
-                  >
-                    <Badge variant="default">
-                      {s.variety ?? s.commonName}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </Card>
-          );
-        })()}
-
-        {/* Actions (custom only) */}
-        {source === "custom" && (
-          <div className="flex gap-3">
-            <Button
-              onClick={() => void navigate(`/knowledge/${item.id}/edit`)}
-            >
-              Eintrag bearbeiten
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-terracotta-600 hover:bg-terracotta-400/10"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Loeschen
-            </Button>
-          </div>
+        {/* Related Varieties (same cropGroup, other user entries) */}
+        {relatedEntries.length > 0 && (
+          <Card>
+            <h2 className="font-display text-lg font-semibold text-text-heading">
+              Verwandte Sorten
+            </h2>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {relatedEntries.map((e) => (
+                <Link key={e.id} to={`/knowledge/${e.id}`}>
+                  <Badge variant="default">
+                    {e.variety ?? e.commonName}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </Card>
         )}
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <Button
+            onClick={() => void navigate(`/knowledge/${item.id}/edit`)}
+          >
+            Eintrag bearbeiten
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-terracotta-600 hover:bg-terracotta-400/10"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Löschen
+          </Button>
+        </div>
 
         {/* Delete confirmation dialog */}
         {showDeleteConfirm && (
@@ -474,11 +616,11 @@ export default function KnowledgeDetailPage() {
                 id="delete-dialog-title"
                 className="font-display text-lg font-semibold text-text-primary"
               >
-                {data.commonName} loeschen?
+                {data.commonName} löschen?
               </h3>
               <p className="mt-2 text-sm text-text-secondary">
-                Dieser Wissenseintrag wird dauerhaft entfernt. Diese Aktion
-                cannot be undone.
+                Dieser Wissenseintrag wird dauerhaft entfernt. Diese Aktion kann
+                nicht rückgängig gemacht werden.
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <Button
@@ -487,7 +629,7 @@ export default function KnowledgeDetailPage() {
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting}
                 >
-                  Cancel
+                  Abbrechen
                 </Button>
                 <Button
                   variant="primary"
@@ -495,7 +637,7 @@ export default function KnowledgeDetailPage() {
                   onClick={() => void handleDelete()}
                   disabled={deleting}
                 >
-                  {deleting ? "Loescht..." : "Loeschen"}
+                  {deleting ? "Löscht..." : "Löschen"}
                 </Button>
               </div>
             </Card>

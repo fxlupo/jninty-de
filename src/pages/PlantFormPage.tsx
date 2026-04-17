@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ZodError } from "zod";
-import { plantRepository, photoRepository } from "../db/index.ts";
+import { plantRepository, photoRepository, userPlantKnowledgeRepository } from "../db/index.ts";
 import { addToIndex, serializeIndex } from "../db/search";
+import type { UserPlantKnowledge } from "../validation/userPlantKnowledge.schema.ts";
 import { usePhotoCapture } from "../hooks/usePhotoCapture";
 import { useSettings } from "../hooks/useSettings";
 import { usePlantPhotoManager } from "../hooks/usePlantPhotoManager";
@@ -61,6 +62,11 @@ export default function PlantFormPage() {
   const [purchaseStore, setPurchaseStore] = useState("");
   const [careNotes, setCareNotes] = useState("");
   const [tagsInput, setTagsInput] = useState("");
+  const [knowledgeId, setKnowledgeId] = useState<string>("");
+  const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  const [knowledgeEntries, setKnowledgeEntries] = useState<UserPlantKnowledge[]>([]);
+  const [showKnowledgeDrop, setShowKnowledgeDrop] = useState(false);
+  const knowledgeDropRef = useRef<HTMLDivElement>(null);
 
   const { settings } = useSettings();
   const { capturePhoto, selectPhoto, isProcessing, error: photoError } =
@@ -96,6 +102,9 @@ export default function PlantFormPage() {
       setPurchaseStore(plant.purchaseStore ?? "");
       setCareNotes(plant.careNotes ?? "");
       setTagsInput(plant.tags.join(", "));
+      if (plant.knowledgeId) {
+        setKnowledgeId(plant.knowledgeId);
+      }
 
       // Load all photos, then replace state atomically to prevent duplicates
       // when the effect is re-invoked (e.g. React StrictMode double-mount).
@@ -126,6 +135,22 @@ export default function PlantFormPage() {
       cancelled = true;
     };
   }, [id, navigate]);
+
+  // Load knowledge entries for the picker
+  useEffect(() => {
+    void userPlantKnowledgeRepository.getAll().then(setKnowledgeEntries);
+  }, []);
+
+  // Close knowledge dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (knowledgeDropRef.current && !knowledgeDropRef.current.contains(e.target as Node)) {
+        setShowKnowledgeDrop(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // ─── Photo handlers ───
 
@@ -204,6 +229,8 @@ export default function PlantFormPage() {
       if (trimmedNotes) input.careNotes = trimmedNotes;
 
       if (photoIds) input.photoIds = photoIds;
+
+      if (knowledgeId) input.knowledgeId = knowledgeId;
 
       let plant;
       if (isEditing && id) {
@@ -526,6 +553,81 @@ export default function PlantFormPage() {
                 onChange={(e) => setCareNotes(e.target.value)}
                 className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
               />
+            </div>
+
+            {/* Knowledge link */}
+            <div ref={knowledgeDropRef} className="relative">
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Verknüpfter Wissenseintrag
+              </label>
+              {knowledgeId ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2">
+                  <span className="flex-1 truncate text-sm text-text-primary">
+                    {(() => {
+                      const entry = knowledgeEntries.find((e) => e.id === knowledgeId);
+                      return entry ? `${entry.commonName}${entry.variety ? ` – ${entry.variety}` : ""}` : knowledgeId;
+                    })()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setKnowledgeId(""); setKnowledgeSearch(""); }}
+                    className="shrink-0 text-text-muted hover:text-terracotta-600 transition-colors"
+                    aria-label="Verknüpfung entfernen"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Wissenseintrag suchen..."
+                    value={knowledgeSearch}
+                    onChange={(e) => { setKnowledgeSearch(e.target.value); setShowKnowledgeDrop(true); }}
+                    onFocus={() => setShowKnowledgeDrop(true)}
+                    className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
+                  />
+                  {showKnowledgeDrop && (
+                    <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-border-default bg-surface-elevated shadow-lg">
+                      {knowledgeEntries
+                        .filter((e) => {
+                          if (!knowledgeSearch.trim()) return true;
+                          const q = knowledgeSearch.toLowerCase();
+                          return (
+                            e.commonName.toLowerCase().includes(q) ||
+                            e.species.toLowerCase().includes(q) ||
+                            (e.variety?.toLowerCase().includes(q) ?? false)
+                          );
+                        })
+                        .slice(0, 30)
+                        .map((entry) => (
+                          <button
+                            key={entry.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setKnowledgeId(entry.id);
+                              setKnowledgeSearch("");
+                              setShowKnowledgeDrop(false);
+                            }}
+                            className="flex w-full flex-col px-3 py-2 text-left hover:bg-surface transition-colors"
+                          >
+                            <span className="text-sm font-medium text-text-primary">
+                              {entry.commonName}
+                              {entry.variety && <span className="text-text-muted"> – {entry.variety}</span>}
+                            </span>
+                            <span className="text-xs text-text-muted italic">{entry.species}</span>
+                          </button>
+                        ))}
+                      {knowledgeEntries.length === 0 && (
+                        <p className="px-3 py-2 text-sm text-text-muted">Keine Wissenseinträge vorhanden</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </Card>

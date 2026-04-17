@@ -63,6 +63,65 @@ export const plantKnowledgeSchema = z
     // Common issues
     commonPests: z.array(z.string().min(1)).optional(),
     commonDiseases: z.array(z.string().min(1)).optional(),
+
+    // ─── NaturaDB-style ornamental garden fields ──────────────────────────────
+
+    /** Blütemonate (1 = Januar … 12 = Dezember) */
+    bloomMonths: z.array(z.number().int().min(1).max(12)).optional(),
+
+    /** Blütenfarben, z. B. ["weiß", "rosa"] */
+    flowerColors: z.array(z.string().min(1)).optional(),
+
+    /** Minimale Wintertemperatur in °C, die die Pflanze verträgt, z. B. -20 */
+    winterHardinessC: z.number().int().optional(),
+
+    /** Verwendungszwecke, z. B. ["Beet", "Kübel", "Bodendecker"] */
+    usageTypes: z.array(z.string().min(1)).optional(),
+
+    /** Wuchsform, z. B. "aufrecht", "buschig", "ausladend" */
+    growthHabit: z.string().min(1).optional(),
+
+    /** Herkunftsregion, z. B. "Ostasien", "Mittelmeer" */
+    nativeRegion: z.string().min(1).optional(),
+
+    /** Wuchshöhe in cm */
+    heightCm: z.number().int().positive().optional(),
+
+    /** Wuchsbreite in cm */
+    spreadCm: z.number().int().positive().optional(),
+
+    /** Pflanzabstand in cm */
+    spacingCm: z.number().int().positive().optional(),
+
+    /** Pflanzzeit (Monate 1-12) */
+    plantingMonths: z.array(z.number().int().min(1).max(12)).optional(),
+
+    /** Schnittzeit (Monate 1-12) */
+    pruningMonths: z.array(z.number().int().min(1).max(12)).optional(),
+
+    /** Allgemeine Pflegehinweise (Freitext) */
+    careNotes: z.string().min(1).optional(),
+
+    /** Quell-URL (z. B. naturadb.de-Seite, aus der importiert wurde) */
+    sourceUrl: z.string().url().optional(),
+
+    /** Detaillierte Standortbeschreibung — vollständiger Text aus der Quelle */
+    standortInfo: z.string().min(1).optional(),
+
+    /** Schnittanleitung — vollständiger Text aus der Quelle */
+    schnittInfo: z.string().min(1).optional(),
+
+    /** Vermehrungsmethoden als Schlagworte (z. B. ["Stecklinge", "Aussaat"]) */
+    vermehrung: z.array(z.string().min(1)).optional(),
+
+    /** Vermehrung — vollständiger Text aus der Quelle */
+    vermehrungInfo: z.string().min(1).optional(),
+
+    /** Verwendung — vollständiger Text aus der Quelle */
+    verwendungInfo: z.string().min(1).optional(),
+
+    /** Schädlinge & Krankheiten — vollständiger Text aus der Quelle */
+    schaedlingeInfo: z.string().min(1).optional(),
   })
   .strict();
 

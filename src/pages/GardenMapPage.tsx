@@ -9,7 +9,8 @@ import { Stage, Layer, Rect, Text, Group, Line, Circle } from "react-konva";
 import type Konva from "konva";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { useNavigate } from "react-router-dom";
-import { gardenBedRepository, plantingRepository, plantRepository } from "../db/index.ts";
+import { gardenBedRepository, plantingRepository, plantRepository, gardenMapPinRepository } from "../db/index.ts";
+import type { GardenMapPin } from "../validation/gardenMapPin.schema.ts";
 import type {
   GardenBed,
   BedType,
@@ -20,7 +21,6 @@ import type {
   PlantInstance,
   PlantType,
 } from "../validation/plantInstance.schema.ts";
-import { useSettings } from "../hooks/useSettings";
 import { useActiveSeason } from "../hooks/useActiveSeason";
 import Button from "../components/ui/Button";
 import {
@@ -35,10 +35,23 @@ import CompanionReportSection from "../components/garden/CompanionReportSection.
 
 // ── Constants ──
 
-const CELL_SIZE = 48; // px per grid unit
+const CELL_SIZE = 48;    // px per grid cell (world units)
+const CELL_M = 0.5;      // 1 cell = 50 cm → 2 cells per metre
 const GRID_COLOR = "#e5ddd0";
-const GRID_COLS = 30;
-const GRID_ROWS = 20;
+const GRID_COLS = 60;    // 60 × 0.5 m = 30 m wide (extra space beyond default view)
+const GRID_ROWS = 40;    // 40 × 0.5 m = 20 m tall (extra space beyond default view)
+// Default viewport target: 25 m wide × 15 m tall = 50 × 30 cells
+const DEFAULT_VIEW_COLS = 50;
+const DEFAULT_VIEW_ROWS = 30;
+/** Pin radius in world-units from plant spread diameter.
+ *  sizeM=0.5 → 24 px, 1.0 → 48 px (= 1 cell), 2.0 → 96 px (= 2 cells) */
+function pinRadius(sizeM: number): number {
+  return sizeM * CELL_SIZE;
+}
+
+const ZOOM_MIN = 0.08;
+const ZOOM_MAX = 3;
+const ZOOM_STEP = 1.3;
 
 const BED_COLORS = [
   "#7dbf4e", // green
@@ -82,7 +95,7 @@ const MAX_VISIBLE_TOKENS = 50;
 
 // ── Tool types ──
 
-type Tool = "select" | "draw";
+type Tool = "select" | "edit" | "draw" | "pin";
 
 interface DrawRect {
   startX: number;
@@ -114,7 +127,8 @@ function GridLines({ cols, rows }: { cols: number; rows: number }) {
         key={`v-${x}`}
         points={[x * CELL_SIZE, 0, x * CELL_SIZE, height]}
         stroke={GRID_COLOR}
-        strokeWidth={x % 5 === 0 ? 1 : 0.5}
+        // Every 2 cells = 1 m → thicker accent line
+        strokeWidth={x % 2 === 0 ? 1 : 0.5}
       />,
     );
   }
@@ -125,7 +139,7 @@ function GridLines({ cols, rows }: { cols: number; rows: number }) {
         key={`h-${y}`}
         points={[0, y * CELL_SIZE, width, y * CELL_SIZE]}
         stroke={GRID_COLOR}
-        strokeWidth={y % 5 === 0 ? 1 : 0.5}
+        strokeWidth={y % 2 === 0 ? 1 : 0.5}
       />,
     );
   }
@@ -240,13 +254,122 @@ function PlantTokens({
   );
 }
 
+// ── Plant pin circles ──
+
+function PlantPinLayer({
+  pins,
+  plants,
+  hoveredPinId,
+  selectedPinId,
+  editMode,
+  onPinClick,
+  onPinHover,
+  onPinLeave,
+  onPinDragEnd,
+}: {
+  pins: GardenMapPin[];
+  plants: Map<string, PlantInstance>;
+  hoveredPinId: string | null;
+  selectedPinId: string | null;
+  editMode: boolean;
+  onPinClick: (pin: GardenMapPin) => void;
+  onPinHover: (pinId: string) => void;
+  onPinLeave: () => void;
+  onPinDragEnd: (pin: GardenMapPin, e: Konva.KonvaEventObject<DragEvent>) => void;
+}) {
+  return (
+    <Group>
+      {pins.map((pin) => {
+        const plant = plants.get(pin.plantInstanceId);
+        const r = pinRadius(pin.sizeM ?? 0.5);
+        const cx = (pin.gridX + 0.5) * CELL_SIZE;
+        const cy = (pin.gridY + 0.5) * CELL_SIZE;
+        const color = plant
+          ? (PLANT_TOKEN_COLORS[plant.type] ?? PLANT_TOKEN_COLORS["other"]!)
+          : PLANT_TOKEN_COLORS["other"]!;
+        const initials = plant
+          ? (plant.nickname ?? plant.species).slice(0, 2).toUpperCase()
+          : "??";
+        const isHovered = pin.id === hoveredPinId;
+        const isSelected = pin.id === selectedPinId;
+
+        return (
+          <Group key={pin.id}>
+            {/* Selection ring (edit mode) */}
+            {isSelected && (
+              <Circle
+                x={cx} y={cy}
+                radius={r + 6}
+                fill="transparent"
+                stroke="#2D5016"
+                strokeWidth={3}
+                dash={[8, 4]}
+                listening={false}
+              />
+            )}
+            {/* Hover shadow */}
+            {isHovered && !isSelected && (
+              <Circle
+                x={cx} y={cy}
+                radius={r + 4}
+                fill="rgba(0,0,0,0.12)"
+                listening={false}
+              />
+            )}
+            {/* Main circle */}
+            <Circle
+              x={cx} y={cy}
+              radius={r}
+              fill={color}
+              opacity={0.85}
+              stroke="#fff"
+              strokeWidth={Math.max(1.5, r * 0.05)}
+              shadowColor="rgba(0,0,0,0.3)"
+              shadowBlur={isSelected ? 12 : isHovered ? 8 : 4}
+              shadowOffsetY={2}
+              draggable={editMode}
+              onClick={() => onPinClick(pin)}
+              onTap={() => onPinClick(pin)}
+              onMouseEnter={() => onPinHover(pin.id)}
+              onMouseLeave={() => onPinLeave()}
+              onDragEnd={(e) => onPinDragEnd(pin, e)}
+            />
+            {/* Initials label (only when pin is large enough) */}
+            {r >= 12 && (
+              <Text
+                x={cx - r} y={cy - r * 0.45}
+                width={r * 2} height={r}
+                text={initials}
+                fontSize={Math.max(8, r * 0.65)}
+                fontFamily="Inter, sans-serif"
+                fontStyle="bold"
+                fill="#fff"
+                align="center"
+                listening={false}
+              />
+            )}
+          </Group>
+        );
+      })}
+    </Group>
+  );
+}
+
+
 // ── Bed detail sidebar ──
+
+/** Format grid cells as a human-readable metre string, e.g. 4 cells → "2,0 m" */
+function cellsToM(cells: number): string {
+  return (cells * CELL_M).toLocaleString("de-DE", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }) + " m";
+}
 
 function BedDetailPanel({
   bed,
   plantings,
   plants,
-  unit,
   hasActiveSeason,
   companionReport,
   companionStatuses,
@@ -260,7 +383,6 @@ function BedDetailPanel({
   bed: GardenBed;
   plantings: Planting[];
   plants: Map<string, PlantInstance>;
-  unit: string;
   hasActiveSeason: boolean;
   companionReport: CompanionReport;
   companionStatuses: Map<string, PlantTokenStatus>;
@@ -461,9 +583,9 @@ function BedDetailPanel({
                 </dd>
               </div>
               <div>
-                <dt className="font-medium text-text-secondary">Size</dt>
+                <dt className="font-medium text-text-secondary">Größe</dt>
                 <dd className="text-text-primary">
-                  {bed.gridWidth} x {bed.gridHeight} {unit}
+                  {cellsToM(bed.gridWidth)} × {cellsToM(bed.gridHeight)}
                 </dd>
               </div>
               {bed.sunExposure && (
@@ -847,16 +969,122 @@ function AssignPlantModal({
   );
 }
 
+// ── Plant pin picker modal ──
+
+function PinPlantPickerModal({
+  plants,
+  onPick,
+  onClose,
+}: {
+  plants: PlantInstance[];
+  onPick: (plantInstanceId: string, sizeM: number) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [sizeM, setSizeM] = useState(0.5);
+
+  const filtered = plants
+    .filter((p) => p.status !== "removed" && p.status !== "dead")
+    .filter((p) => {
+      if (!search.trim()) return true;
+      const term = search.toLowerCase();
+      return (
+        p.nickname?.toLowerCase().includes(term) ||
+        p.species.toLowerCase().includes(term) ||
+        p.variety?.toLowerCase().includes(term)
+      );
+    });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="flex max-h-[70vh] w-full max-w-sm flex-col rounded-xl bg-surface-elevated shadow-xl">
+        <div className="p-5 pb-3">
+          <h3 className="mb-1 font-display text-lg font-bold text-text-heading">
+            Pflanze platzieren
+          </h3>
+          <p className="mb-3 text-xs text-text-muted">
+            Wähle eine Pflanze — sie wird als Kreismarkierung auf der Karte eingefügt.
+          </p>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:border-focus-ring focus:outline-none focus:ring-1 focus:ring-focus-ring"
+            placeholder="Pflanzen suchen..."
+            autoFocus
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          {filtered.length === 0 ? (
+            <p className="py-4 text-center text-sm text-text-muted">
+              Keine Pflanzen gefunden.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {filtered.map((plant) => (
+                <li key={plant.id}>
+                  <button
+                    onClick={() => onPick(plant.id, sizeM)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface"
+                  >
+                    <span
+                      className="inline-block h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: PLANT_TOKEN_COLORS[plant.type] ?? PLANT_TOKEN_COLORS["other"] }}
+                    />
+                    <span className="font-medium text-text-primary">
+                      {plant.nickname ?? plant.species}
+                    </span>
+                    {plant.variety && (
+                      <span className="text-xs text-text-muted">({plant.variety})</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {/* Size selector */}
+        <div className="border-t border-border-default px-5 py-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-text-secondary">Anfangsgröße (Durchmesser)</span>
+            <span className="text-xs font-semibold text-text-primary tabular-nums">{sizeM.toFixed(1)} m</span>
+          </div>
+          <input
+            type="range"
+            min={0.1}
+            max={6}
+            step={0.1}
+            value={sizeM}
+            onChange={(e) => setSizeM(Number(e.target.value))}
+            className="w-full accent-green-600"
+          />
+          <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
+            <span>10 cm</span><span>1 m</span><span>3 m</span><span>6 m</span>
+          </div>
+        </div>
+        <div className="border-t border-border-default p-4">
+          <Button variant="secondary" onClick={onClose} className="w-full">
+            Abbrechen
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main GardenMapPage ──
 
 export default function GardenMapPage() {
-  const { settings } = useSettings();
   const navigate = useNavigate();
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Canvas dimensions
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+
+  // Zoom scale — used only for UI indicator; real scale lives in the Konva stage
+  const [stageScale, setStageScale] = useState(1);
+  const scaleInitialized = useRef(false);
 
   // Tool state
   const [tool, setTool] = useState<Tool>("select");
@@ -877,6 +1105,12 @@ export default function GardenMapPage() {
     messages: string[];
   } | null>(null);
 
+  // Plant pin state
+  const pendingPinPosRef = useRef<{ gridX: number; gridY: number } | null>(null);
+  const [showPinPicker, setShowPinPicker] = useState(false);
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+
   // Refs for drawing — avoids stale closure in mouseUp when mouseDown
   // state hasn't been committed yet (React batches updates)
   const isDrawingRef = useRef(false);
@@ -886,12 +1120,14 @@ export default function GardenMapPage() {
   const emptyBeds: GardenBed[] = useMemo(() => [], []);
   const emptyPlantings: Planting[] = useMemo(() => [], []);
   const emptyPlants: PlantInstance[] = useMemo(() => [], []);
+  const emptyPins: GardenMapPin[] = useMemo(() => [], []);
 
   const beds = usePouchQuery(() => gardenBedRepository.getAll()) ?? emptyBeds;
   const allPlantings =
     usePouchQuery(() => plantingRepository.getAll()) ?? emptyPlantings;
   const rawPlants =
     usePouchQuery(() => plantRepository.getAll()) ?? emptyPlants;
+  const pins = usePouchQuery(() => gardenMapPinRepository.getAll()) ?? emptyPins;
 
   const activeSeason = useActiveSeason();
 
@@ -949,16 +1185,108 @@ export default function GardenMapPage() {
     return () => observer.disconnect();
   }, []);
 
+  // Fit-to-view: set Konva stage scale once when container size is first known
+  useEffect(() => {
+    if (scaleInitialized.current) return;
+    if (stageSize.width === 0 || stageSize.height === 0) return;
+    const scale = Math.min(
+      stageSize.width / (DEFAULT_VIEW_COLS * CELL_SIZE),
+      stageSize.height / (DEFAULT_VIEW_ROWS * CELL_SIZE),
+    );
+    const stage = stageRef.current;
+    if (stage) {
+      stage.scale({ x: scale, y: scale });
+      stage.position({ x: 0, y: 0 });
+    }
+    setStageScale(scale);
+    scaleInitialized.current = true;
+  }, [stageSize]);
+
+  // ── Zoom helpers ──
+
+  const applyZoom = useCallback((newScale: number, focalX: number, focalY: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newScale));
+    const oldScale = stage.scaleX();
+    const pointTo = {
+      x: (focalX - stage.x()) / oldScale,
+      y: (focalY - stage.y()) / oldScale,
+    };
+    stage.scale({ x: clamped, y: clamped });
+    stage.position({
+      x: focalX - pointTo.x * clamped,
+      y: focalY - pointTo.y * clamped,
+    });
+    setStageScale(clamped);
+  }, []);
+
+  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    const direction = e.evt.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+    applyZoom(stage.scaleX() * direction, pointer.x, pointer.y);
+  }, [applyZoom]);
+
+  const handleZoomIn = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    applyZoom(stage.scaleX() * ZOOM_STEP, stageSize.width / 2, stageSize.height / 2);
+  }, [applyZoom, stageSize]);
+
+  const handleZoomOut = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    applyZoom(stage.scaleX() / ZOOM_STEP, stageSize.width / 2, stageSize.height / 2);
+  }, [applyZoom, stageSize]);
+
+  const handleFitView = useCallback(() => {
+    if (stageSize.width === 0 || stageSize.height === 0) return;
+    const scale = Math.min(
+      stageSize.width / (DEFAULT_VIEW_COLS * CELL_SIZE),
+      stageSize.height / (DEFAULT_VIEW_ROWS * CELL_SIZE),
+    );
+    const stage = stageRef.current;
+    if (stage) {
+      stage.scale({ x: scale, y: scale });
+      stage.position({ x: 0, y: 0 });
+      setStageScale(scale);
+    }
+  }, [stageSize]);
+
+  // ── Screen → world coordinate helper (accounts for zoom + pan) ──
+  const toWorld = useCallback((screenX: number, screenY: number) => {
+    const stage = stageRef.current;
+    if (!stage) return { x: 0, y: 0 };
+    return {
+      x: (screenX - stage.x()) / stage.scaleX(),
+      y: (screenY - stage.y()) / stage.scaleY(),
+    };
+  }, []);
+
   // ── Drawing handlers ──
 
   const handleStageMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (tool !== "draw") return;
-
       const stage = e.target.getStage();
       if (!stage) return;
-      const pos = stage.getPointerPosition();
-      if (!pos) return;
+      const screenPos = stage.getPointerPosition();
+      if (!screenPos) return;
+      const pos = toWorld(screenPos.x, screenPos.y);
+
+      if (tool === "pin") {
+        // Place a pin at the clicked cell
+        const gx = Math.floor(pos.x / CELL_SIZE);
+        const gy = Math.floor(pos.y / CELL_SIZE);
+        pendingPinPosRef.current = { gridX: gx, gridY: gy };
+        setShowPinPicker(true);
+        return;
+      }
+
+      if (tool !== "draw") return;
 
       const rect: DrawRect = {
         startX: pos.x,
@@ -971,7 +1299,7 @@ export default function GardenMapPage() {
       setIsDrawing(true);
       setDrawRect(rect);
     },
-    [tool],
+    [tool, toWorld],
   );
 
   const handleStageMouseMove = useCallback(
@@ -980,14 +1308,15 @@ export default function GardenMapPage() {
 
       const stage = e.target.getStage();
       if (!stage) return;
-      const pos = stage.getPointerPosition();
-      if (!pos) return;
+      const screenPos = stage.getPointerPosition();
+      if (!screenPos) return;
+      const pos = toWorld(screenPos.x, screenPos.y);
 
       const updated = { ...drawRectRef.current, endX: pos.x, endY: pos.y };
       drawRectRef.current = updated;
       setDrawRect(updated);
     },
-    [],
+    [toWorld],
   );
 
   const handleStageMouseUp = useCallback(() => {
@@ -1026,8 +1355,9 @@ export default function GardenMapPage() {
 
   const handleBedClick = useCallback(
     (bedId: string) => {
-      if (tool === "select") {
+      if (tool === "select" || tool === "edit") {
         setSelectedBedId((prev) => (prev === bedId ? null : bedId));
+        setSelectedPinId(null);
       }
     },
     [tool],
@@ -1076,6 +1406,52 @@ export default function GardenMapPage() {
     await gardenBedRepository.softDelete(selectedBedId);
     setSelectedBedId(null);
   }, [selectedBedId, beds]);
+
+  // ── Plant pin handlers ──
+
+  const handleCreatePin = useCallback(async (plantInstanceId: string, sizeM: number) => {
+    const pos = pendingPinPosRef.current;
+    if (!pos) return;
+    try {
+      await gardenMapPinRepository.create({
+        plantInstanceId,
+        gridX: pos.gridX,
+        gridY: pos.gridY,
+        sizeM,
+      });
+      pendingPinPosRef.current = null;
+      setShowPinPicker(false);
+    } catch (err) {
+      console.error("Fehler beim Erstellen des Pflanzen-Pins:", err);
+      alert("Pflanze konnte nicht platziert werden. Bitte erneut versuchen.");
+    }
+  }, []);
+
+  const handlePinClick = useCallback((pin: GardenMapPin) => {
+    if (tool === "pin") {
+      void gardenMapPinRepository.softDelete(pin.id);
+    } else if (tool === "edit") {
+      setSelectedPinId((prev) => prev === pin.id ? null : pin.id);
+      setSelectedBedId(null);
+    } else {
+      // select mode: navigate directly to the plant page
+      void navigate(`/plants/${pin.plantInstanceId}`);
+    }
+  }, [tool, navigate]);
+
+  const handlePinSizeChange = useCallback((pinId: string, sizeM: number) => {
+    void gardenMapPinRepository.update(pinId, { sizeM });
+  }, []);
+
+  const handlePinDragEnd = useCallback((pin: GardenMapPin, e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    // Circle x/y = center = (gridX + 0.5) * CELL_SIZE → invert to get gridX
+    const newGx = Math.max(0, Math.round(node.x() / CELL_SIZE - 0.5));
+    const newGy = Math.max(0, Math.round(node.y() / CELL_SIZE - 0.5));
+    node.x((newGx + 0.5) * CELL_SIZE);
+    node.y((newGy + 0.5) * CELL_SIZE);
+    void gardenMapPinRepository.update(pin.id, { gridX: newGx, gridY: newGy });
+  }, []);
 
   // ── Assign / remove plant from bed ──
 
@@ -1165,7 +1541,8 @@ export default function GardenMapPage() {
 
   // Stage cursor — set directly on Konva's container element so it isn't
   // overridden by the canvas element's inline styles.
-  const stageCursor = tool === "draw" ? "crosshair" : "default";
+  const stageCursor = tool === "draw" || tool === "pin" ? "crosshair" : "default";
+  const stageIsDraggable = tool === "select" || tool === "edit";
 
   useEffect(() => {
     const container = stageRef.current?.container();
@@ -1183,6 +1560,7 @@ export default function GardenMapPage() {
             onClick={() => {
               setTool("select");
               setSelectedBedId(null);
+              setSelectedPinId(null);
             }}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               tool === "select"
@@ -1191,16 +1569,29 @@ export default function GardenMapPage() {
             }`}
           >
             <span className="flex items-center gap-1.5">
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
               </svg>
-              Select
+              Ansehen
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setTool("edit");
+              setSelectedPinId(null);
+            }}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              tool === "edit"
+                ? "bg-surface-elevated text-text-heading shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Bearbeiten
             </span>
           </button>
           <button
@@ -1215,29 +1606,79 @@ export default function GardenMapPage() {
             }`}
           >
             <span className="flex items-center gap-1.5">
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <rect x="3" y="3" width="18" height="18" rx="2" />
               </svg>
-              Beet hinzufügen
+              Beet
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setTool("pin");
+              setSelectedBedId(null);
+            }}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              tool === "pin"
+                ? "bg-surface-elevated text-text-heading shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="7" />
+                <path d="M12 5v2M12 17v2M5 12h2M17 12h2" />
+              </svg>
+              Pflanze
             </span>
           </button>
         </div>
 
         <div className="h-5 w-px bg-surface-muted" />
 
-        <span className="text-xs text-text-muted">
-          1 square = 1 {settings.gridUnit === "feet" ? "ft" : "m"}
-        </span>
+        {/* Zoom controls */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleZoomOut}
+            className="rounded-md px-2 py-1.5 text-sm font-bold text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+            aria-label="Verkleinern"
+          >−</button>
+          <button
+            onClick={handleFitView}
+            className="rounded-md px-2 py-1 text-xs text-text-muted hover:bg-surface hover:text-text-primary transition-colors tabular-nums"
+            aria-label="Ansicht zurücksetzen"
+            title="Ansicht zurücksetzen"
+          >
+            {Math.round(stageScale * 100)} %
+          </button>
+          <button
+            onClick={handleZoomIn}
+            className="rounded-md px-2 py-1.5 text-sm font-bold text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+            aria-label="Vergrößern"
+          >+</button>
+        </div>
+
+        <div className="h-5 w-px bg-surface-muted" />
+
+        <span className="text-xs text-text-muted">1 Feld = 50 cm</span>
 
         {tool === "draw" && (
           <span className="text-xs font-medium text-text-heading">
-            Click and drag on the grid to draw a bed
+            Auf dem Raster ziehen um ein Beet anzulegen
+          </span>
+        )}
+        {tool === "pin" && (
+          <span className="text-xs font-medium text-text-heading">
+            Klicken um Pflanze zu platzieren · Klick auf Kreis entfernt ihn
+          </span>
+        )}
+        {tool === "select" && (
+          <span className="text-xs text-text-muted">
+            Scrollen = Zoom · Ziehen = Verschieben · Klick auf Pflanze = Pflanzenseite
+          </span>
+        )}
+        {tool === "edit" && (
+          <span className="text-xs text-text-muted">
+            Beete und Pflanzen ziehen zum Verschieben · Klick zum Bearbeiten
           </span>
         )}
 
@@ -1265,6 +1706,8 @@ export default function GardenMapPage() {
             ref={stageRef}
             width={stageSize.width}
             height={stageSize.height}
+            draggable={stageIsDraggable}
+            onWheel={handleWheel}
             onMouseDown={handleStageMouseDown}
             onMouseMove={handleStageMouseMove}
             onMouseUp={handleStageMouseUp}
@@ -1272,9 +1715,9 @@ export default function GardenMapPage() {
             onTouchMove={handleStageMouseMove}
             onTouchEnd={handleStageMouseUp}
             onClick={(e) => {
-              // Deselect when clicking on empty canvas
               if (e.target === e.target.getStage()) {
                 setSelectedBedId(null);
+                setSelectedPinId(null);
               }
             }}
           >
@@ -1309,7 +1752,7 @@ export default function GardenMapPage() {
                       shadowColor={isSelected ? "#2D5016" : "transparent"}
                       shadowBlur={isSelected ? 8 : 0}
                       shadowOpacity={0.3}
-                      draggable={tool === "select"}
+                      draggable={tool === "edit"}
                       onClick={() => handleBedClick(bed.id)}
                       onTap={() => handleBedClick(bed.id)}
                       onDragEnd={(e) => {
@@ -1352,6 +1795,19 @@ export default function GardenMapPage() {
                 );
               })}
 
+              {/* Plant pins (free-standing circles) */}
+              <PlantPinLayer
+                pins={pins}
+                plants={plantsMap}
+                hoveredPinId={hoveredPinId}
+                selectedPinId={selectedPinId}
+                editMode={tool === "edit"}
+                onPinClick={handlePinClick}
+                onPinHover={setHoveredPinId}
+                onPinLeave={() => setHoveredPinId(null)}
+                onPinDragEnd={handlePinDragEnd}
+              />
+
               {/* Drawing preview rectangle */}
               {drawRect && isDrawing && (
                 <Rect
@@ -1386,13 +1842,78 @@ export default function GardenMapPage() {
           </div>
         )}
 
+        {/* Pin edit panel (edit mode) */}
+        {tool === "edit" && selectedPinId && (() => {
+          const pin = pins.find((p) => p.id === selectedPinId);
+          if (!pin) return null;
+          const plant = plantsMap.get(pin.plantInstanceId);
+          const stage = stageRef.current;
+          const scale = stage?.scaleX() ?? stageScale;
+          const ox = stage?.x() ?? 0;
+          const oy = stage?.y() ?? 0;
+          const sx = (pin.gridX + 0.5) * CELL_SIZE * scale + ox;
+          const sy = (pin.gridY + 0.5) * CELL_SIZE * scale + oy;
+          const panelLeft = Math.min(sx + 12, stageSize.width - 240);
+          const panelTop = Math.max(8, sy - 70);
+          return (
+            <div
+              className="absolute z-30 w-56 rounded-xl border border-border-default bg-surface-elevated p-3 shadow-xl"
+              style={{ left: panelLeft, top: panelTop }}
+            >
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-sm font-semibold text-text-heading leading-tight truncate">
+                  {plant ? (plant.nickname ?? plant.species) : "Unbekannte Pflanze"}
+                </p>
+                <button
+                  onClick={() => setSelectedPinId(null)}
+                  className="shrink-0 rounded p-0.5 text-text-muted hover:bg-surface"
+                  aria-label="Schließen"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-xs text-text-secondary">Durchmesser</span>
+                  <span className="text-xs font-medium tabular-nums">{(pin.sizeM ?? 0.5).toFixed(1)} m</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.1} max={6} step={0.1}
+                  defaultValue={pin.sizeM ?? 0.5}
+                  onChange={(e) => handlePinSizeChange(pin.id, Number(e.target.value))}
+                  className="w-full accent-green-600"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void navigate(`/plants/${pin.plantInstanceId}`)}
+                  className="flex-1 rounded-lg bg-primary px-2 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
+                >
+                  Pflanzenseite
+                </button>
+                <button
+                  onClick={() => {
+                    void gardenMapPinRepository.softDelete(pin.id);
+                    setSelectedPinId(null);
+                  }}
+                  className="rounded-lg px-2 py-1.5 text-xs font-medium text-terracotta-600 hover:bg-terracotta-400/10 transition-colors"
+                >
+                  Entfernen
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Bed detail sidebar */}
         {selectedBed && (
           <BedDetailPanel
             bed={selectedBed}
             plantings={allPlantings}
             plants={plantsMap}
-            unit={settings.gridUnit === "feet" ? "ft" : "m"}
             hasActiveSeason={activeSeason != null}
             companionReport={
               allCompanionData.reports.get(selectedBed.id) ?? {
@@ -1435,6 +1956,18 @@ export default function GardenMapPage() {
           plants={rawPlants}
           onAssign={(plantId) => void handleAssignPlant(plantId)}
           onClose={() => setShowAssignPlant(false)}
+        />
+      )}
+
+      {/* Pin plant picker */}
+      {showPinPicker && (
+        <PinPlantPickerModal
+          plants={rawPlants}
+          onPick={(plantId, sizeM) => void handleCreatePin(plantId, sizeM)}
+          onClose={() => {
+            pendingPinPosRef.current = null;
+            setShowPinPicker(false);
+          }}
         />
       )}
     </div>

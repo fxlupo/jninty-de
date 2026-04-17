@@ -28,6 +28,8 @@ import {
   ChevronLeftIcon,
   PlusIcon,
 } from "../components/icons";
+import { userPlantKnowledgeRepository } from "../db/index.ts";
+import type { UserPlantKnowledge } from "../validation/userPlantKnowledge.schema.ts";
 import Skeleton from "../components/ui/Skeleton";
 import { formatBrowserDate, formatDate } from "../lib/locale";
 
@@ -70,6 +72,15 @@ export default function PlantDetailPage() {
 
   // All seasons (for looking up season names)
   const seasons = usePouchQuery(() => seasonRepository.getAll(), []);
+
+  // Linked knowledge entry (if any)
+  const [knowledgeEntry, setKnowledgeEntry] = useState<UserPlantKnowledge | null>(null);
+  useEffect(() => {
+    if (!plant?.knowledgeId) { setKnowledgeEntry(null); return; }
+    void userPlantKnowledgeRepository.getById(plant.knowledgeId).then((entry) => {
+      setKnowledgeEntry(entry ?? null);
+    });
+  }, [plant?.knowledgeId]);
 
   // Metadata for plant-level photos (takenAt, createdAt — no blobs)
   const plantPhotosMeta = usePouchQuery(
@@ -422,6 +433,32 @@ export default function PlantDetailPage() {
           <PlusIcon className="h-5 w-5" />
           Quick Log
         </Link>
+
+        {/* Knowledge entry link */}
+        {plant.knowledgeId && (
+          <Link
+            to={`/knowledge/${plant.knowledgeId}`}
+            className="flex items-center gap-3 rounded-xl border border-border-default bg-surface-elevated px-4 py-3 transition-colors hover:bg-surface"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-700">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-heading">Wissenseintrag</p>
+              <p className="truncate text-xs text-text-muted">
+                {knowledgeEntry
+                  ? `${knowledgeEntry.commonName}${knowledgeEntry.variety ? ` – ${knowledgeEntry.variety}` : ""}`
+                  : "Eintrag öffnen"}
+              </p>
+            </div>
+            <svg className="h-4 w-4 shrink-0 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
+        )}
 
         {/* Plant details card */}
         <Card>

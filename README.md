@@ -3,25 +3,30 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline--ready-5A0FC8?logo=pwa&logoColor=white)
 
 **Persönliches Gartenjournal und Verwaltungs-PWA — komplett selbst gehostet.**  
-Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben und Wetter in einer App. Mehrere Benutzer werden unterstützt — jeder sieht nur seine eigenen Daten.
+Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Gartenkarte und Wetter in einer App. Mehrere Benutzer werden unterstützt — jeder sieht nur seine eigenen Daten.
 
 ---
 
 ## Funktionen
 
-- **Pflanzenbestand** — Pflanzen mit Fotos, Art, Sorte, Pflegenotizen und Lebenszyklusstatus verwalten
+- **Pflanzenbestand** — Pflanzen mit Fotos, Art, Sorte, Pflegenotizen und Lebenszyklusstatus verwalten; direkte Verknüpfung mit einem Wissenseintrag
 - **Gartenjournal** — Tägliche Aktivitäten mit Fotos dokumentieren, optional mit Wetter-Snapshot
 - **Schnellprotokoll** — Foto-zentrierter 3-Tap-Ablauf für schnelle Notizen im Garten
-- **Wissensbasis** — Integrierte Anbauhinweise für Gemüse, Kräuter, Obst und Blumen mit Zeitplanung, Abständen und Mischkulturinfos; eigene Einträge möglich
+- **Wissensbasis** — Anbauhinweise für Gemüse, Kräuter, Obst und Blumen; Import per URL (NaturaDB u. a.); KI-gestützte Feldextraktion; eigene Einträge möglich
 - **Pflanzkalender** — Zeitachsen-, Jahres- und Monatsansichten für Anbauplanung und Saisonorganisation
 - **Aufgabenverwaltung** — Aufgaben anlegen, priorisieren und nachverfolgen; automatische Erstellung aus Pflegeplänen
-- **Gartenkarte** — Visueller Editor für Beete und Gartenflächen (Konva.js)
+- **Gartenkarte** — Visueller Karteneditor (Konva.js) mit metrischem Raster (1 Zelle = 50 cm), Zoom, Pan, drei Modi:
+  - *Ansehen* — Karte navigieren, Beet-Details anzeigen, Pflanzenpins direkt zur Pflanzenseite verlinken
+  - *Bearbeiten* — Beete und Pflanzenpins per Drag & Drop verschieben (Snap to Grid); Pingrößen anpassen; Einträge löschen
+  - *Beet anlegen* — Rechteck auf dem Raster zeichnen, Beet benennen und einfärben
+  - *Pflanze platzieren* — Pflanzen als skalierbare Kreismarkierungen direkt auf der Karte platzieren (ohne Beet)
 - **Saatgutbank** — Saatgutbestand mit Kaufdatum, Ablaufdatum und Keimraten verwalten
 - **Saisons & Pflanzungen** — Saisonbasierte Pflanzungsdaten mit Frostterminen und Jahresvergleich
 - **Ausgaben** — Gartenausgaben nach Kategorien und Saison erfassen und filtern
@@ -256,6 +261,28 @@ BETTER_AUTH_SECRET=beliebiger-lokaler-string
 BETTER_AUTH_URL=http://localhost:3001
 TRUSTED_ORIGINS=http://localhost:5173
 ```
+
+---
+
+## Changelog
+
+### 1.0.0 (2026-04-17)
+
+**Gartenkarte — vollständig überarbeitet**
+- Metrisches Raster: 1 Zelle = 50 cm, Betonungslinien alle 1 m
+- Standard-Ansicht: 25 m × 15 m sichtbarer Bereich beim Öffnen
+- Zoom per Mausrad (auf Cursor zentriert) und Toolbar-Buttons
+- Drei Werkzeugmodi: *Ansehen*, *Bearbeiten*, *Beet anlegen*, *Pflanze platzieren*
+- **Bearbeiten-Modus**: Beete und Pflanzenpins per Drag & Drop verschieben (Snap to Grid); Pingrößen-Slider; Einträge löschen
+- **Pflanzenpins**: Pflanzen als Kreismarkierungen direkt auf der Karte platzieren (ohne Beet); Größe skalierbar (Durchmesser in Metern); Klick navigiert direkt zur Pflanzenseite
+
+**Pflanzen**
+- Verknüpfung mit einem Wissenseintrag: durchsuchbares Dropdown im Pflanzenformular; klickbarer Link auf der Pflanzendetailseite
+
+**Wissensbasis**
+- KI-Prompt verbessert: Felder `verwendungInfo` und `schaedlingeInfo` werden jetzt zuverlässig befüllt
+- Detailseite: neue Karten für Verwendung und Schädlinge & Krankheiten
+- Formular: neue Textfelder für `verwendungInfo` und `schaedlingeInfo`
 
 ---
 
