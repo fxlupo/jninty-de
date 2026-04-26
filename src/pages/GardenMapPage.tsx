@@ -1212,6 +1212,9 @@ export default function GardenMapPage() {
     messages: string[];
   } | null>(null);
 
+  // Last known view state — updated on every zoom/pan so cleanup always has valid values
+  const lastViewRef = useRef({ scaleX: 1, x: 0, y: 0 });
+
   // Plant pin state
   const pendingPinPosRef = useRef<{ gridX: number; gridY: number } | null>(null);
   const [showPinPicker, setShowPinPicker] = useState(false);
@@ -1306,6 +1309,7 @@ export default function GardenMapPage() {
         const { scaleX, x, y } = JSON.parse(saved) as { scaleX: number; x: number; y: number };
         stage.scale({ x: scaleX, y: scaleX });
         stage.position({ x, y });
+        lastViewRef.current = { scaleX, x, y };
         setDisplayScale(scaleX);
         scaleInitialized.current = true;
         return;
@@ -1320,19 +1324,17 @@ export default function GardenMapPage() {
     );
     stage.scale({ x: scale, y: scale });
     stage.position({ x: 0, y: 0 });
+    lastViewRef.current = { scaleX: scale, x: 0, y: 0 };
     setDisplayScale(scale);
     scaleInitialized.current = true;
   }, [stageSize]);
 
-  // Persist zoom+pan to sessionStorage on unmount so navigation back restores the view
+  // Persist zoom+pan to sessionStorage on unmount.
+  // Uses lastViewRef (always valid) instead of reading from the Konva stage
+  // which may already be destroyed when the cleanup runs.
   useEffect(() => {
     return () => {
-      const stage = stageRef.current;
-      if (!stage) return;
-      sessionStorage.setItem(
-        "gardenMap.view",
-        JSON.stringify({ scaleX: stage.scaleX(), x: stage.x(), y: stage.y() }),
-      );
+      sessionStorage.setItem("gardenMap.view", JSON.stringify(lastViewRef.current));
     };
   }, []);
 
@@ -1347,11 +1349,11 @@ export default function GardenMapPage() {
       x: (focalX - stage.x()) / oldScale,
       y: (focalY - stage.y()) / oldScale,
     };
+    const newX = focalX - pointTo.x * clamped;
+    const newY = focalY - pointTo.y * clamped;
     stage.scale({ x: clamped, y: clamped });
-    stage.position({
-      x: focalX - pointTo.x * clamped,
-      y: focalY - pointTo.y * clamped,
-    });
+    stage.position({ x: newX, y: newY });
+    lastViewRef.current = { scaleX: clamped, x: newX, y: newY };
     scheduleDisplayScale(clamped);
   }, [scheduleDisplayScale]);
 
@@ -1387,6 +1389,7 @@ export default function GardenMapPage() {
     if (stage) {
       stage.scale({ x: scale, y: scale });
       stage.position({ x: 0, y: 0 });
+      lastViewRef.current = { scaleX: scale, x: 0, y: 0 };
       setDisplayScale(scale);
     }
   }, [stageSize]);
@@ -1848,6 +1851,17 @@ export default function GardenMapPage() {
             onTouchStart={handleStageMouseDown}
             onTouchMove={handleStageMouseMove}
             onTouchEnd={handleStageMouseUp}
+            onDragEnd={(e) => {
+              // Capture pan position so it can be saved to sessionStorage on unmount
+              const stage = e.target.getStage();
+              if (stage) {
+                lastViewRef.current = {
+                  scaleX: stage.scaleX(),
+                  x: stage.x(),
+                  y: stage.y(),
+                };
+              }
+            }}
             onClick={(e) => {
               if (e.target === e.target.getStage()) {
                 setSelectedBedId(null);
