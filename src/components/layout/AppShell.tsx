@@ -524,6 +524,15 @@ export default function AppShell() {
           {/* Secondary nav links for mobile — accessible via header */}
           <div className="flex items-center gap-3">
             <NavLink
+              to="/calendar"
+              aria-label="Kalender"
+              className={({ isActive }) =>
+                `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
+              }
+            >
+              <CalendarIcon className="h-5 w-5" />
+            </NavLink>
+            <NavLink
               to="/journal"
               aria-label="Journal"
               className={({ isActive }) =>
