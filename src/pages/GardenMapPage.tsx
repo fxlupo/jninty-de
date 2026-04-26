@@ -1921,7 +1921,7 @@ export default function GardenMapPage() {
 
         {/* Version badge */}
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/20 px-1.5 py-0.5 text-[10px] text-white/60 select-none">
-          v1.1.0
+          v{__APP_VERSION__}
         </span>
 
         {/* Companion tooltip overlay */}
