@@ -1292,22 +1292,49 @@ export default function GardenMapPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Fit-to-view: set Konva stage scale once when container size is first known
+  // Fit-to-view: set Konva stage scale once when container size is first known.
+  // Restores the last saved view from sessionStorage if available.
   useEffect(() => {
     if (scaleInitialized.current) return;
     if (stageSize.width === 0 || stageSize.height === 0) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const saved = sessionStorage.getItem("gardenMap.view");
+    if (saved) {
+      try {
+        const { scaleX, x, y } = JSON.parse(saved) as { scaleX: number; x: number; y: number };
+        stage.scale({ x: scaleX, y: scaleX });
+        stage.position({ x, y });
+        setDisplayScale(scaleX);
+        scaleInitialized.current = true;
+        return;
+      } catch {
+        // fall through to default
+      }
+    }
+
     const scale = Math.min(
       stageSize.width / (DEFAULT_VIEW_COLS * CELL_SIZE),
       stageSize.height / (DEFAULT_VIEW_ROWS * CELL_SIZE),
     );
-    const stage = stageRef.current;
-    if (stage) {
-      stage.scale({ x: scale, y: scale });
-      stage.position({ x: 0, y: 0 });
-    }
+    stage.scale({ x: scale, y: scale });
+    stage.position({ x: 0, y: 0 });
     setDisplayScale(scale);
     scaleInitialized.current = true;
   }, [stageSize]);
+
+  // Persist zoom+pan to sessionStorage on unmount so navigation back restores the view
+  useEffect(() => {
+    return () => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      sessionStorage.setItem(
+        "gardenMap.view",
+        JSON.stringify({ scaleX: stage.scaleX(), x: stage.x(), y: stage.y() }),
+      );
+    };
+  }, []);
 
   // ── Zoom helpers ──
 
@@ -1679,7 +1706,7 @@ export default function GardenMapPage() {
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
               </svg>
-              Ansehen
+              <span className="hidden sm:inline">Ansehen</span>
             </span>
           </button>
           <button
@@ -1698,7 +1725,7 @@ export default function GardenMapPage() {
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
-              Bearbeiten
+              <span className="hidden sm:inline">Bearbeiten</span>
             </span>
           </button>
           <button
@@ -1716,7 +1743,7 @@ export default function GardenMapPage() {
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <rect x="3" y="3" width="18" height="18" rx="2" />
               </svg>
-              Beet
+              <span className="hidden sm:inline">Beet</span>
             </span>
           </button>
           <button
@@ -1735,7 +1762,7 @@ export default function GardenMapPage() {
                 <circle cx="12" cy="12" r="7" />
                 <path d="M12 5v2M12 17v2M5 12h2M17 12h2" />
               </svg>
-              Pflanze
+              <span className="hidden sm:inline">Pflanze</span>
             </span>
           </button>
         </div>
@@ -1891,6 +1918,11 @@ export default function GardenMapPage() {
             </Layer>
           </Stage>
         </div>
+
+        {/* Version badge */}
+        <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/20 px-1.5 py-0.5 text-[10px] text-white/60 select-none">
+          v1.1.0
+        </span>
 
         {/* Companion tooltip overlay */}
         {tooltip && (
