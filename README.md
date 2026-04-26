@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.1.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -265,6 +265,19 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.2.0 (2026-04-26)
+
+**Gartenkarte**
+- Zoom und Position werden beim Verlassen der Karte in der Session gespeichert und beim Zurücknavigieren wiederhergestellt
+- Toolbar-Buttons zeigen auf kleinen Bildschirmen nur Icons — alle vier Modi (Ansehen, Bearbeiten, Beet, Pflanze) sind jetzt auf dem Smartphone sichtbar
+- Versionsnummer als kleines Badge unten rechts auf der Karte
+
+**Navigation**
+- Mobile Bottom-Bar: Kalender durch Aufgaben ersetzt
+- Kalender ist weiterhin in der Seitenleiste (Desktop) erreichbar
+
+---
 
 ### 1.1.0 (2026-04-26)
 

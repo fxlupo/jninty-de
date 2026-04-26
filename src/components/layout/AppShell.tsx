@@ -239,23 +239,23 @@ interface NavItem {
   badge?: number;
 }
 
-function getPrimaryNav(calendarBadge: number): NavItem[] {
+function getPrimaryNav(overdueCount: number): NavItem[] {
   return [
     { to: "/", label: "Start", icon: HomeIcon },
     { to: "/plants", label: "Pflanzen", icon: PlantIcon },
     // Quick Log is rendered separately (center prominent button)
-    { to: "/calendar", label: "Kalender", icon: CalendarIcon, badge: calendarBadge },
+    { to: "/tasks", label: "Aufgaben", icon: TaskIcon, badge: overdueCount },
     { to: "/map", label: "Karte", icon: MapIcon },
   ];
 }
 
-function getSecondaryNav(overdueCount: number): NavItem[] {
+function getSecondaryNav(calendarBadge: number): NavItem[] {
   return [
+    { to: "/calendar", label: "Kalender", icon: CalendarIcon, badge: calendarBadge },
     { to: "/journal", label: "Journal", icon: JournalIcon },
     { to: "/seeds", label: "Saatgut", icon: SeedNavIcon },
     { to: "/knowledge", label: "Wissen", icon: BookIcon },
     { to: "/expenses", label: "Ausgaben", icon: ExpenseIcon },
-    { to: "/tasks", label: "Aufgaben", icon: TaskIcon, badge: overdueCount },
     { to: "/settings", label: "Einstellungen", icon: SettingsIcon },
   ];
 }
@@ -457,7 +457,7 @@ export default function AppShell() {
 
         {/* Primary nav */}
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {getPrimaryNav(calendarBadge).map((item) => (
+          {getPrimaryNav(overdueCount).map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
 
@@ -474,7 +474,7 @@ export default function AppShell() {
           <div className="my-3 border-t border-primary" />
 
           {/* Secondary nav */}
-          {getSecondaryNav(overdueCount).map((item) => (
+          {getSecondaryNav(calendarBadge).map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </nav>
@@ -597,8 +597,8 @@ export default function AppShell() {
       {/* ── Mobile bottom tab bar ── */}
       <nav className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-around border-t border-surface-nav bg-surface-nav pt-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] md:hidden">
         {/* Home & Plants */}
-        <TabBarLink item={getPrimaryNav(calendarBadge)[0]!} />
-        <TabBarLink item={getPrimaryNav(calendarBadge)[1]!} />
+        <TabBarLink item={getPrimaryNav(overdueCount)[0]!} />
+        <TabBarLink item={getPrimaryNav(overdueCount)[1]!} />
 
         {/* Quick Log — center prominent button */}
         <button
@@ -615,8 +615,8 @@ export default function AppShell() {
         </button>
 
         {/* Calendar & Map */}
-        <TabBarLink item={getPrimaryNav(calendarBadge)[2]!} />
-        <TabBarLink item={getPrimaryNav(calendarBadge)[3]!} />
+        <TabBarLink item={getPrimaryNav(overdueCount)[2]!} />
+        <TabBarLink item={getPrimaryNav(overdueCount)[3]!} />
       </nav>
 
       <KeyboardShortcutsHelp isOpen={shortcutsHelp.isOpen} onClose={shortcutsHelp.hide} />
