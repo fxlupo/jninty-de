@@ -4,8 +4,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  memo,
 } from "react";
-import { Stage, Layer, Rect, Text, Group, Line, Circle } from "react-konva";
+import { Stage, Layer, Rect, Text, Group, Shape, Circle } from "react-konva";
 import type Konva from "konva";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { useNavigate } from "react-router-dom";
@@ -116,40 +117,56 @@ function gridToPx(gridUnits: number): number {
 
 // ── Grid background component ──
 
-function GridLines({ cols, rows }: { cols: number; rows: number }) {
-  const lines: React.JSX.Element[] = [];
+const GridLines = memo(function GridLines({ cols, rows }: { cols: number; rows: number }) {
   const width = cols * CELL_SIZE;
   const height = rows * CELL_SIZE;
 
-  for (let x = 0; x <= cols; x++) {
-    lines.push(
-      <Line
-        key={`v-${x}`}
-        points={[x * CELL_SIZE, 0, x * CELL_SIZE, height]}
-        stroke={GRID_COLOR}
-        // Every 2 cells = 1 m → thicker accent line
-        strokeWidth={x % 2 === 0 ? 1 : 0.5}
-      />,
-    );
-  }
+  return (
+    <Shape
+      listening={false}
+      sceneFunc={(ctx) => {
+        // Thin sub-cell lines (0.5 px)
+        ctx.beginPath();
+        ctx.strokeStyle = GRID_COLOR;
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x <= cols; x++) {
+          if (x % 2 !== 0) {
+            ctx.moveTo(x * CELL_SIZE, 0);
+            ctx.lineTo(x * CELL_SIZE, height);
+          }
+        }
+        for (let y = 0; y <= rows; y++) {
+          if (y % 2 !== 0) {
+            ctx.moveTo(0, y * CELL_SIZE);
+            ctx.lineTo(width, y * CELL_SIZE);
+          }
+        }
+        ctx.stroke();
 
-  for (let y = 0; y <= rows; y++) {
-    lines.push(
-      <Line
-        key={`h-${y}`}
-        points={[0, y * CELL_SIZE, width, y * CELL_SIZE]}
-        stroke={GRID_COLOR}
-        strokeWidth={y % 2 === 0 ? 1 : 0.5}
-      />,
-    );
-  }
-
-  return <>{lines}</>;
-}
+        // Accent metre lines (1 px)
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= cols; x++) {
+          if (x % 2 === 0) {
+            ctx.moveTo(x * CELL_SIZE, 0);
+            ctx.lineTo(x * CELL_SIZE, height);
+          }
+        }
+        for (let y = 0; y <= rows; y++) {
+          if (y % 2 === 0) {
+            ctx.moveTo(0, y * CELL_SIZE);
+            ctx.lineTo(width, y * CELL_SIZE);
+          }
+        }
+        ctx.stroke();
+      }}
+    />
+  );
+});
 
 // ── Plant tokens on a bed ──
 
-function PlantTokens({
+const PlantTokens = memo(function PlantTokens({
   bed,
   plantings,
   plants,
@@ -252,11 +269,11 @@ function PlantTokens({
       )}
     </Group>
   );
-}
+});
 
 // ── Plant pin circles ──
 
-function PlantPinLayer({
+const PlantPinLayer = memo(function PlantPinLayer({
   pins,
   plants,
   hoveredPinId,
@@ -353,8 +370,90 @@ function PlantPinLayer({
       })}
     </Group>
   );
-}
+});
 
+
+// ── Memoized bed group ──
+
+const BedGroup = memo(function BedGroup({
+  bed,
+  isSelected,
+  isDraggable,
+  plantings,
+  plants,
+  companionStatuses,
+  onBedClick,
+  onBedDragEnd,
+  onTransformEnd,
+  onTokenHover,
+  onTokenLeave,
+}: {
+  bed: GardenBed;
+  isSelected: boolean;
+  isDraggable: boolean;
+  plantings: Planting[];
+  plants: Map<string, PlantInstance>;
+  companionStatuses?: Map<string, PlantTokenStatus> | undefined;
+  onBedClick: (id: string) => void;
+  onBedDragEnd: (id: string, gx: number, gy: number) => void;
+  onTransformEnd: (id: string, node: Konva.Node) => void;
+  onTokenHover: (x: number, y: number, messages: string[]) => void;
+  onTokenLeave: () => void;
+}) {
+  return (
+    <Group>
+      <Rect
+        x={gridToPx(bed.gridX)}
+        y={gridToPx(bed.gridY)}
+        width={gridToPx(bed.gridWidth)}
+        height={gridToPx(bed.gridHeight)}
+        fill={bed.color}
+        opacity={0.7}
+        cornerRadius={4}
+        stroke={isSelected ? "#2D5016" : "#fff"}
+        strokeWidth={isSelected ? 3 : 1.5}
+        shadowColor={isSelected ? "#2D5016" : "transparent"}
+        shadowBlur={isSelected ? 8 : 0}
+        shadowOpacity={0.3}
+        draggable={isDraggable}
+        onClick={() => onBedClick(bed.id)}
+        onTap={() => onBedClick(bed.id)}
+        onDragEnd={(e) => {
+          const node = e.target;
+          const newGx = snapToGrid(node.x());
+          const newGy = snapToGrid(node.y());
+          node.x(gridToPx(newGx));
+          node.y(gridToPx(newGy));
+          onBedDragEnd(bed.id, newGx, newGy);
+        }}
+        onTransformEnd={(e) => {
+          onTransformEnd(bed.id, e.target);
+        }}
+      />
+      <Text
+        x={gridToPx(bed.gridX) + 6}
+        y={gridToPx(bed.gridY) + 4}
+        width={gridToPx(bed.gridWidth) - 12}
+        text={bed.name}
+        fontSize={13}
+        fontFamily="Inter, sans-serif"
+        fill="#fff"
+        fontStyle="bold"
+        listening={false}
+        ellipsis
+        wrap="none"
+      />
+      <PlantTokens
+        bed={bed}
+        plantings={plantings}
+        plants={plants}
+        companionStatuses={companionStatuses}
+        onTokenHover={onTokenHover}
+        onTokenLeave={onTokenLeave}
+      />
+    </Group>
+  );
+});
 
 // ── Bed detail sidebar ──
 
@@ -1083,8 +1182,16 @@ export default function GardenMapPage() {
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
 
   // Zoom scale — used only for UI indicator; real scale lives in the Konva stage
-  const [stageScale, setStageScale] = useState(1);
+  const [displayScale, setDisplayScale] = useState(1);
+  const scaleDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scaleInitialized = useRef(false);
+
+  /** Update the display-only scale indicator with 100 ms debounce to avoid
+   *  triggering React re-renders on every wheel tick. */
+  const scheduleDisplayScale = useCallback((v: number) => {
+    if (scaleDisplayTimerRef.current) clearTimeout(scaleDisplayTimerRef.current);
+    scaleDisplayTimerRef.current = setTimeout(() => setDisplayScale(v), 100);
+  }, []);
 
   // Tool state
   const [tool, setTool] = useState<Tool>("select");
@@ -1198,7 +1305,7 @@ export default function GardenMapPage() {
       stage.scale({ x: scale, y: scale });
       stage.position({ x: 0, y: 0 });
     }
-    setStageScale(scale);
+    setDisplayScale(scale);
     scaleInitialized.current = true;
   }, [stageSize]);
 
@@ -1218,8 +1325,8 @@ export default function GardenMapPage() {
       x: focalX - pointTo.x * clamped,
       y: focalY - pointTo.y * clamped,
     });
-    setStageScale(clamped);
-  }, []);
+    scheduleDisplayScale(clamped);
+  }, [scheduleDisplayScale]);
 
   const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -1253,7 +1360,7 @@ export default function GardenMapPage() {
     if (stage) {
       stage.scale({ x: scale, y: scale });
       stage.position({ x: 0, y: 0 });
-      setStageScale(scale);
+      setDisplayScale(scale);
     }
   }, [stageSize]);
 
@@ -1648,7 +1755,7 @@ export default function GardenMapPage() {
             aria-label="Ansicht zurücksetzen"
             title="Ansicht zurücksetzen"
           >
-            {Math.round(stageScale * 100)} %
+            {Math.round(displayScale * 100)} %
           </button>
           <button
             onClick={handleZoomIn}
@@ -1721,8 +1828,8 @@ export default function GardenMapPage() {
               }
             }}
           >
-            <Layer>
-              {/* Background */}
+            {/* Static layer — background + grid, no hit-testing */}
+            <Layer listening={false}>
               <Rect
                 x={0}
                 y={0}
@@ -1730,70 +1837,28 @@ export default function GardenMapPage() {
                 height={GRID_ROWS * CELL_SIZE}
                 fill="#FDF6EC"
               />
-
-              {/* Grid lines */}
               <GridLines cols={GRID_COLS} rows={GRID_ROWS} />
+            </Layer>
 
+            {/* Interactive layer — beds, pins, draw preview */}
+            <Layer>
               {/* Garden beds */}
-              {beds.map((bed) => {
-                const isSelected = bed.id === selectedBedId;
-                return (
-                  <Group key={bed.id}>
-                    <Rect
-                      x={gridToPx(bed.gridX)}
-                      y={gridToPx(bed.gridY)}
-                      width={gridToPx(bed.gridWidth)}
-                      height={gridToPx(bed.gridHeight)}
-                      fill={bed.color}
-                      opacity={0.7}
-                      cornerRadius={4}
-                      stroke={isSelected ? "#2D5016" : "#fff"}
-                      strokeWidth={isSelected ? 3 : 1.5}
-                      shadowColor={isSelected ? "#2D5016" : "transparent"}
-                      shadowBlur={isSelected ? 8 : 0}
-                      shadowOpacity={0.3}
-                      draggable={tool === "edit"}
-                      onClick={() => handleBedClick(bed.id)}
-                      onTap={() => handleBedClick(bed.id)}
-                      onDragEnd={(e) => {
-                        const node = e.target;
-                        // Snap to grid after drag
-                        const newGx = snapToGrid(node.x());
-                        const newGy = snapToGrid(node.y());
-                        node.x(gridToPx(newGx));
-                        node.y(gridToPx(newGy));
-                        void handleBedDragEnd(bed.id, newGx, newGy);
-                      }}
-                      onTransformEnd={(e) => {
-                        void handleTransformEnd(bed.id, e.target);
-                      }}
-                    />
-                    {/* Bed name label */}
-                    <Text
-                      x={gridToPx(bed.gridX) + 6}
-                      y={gridToPx(bed.gridY) + 4}
-                      width={gridToPx(bed.gridWidth) - 12}
-                      text={bed.name}
-                      fontSize={13}
-                      fontFamily="Inter, sans-serif"
-                      fill="#fff"
-                      fontStyle="bold"
-                      listening={false}
-                      ellipsis
-                      wrap="none"
-                    />
-                    {/* Plant tokens */}
-                    <PlantTokens
-                      bed={bed}
-                      plantings={allPlantings}
-                      plants={plantsMap}
-                      companionStatuses={allCompanionData.statuses.get(bed.id)}
-                      onTokenHover={handleTokenHover}
-                      onTokenLeave={handleTokenLeave}
-                    />
-                  </Group>
-                );
-              })}
+              {beds.map((bed) => (
+                <BedGroup
+                  key={bed.id}
+                  bed={bed}
+                  isSelected={bed.id === selectedBedId}
+                  isDraggable={tool === "edit"}
+                  plantings={allPlantings}
+                  plants={plantsMap}
+                  companionStatuses={allCompanionData.statuses.get(bed.id)}
+                  onBedClick={handleBedClick}
+                  onBedDragEnd={(id, gx, gy) => { void handleBedDragEnd(id, gx, gy); }}
+                  onTransformEnd={(id, node) => { void handleTransformEnd(id, node); }}
+                  onTokenHover={handleTokenHover}
+                  onTokenLeave={handleTokenLeave}
+                />
+              ))}
 
               {/* Plant pins (free-standing circles) */}
               <PlantPinLayer
@@ -1848,7 +1913,7 @@ export default function GardenMapPage() {
           if (!pin) return null;
           const plant = plantsMap.get(pin.plantInstanceId);
           const stage = stageRef.current;
-          const scale = stage?.scaleX() ?? stageScale;
+          const scale = stage?.scaleX() ?? displayScale;
           const ox = stage?.x() ?? 0;
           const oy = stage?.y() ?? 0;
           const sx = (pin.gridX + 0.5) * CELL_SIZE * scale + ox;

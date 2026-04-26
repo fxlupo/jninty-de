@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.0-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -265,6 +265,16 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.1.0 (2026-04-26)
+
+**Gartenkarte — Performance-Optimierungen für Mobile**
+- Gitternetz: 162 einzelne `<Line>`-Knoten ersetzt durch einen einzigen `<Shape sceneFunc>`-Aufruf mit nativem Canvas-2D-Zeichnen
+- Zoom/Pan: React-State-Update bei jedem Rad-Event entfernt — Skalierung läuft jetzt vollständig im Konva-Stage; UI-Anzeige wird 100 ms gedrosselt aktualisiert
+- Zwei Konva-Layer: statischer Layer (Hintergrund + Raster, `listening={false}`) und interaktiver Layer (Beete, Pins) — Konva überspringt Hit-Testing für den statischen Layer komplett
+- `React.memo` für `GridLines`, `PlantTokens`, `PlantPinLayer` und neues `BedGroup`-Component — jedes Beet rendert nur noch neu wenn sich seine eigenen Daten ändern
+
+---
 
 ### 1.0.0 (2026-04-17)
 
