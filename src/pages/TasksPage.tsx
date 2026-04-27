@@ -277,7 +277,7 @@ function TaskFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-16 md:items-center md:pb-0"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -285,7 +285,7 @@ function TaskFormModal({
     >
       <div
         ref={modalRef}
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface-elevated md:max-h-[90vh] md:rounded-2xl"
+        className="flex max-h-[calc(85vh-4rem)] w-full max-w-lg flex-col rounded-t-2xl bg-surface-elevated md:max-h-[90vh] md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
