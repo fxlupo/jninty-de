@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.1-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -265,6 +265,16 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.2.1 (2026-04-27)
+
+**Gartenkarte — Android-Performance**
+- Canvas-Shadows (`shadowBlur`) von Beeten und Pflanzenpins entfernt — größter Einzelkostenfaktor auf Mobile
+- `pixelRatio` auf max. 2 gecappt — 3x-DPR-Geräte zeichnen jetzt 55% weniger Pixel
+- `onMouseMove`/`onTouchMove` nur noch aktiv wenn Zeichen-Werkzeug gewählt ist
+- `perfectDrawEnabled={false}` und `strokeScaleEnabled={false}` auf allen Canvas-Shapes
+
+---
 
 ### 1.2.0 (2026-04-26)
 
