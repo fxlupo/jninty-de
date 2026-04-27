@@ -569,20 +569,6 @@ export default function AppShell() {
               <ExpenseIcon className="h-5 w-5" />
             </NavLink>
             <NavLink
-              to="/tasks"
-              aria-label="Aufgaben"
-              className={({ isActive }) =>
-                `relative p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
-              }
-            >
-              <TaskIcon className="h-5 w-5" />
-              {overdueCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-terracotta-500 px-1 text-[10px] font-bold text-white">
-                  {overdueCount}
-                </span>
-              )}
-            </NavLink>
-            <NavLink
               to="/settings"
               aria-label="Einstellungen"
               className={({ isActive }) =>
