@@ -237,6 +237,7 @@ const PlantTokens = memo(function PlantTokens({
               fill={color}
               stroke="#fff"
               strokeWidth={1.5}
+              perfectDrawEnabled={false}
               listening={!!hasStatus}
               onMouseEnter={(e) => {
                 if (hasStatus && onTokenHover) {
@@ -324,26 +325,16 @@ const PlantPinLayer = memo(function PlantPinLayer({
                 listening={false}
               />
             )}
-            {/* Hover shadow */}
-            {isHovered && !isSelected && (
-              <Circle
-                x={cx} y={cy}
-                radius={r + 4}
-                fill="rgba(0,0,0,0.12)"
-                listening={false}
-              />
-            )}
-            {/* Main circle */}
+            {/* Main circle — hover indicated via strokeWidth, no shadow (expensive on Android) */}
             <Circle
               x={cx} y={cy}
               radius={r}
               fill={color}
               opacity={0.85}
               stroke="#fff"
-              strokeWidth={Math.max(1.5, r * 0.05)}
-              shadowColor="rgba(0,0,0,0.3)"
-              shadowBlur={isSelected ? 12 : isHovered ? 8 : 4}
-              shadowOffsetY={2}
+              strokeWidth={isHovered ? Math.max(3, r * 0.1) : Math.max(1.5, r * 0.05)}
+              strokeScaleEnabled={false}
+              perfectDrawEnabled={false}
               draggable={editMode}
               onClick={() => onPinClick(pin)}
               onTap={() => onPinClick(pin)}
@@ -409,12 +400,9 @@ const BedGroup = memo(function BedGroup({
         height={gridToPx(bed.gridHeight)}
         fill={bed.color}
         opacity={0.7}
-        cornerRadius={4}
         stroke={isSelected ? "#2D5016" : "#fff"}
         strokeWidth={isSelected ? 3 : 1.5}
-        shadowColor={isSelected ? "#2D5016" : "transparent"}
-        shadowBlur={isSelected ? 8 : 0}
-        shadowOpacity={0.3}
+        perfectDrawEnabled={false}
         draggable={isDraggable}
         onClick={() => onBedClick(bed.id)}
         onTap={() => onBedClick(bed.id)}
@@ -1843,13 +1831,16 @@ export default function GardenMapPage() {
             ref={stageRef}
             width={stageSize.width}
             height={stageSize.height}
+            // Cap pixel ratio at 2 — on 3x Android devices this halves the GPU work
+            // while keeping the map perfectly sharp for a garden overview
+            pixelRatio={Math.min(window.devicePixelRatio, 2)}
             draggable={stageIsDraggable}
             onWheel={handleWheel}
             onMouseDown={handleStageMouseDown}
-            onMouseMove={handleStageMouseMove}
+            onMouseMove={tool === "draw" ? handleStageMouseMove : undefined as never}
             onMouseUp={handleStageMouseUp}
             onTouchStart={handleStageMouseDown}
-            onTouchMove={handleStageMouseMove}
+            onTouchMove={tool === "draw" ? handleStageMouseMove : undefined as never}
             onTouchEnd={handleStageMouseUp}
             onDragEnd={(e) => {
               // Capture pan position so it can be saved to sessionStorage on unmount
