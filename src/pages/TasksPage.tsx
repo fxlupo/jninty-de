@@ -285,7 +285,7 @@ function TaskFormModal({
     >
       <div
         ref={modalRef}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface-elevated md:max-h-[90vh] md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -303,8 +303,9 @@ function TaskFormModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+        {/* Form — scrollable body, sticky action buttons */}
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 overflow-y-auto p-4">
           {error && (
             <div className="rounded-lg bg-terracotta-400/10 p-3">
               <p className="text-sm text-terracotta-600">{error}</p>
@@ -407,8 +408,10 @@ function TaskFormModal({
             </select>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          </div>
+
+          {/* Actions — sticky at bottom of modal, always visible */}
+          <div className="flex gap-3 border-t border-border-default px-4 py-3">
             <Button type="submit" disabled={saving}>
               {saving ? "Speichert..." : task ? "Aenderungen speichern" : "Aufgabe erstellen"}
             </Button>
