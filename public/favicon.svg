@@ -1,4 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="6" fill="#2D5016"/>
-  <text x="16" y="23" font-size="20" text-anchor="middle" fill="#FDF6EC" font-family="sans-serif" font-weight="bold">J</text>
+  <!-- Body -->
+  <rect x="13.5" y="11.5" width="11.5" height="10.5" rx="1.5" fill="#F2EAD8"/>
+  <!-- Neck -->
+  <rect x="15.5" y="10" width="6.5" height="1.8" rx="0.9" fill="#F2EAD8"/>
+  <!-- Spout -->
+  <line x1="5.5" y1="14.5" x2="13.5" y2="16.3" stroke="#F2EAD8" stroke-width="2.1" stroke-linecap="round"/>
+  <!-- Rose -->
+  <ellipse cx="4.6" cy="13.9" rx="2" ry="1.5" fill="#F2EAD8"/>
+  <!-- Handle -->
+  <path d="M25 12.8 Q29 12.8 29 17 Q29 21 25 21" fill="none" stroke="#F2EAD8" stroke-width="1.9" stroke-linecap="round"/>
+  <!-- Drops -->
+  <circle cx="3.4"  cy="17.3" r="0.85" fill="#7dbf4e"/>
+  <circle cx="5.2"  cy="16.9" r="0.85" fill="#7dbf4e"/>
+  <circle cx="2.5"  cy="19.1" r="0.7"  fill="#7dbf4e"/>
 </svg>
