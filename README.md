@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.2.3-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.4-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -265,6 +265,14 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.2.4 (2026-04-27)
+
+**PWA-Icon**
+- Neues App-Icon: stilisierte Gießkanne (cremeweiß auf dunkelgrün) mit hellgrünen Wassertropfen
+- Icons generiert für 512×512, 192×192, Apple Touch 180×180 und Favicon 32×32
+
+---
 
 ### 1.2.3 (2026-04-27)
 
