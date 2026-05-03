@@ -1,12 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { plantRepository } from "../db/index.ts";
-import {
-  search as searchIndex,
-  loadIndex,
-  rebuildIndex,
-} from "../db/search";
 import type { PlantType, PlantStatus } from "../types";
 import {
   TYPE_LABELS,
@@ -79,31 +74,23 @@ export default function PlantsListPage() {
   const [typeFilter, setTypeFilter] = useState<PlantType | "">("");
   const [statusFilter, setStatusFilter] = useState<PlantStatus | "">("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [indexReady, setIndexReady] = useState(false);
-
-  // Load or rebuild search index on mount
-  useEffect(() => {
-    void loadIndex().then((loaded: boolean) => {
-      if (!loaded) {
-        return rebuildIndex();
-      }
-    }).then(() => {
-      setIndexReady(true);
-    });
-  }, []);
 
   const filteredPlants = useMemo(() => {
     if (!allPlants) return [];
 
     let results = [...allPlants];
 
-    // Search filter using MiniSearch (debounced)
-    if (debouncedQuery.trim() && indexReady) {
-      const hits = searchIndex(debouncedQuery);
-      const plantHitIds = new Set(
-        hits.filter((h) => h.entityType === "plant").map((h) => h.id),
-      );
-      results = results.filter((p) => plantHitIds.has(p.id));
+    // Full-text search: match against species, variety, nickname and tags
+    const term = debouncedQuery.trim().toLowerCase();
+    if (term) {
+      results = results.filter((p) => {
+        return (
+          p.species.toLowerCase().includes(term) ||
+          (p.variety?.toLowerCase().includes(term) ?? false) ||
+          (p.nickname?.toLowerCase().includes(term) ?? false) ||
+          p.tags.some((t) => t.toLowerCase().includes(term))
+        );
+      });
     }
 
     // Type filter
@@ -117,7 +104,7 @@ export default function PlantsListPage() {
     }
 
     return results;
-  }, [allPlants, debouncedQuery, typeFilter, statusFilter, indexReady]);
+  }, [allPlants, debouncedQuery, typeFilter, statusFilter]);
 
   if (allPlants === undefined) {
     return (
