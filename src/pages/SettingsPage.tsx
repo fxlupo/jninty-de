@@ -84,7 +84,6 @@ export default function SettingsPage() {
   // Action states
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [clearingOriginals, setClearingOriginals] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCsvDialog, setShowCsvDialog] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
@@ -194,20 +193,6 @@ export default function SettingsPage() {
       toast("Export fehlgeschlagen", "error");
     } finally {
       setExportBusy(false);
-    }
-  };
-
-  const handleClearOriginals = async () => {
-    setClearingOriginals(true);
-    try {
-      // Original photos are stored server-side — nothing to clear locally.
-      const updated = await getStorageUsage();
-      setStorage(updated);
-      toast("Originalfotos entfernt", "success");
-    } catch {
-      toast("Originalfotos konnten nicht entfernt werden", "error");
-    } finally {
-      setClearingOriginals(false);
     }
   };
 
@@ -1092,18 +1077,12 @@ export default function SettingsPage() {
           {/* Storage dashboard */}
           <div>
             <span className="mb-2 block text-sm font-medium text-text-secondary">
-              Speicher
+              Speicher (Browser)
             </span>
             {storage ? (
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-text-secondary">
-                  <span>Vorschaubilder: {formatBytes(storage.thumbnailBytes)}</span>
-                  <span>Anzeige: {formatBytes(storage.displayBytes)}</span>
-                  <span>Originale: {formatBytes(storage.originalBytes)}</span>
-                  <span>Daten: {formatBytes(storage.dataBytes)}</span>
-                </div>
                 <p className="text-sm font-medium text-text-primary">
-                  Gesamt: {formatBytes(storage.totalBytes)}
+                  {formatBytes(storage.totalBytes)} genutzt
                 </p>
                 {storage.quotaBytes > 0 && (
                   <div>
@@ -1117,7 +1096,8 @@ export default function SettingsPage() {
                     </div>
                     <p className="mt-1 text-xs text-text-muted">
                       {formatBytes(storage.totalBytes)} von{" "}
-                      {formatBytes(storage.quotaBytes)} genutzt
+                      {formatBytes(storage.quotaBytes)} (Cache, IndexedDB).
+                      Fotos und Daten liegen auf dem Server.
                     </p>
                   </div>
                 )}
@@ -1191,24 +1171,8 @@ export default function SettingsPage() {
               <p className="mt-1 text-sm text-red-600">{demoError}</p>
             )}
             <p className="mt-1 text-xs text-text-muted">
-              Laedt Beispielpflanzen, Journaleintraege, Aufgaben und weitere
-              Daten zum Ausprobieren. Das Entfernen loescht alle App-Daten.
-            </p>
-          </div>
-
-          {/* Clear original photos */}
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => void handleClearOriginals()}
-              disabled={clearingOriginals}
-            >
-              {clearingOriginals
-                ? "Entfernt..."
-                : "Originalfotos entfernen"}
-            </Button>
-            <p className="mt-1 text-xs text-text-muted">
-              Entfernt gespeicherte Originale in voller Aufloesung, um Speicherplatz freizugeben
+              Laedt eine Beispiel-Saison mit Pflanzen, Beeten, Bepflanzungen, Journaleintraegen, Aufgaben, Saatgut und Ausgaben.
+              Das Entfernen loescht alle App-Daten unwiderruflich.
             </p>
           </div>
 
