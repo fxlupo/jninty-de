@@ -393,7 +393,7 @@ export default function PlantDetailPage() {
         {/* Back button overlay */}
         <button
           type="button"
-          onClick={() => navigate("/plants")}
+          onClick={() => navigate(-1)}
           className="absolute top-3 left-3 rounded-full bg-soil-900/40 p-2 text-white transition-colors hover:bg-soil-900/60"
           aria-label="Zurueck zu den Pflanzen"
         >

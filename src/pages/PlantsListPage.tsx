@@ -73,7 +73,9 @@ export default function PlantsListPage() {
   const debouncedQuery = useDebounce(query, 250);
   const [typeFilter, setTypeFilter] = useState<PlantType | "">("");
   const [statusFilter, setStatusFilter] = useState<PlantStatus | "">("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(
+    () => (sessionStorage.getItem("plantsList.viewMode") as "grid" | "list" | null) ?? "grid"
+  );
 
   // ── Scroll position restoration ──
   // Save on unmount so navigating to a plant and back restores the position.
@@ -206,7 +208,7 @@ export default function PlantsListPage() {
         <div className="ml-auto flex overflow-hidden rounded-lg border border-border-strong">
           <button
             type="button"
-            onClick={() => setViewMode("grid")}
+            onClick={() => { setViewMode("grid"); sessionStorage.setItem("plantsList.viewMode", "grid"); }}
             aria-label="Rasteransicht"
             className={`p-2 transition-colors ${
               viewMode === "grid"
@@ -218,7 +220,7 @@ export default function PlantsListPage() {
           </button>
           <button
             type="button"
-            onClick={() => setViewMode("list")}
+            onClick={() => { setViewMode("list"); sessionStorage.setItem("plantsList.viewMode", "list"); }}
             aria-label="Listenansicht"
             className={`p-2 transition-colors ${
               viewMode === "list"
