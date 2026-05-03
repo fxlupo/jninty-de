@@ -6,6 +6,7 @@ import { plantRepository, journalRepository, taskRepository, photoRepository, pl
 import type { PhotoMeta } from "../db/pouchdb/repositories/photoRepository.ts";
 import { removeFromIndex, serializeIndex } from "../db/search";
 import { useToast } from "../components/ui/Toast";
+import { usePhotoCapture } from "../hooks/usePhotoCapture";
 import type { Planting, PlantingOutcome } from "../validation/planting.schema";
 import type { Season } from "../validation/season.schema";
 import type { JournalEntry } from "../validation/journalEntry.schema";
@@ -27,6 +28,7 @@ import {
   PlantPlaceholderIcon,
   ChevronLeftIcon,
   PlusIcon,
+  CameraIcon,
 } from "../components/icons";
 import { userPlantKnowledgeRepository } from "../db/index.ts";
 import type { UserPlantKnowledge } from "../validation/userPlantKnowledge.schema.ts";
@@ -279,6 +281,46 @@ export default function PlantDetailPage() {
     }
   };
 
+  // ─── Photo upload / delete ───
+
+  const { selectPhoto, isProcessing: isUploadingPhoto } = usePhotoCapture();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleAddPhoto = async () => {
+    if (!plant) return;
+    setUploadError(null);
+    try {
+      const processed = await selectPhoto();
+      const input: Parameters<typeof photoRepository.createWithFiles>[0] = {
+        thumbnailBlob: processed.thumbnailBlob,
+        displayBlob: processed.displayBlob,
+        width: processed.width,
+        height: processed.height,
+      };
+      if (processed.originalFile) input.originalFile = processed.originalFile;
+      if (processed.takenAt != null) input.takenAt = processed.takenAt;
+      const saved = await photoRepository.createWithFiles(input);
+      const existing = plant.photoIds ?? [];
+      await plantRepository.update(plant.id, { photoIds: [...existing, saved.id] });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Foto konnte nicht hochgeladen werden.");
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!plant) return;
+    if (!window.confirm("Dieses Foto wirklich löschen?")) return;
+    try {
+      await plantRepository.update(plant.id, {
+        photoIds: (plant.photoIds ?? []).filter((pid) => pid !== photoId),
+      });
+      await photoRepository.removeWithFiles(photoId);
+      toast("Foto gelöscht", "success");
+    } catch {
+      toast("Foto konnte nicht gelöscht werden", "error");
+    }
+  };
+
   // ─── Loading / not found ───
 
   if (plant === undefined) {
@@ -425,14 +467,28 @@ export default function PlantDetailPage() {
 
         {activeTab === "overview" && (
         <>
-        {/* Quick Log button */}
-        <Link
-          to={`/quick-log?plantId=${plant.id}`}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Quick Log
-        </Link>
+        {/* Schnellaktionen: Neues Foto | Quick Log */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => { void handleAddPhoto(); }}
+            disabled={isUploadingPhoto}
+            className="flex items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-elevated px-4 py-3 font-semibold text-text-heading transition-colors hover:bg-surface disabled:opacity-50"
+          >
+            <CameraIcon className="h-5 w-5" />
+            {isUploadingPhoto ? "Lädt…" : "Neues Foto"}
+          </button>
+          <Link
+            to={`/quick-log?plantId=${plant.id}`}
+            className="flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Quick Log
+          </Link>
+        </div>
+        {uploadError && (
+          <p className="text-sm text-terracotta-600">{uploadError}</p>
+        )}
 
         {/* Knowledge entry link */}
         {plant.knowledgeId && (
@@ -523,25 +579,38 @@ export default function PlantDetailPage() {
                 const photoDate = meta?.takenAt ?? meta?.createdAt;
                 return (
                   <div key={pId} className="flex flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLightboxIndex(index);
-                        setShowLightbox(true);
-                      }}
-                      className="relative aspect-square overflow-hidden rounded-lg"
-                    >
-                      <PhotoThumbnail
-                        photoId={pId}
-                        alt={`Foto ${String(index + 1)}`}
+                    <div className="relative aspect-square overflow-hidden rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLightboxIndex(index);
+                          setShowLightbox(true);
+                        }}
                         className="h-full w-full"
-                      />
+                      >
+                        <PhotoThumbnail
+                          photoId={pId}
+                          alt={`Foto ${String(index + 1)}`}
+                          className="h-full w-full"
+                        />
+                      </button>
                       {isCoverPhoto && (
                         <div className="absolute top-1 left-1 rounded-full bg-primary/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                           Titelbild
                         </div>
                       )}
-                    </button>
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        onClick={() => { void handleDeletePhoto(pId); }}
+                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                        aria-label="Foto löschen"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                        </svg>
+                      </button>
+                    </div>
                     {photoDate && (
                       <p className="text-center text-[10px] text-text-muted">
                         {formatBrowserDate(photoDate)}
