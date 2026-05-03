@@ -19,7 +19,6 @@ import {
 import { exportAll, triggerDownload } from "../services/exporter";
 import ImportDialog from "../components/ImportDialog";
 import CsvImportDialog from "../components/CsvImportDialog";
-import { rebuildIndex } from "../db/search";
 import {
   searchLocation,
   clearWeatherCache,
@@ -85,9 +84,6 @@ export default function SettingsPage() {
   // Action states
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [rebuildBusy, setRebuildBusy] = useState(false);
-  const [rebuildCount, setRebuildCount] = useState<number | null>(null);
-  const [rebuildError, setRebuildError] = useState<string | null>(null);
   const [clearingOriginals, setClearingOriginals] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCsvDialog, setShowCsvDialog] = useState(false);
@@ -212,22 +208,6 @@ export default function SettingsPage() {
       toast("Originalfotos konnten nicht entfernt werden", "error");
     } finally {
       setClearingOriginals(false);
-    }
-  };
-
-  const handleRebuild = async () => {
-    setRebuildBusy(true);
-    setRebuildCount(null);
-    setRebuildError(null);
-    try {
-      const count = await rebuildIndex();
-      setRebuildCount(count);
-      toast(`${String(count)} Eintraege indiziert`, "success");
-    } catch {
-      setRebuildError("Neuaufbau fehlgeschlagen. Bitte erneut versuchen.");
-      toast("Neuaufbau fehlgeschlagen", "error");
-    } finally {
-      setRebuildBusy(false);
     }
   };
 
@@ -1232,24 +1212,6 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* Rebuild search index */}
-          <div>
-            <Button
-              onClick={() => void handleRebuild()}
-              disabled={rebuildBusy}
-              variant="ghost"
-            >
-              {rebuildBusy ? "Baut neu auf..." : "Suchindex neu aufbauen"}
-            </Button>
-            {rebuildError && (
-              <p className="mt-1 text-sm text-red-600">{rebuildError}</p>
-            )}
-            {rebuildCount != null && (
-              <p className="mt-1 text-sm text-text-secondary">
-                {String(rebuildCount)} Eintraege indiziert.
-              </p>
-            )}
-          </div>
         </div>
       </Card>
 

@@ -15,11 +15,6 @@ vi.mock("../services/exporter.ts", () => ({
   triggerDownload: vi.fn(),
 }));
 
-// Mock search to avoid real index rebuild
-vi.mock("../db/search.ts", () => ({
-  rebuildIndex: vi.fn().mockResolvedValue(5),
-}));
-
 // Mock storageUsage
 vi.mock("../services/storageUsage.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../services/storageUsage.ts")>();
@@ -37,8 +32,6 @@ vi.mock("../services/storageUsage.ts", async (importOriginal) => {
 });
 
 import { exportAll, triggerDownload } from "../services/exporter.ts";
-import { rebuildIndex } from "../db/search.ts";
-
 beforeEach(async () => {
   await clearPouchDB();
   vi.clearAllMocks();
@@ -198,37 +191,4 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("rebuild button calls rebuildIndex and shows count", async () => {
-    const user = userEvent.setup();
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText("Suchindex neu aufbauen")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Suchindex neu aufbauen"));
-
-    await waitFor(() => {
-      expect(rebuildIndex).toHaveBeenCalledOnce();
-      expect(screen.getByText("5 Eintraege indiziert.")).toBeInTheDocument();
-    });
-  });
-
-  it("shows error when rebuild fails", async () => {
-    vi.mocked(rebuildIndex).mockRejectedValueOnce(new Error("boom"));
-    const user = userEvent.setup();
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText("Suchindex neu aufbauen")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Suchindex neu aufbauen"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Neuaufbau fehlgeschlagen. Bitte erneut versuchen."),
-      ).toBeInTheDocument();
-    });
-  });
 });
