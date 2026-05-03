@@ -283,14 +283,17 @@ export default function PlantDetailPage() {
 
   // ─── Photo upload / delete ───
 
-  const { selectPhoto, isProcessing: isUploadingPhoto } = usePhotoCapture();
+  const { capturePhoto, selectPhoto, isProcessing: isUploadingPhoto } = usePhotoCapture();
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Mobile (touch screen) → open camera directly; desktop → file picker
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 
   const handleAddPhoto = async () => {
     if (!plant) return;
     setUploadError(null);
     try {
-      const processed = await selectPhoto();
+      const processed = await (isTouchDevice ? capturePhoto() : selectPhoto());
       const input: Parameters<typeof photoRepository.createWithFiles>[0] = {
         thumbnailBlob: processed.thumbnailBlob,
         displayBlob: processed.displayBlob,
