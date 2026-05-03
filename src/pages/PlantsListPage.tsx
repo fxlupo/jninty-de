@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { plantRepository } from "../db/index.ts";
@@ -74,6 +74,28 @@ export default function PlantsListPage() {
   const [typeFilter, setTypeFilter] = useState<PlantType | "">("");
   const [statusFilter, setStatusFilter] = useState<PlantStatus | "">("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // ── Scroll position restoration ──
+  // Save on unmount so navigating to a plant and back restores the position.
+  const scrollRestoredRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      sessionStorage.setItem("plantsList.scrollY", String(window.scrollY));
+    };
+  }, []);
+
+  // Restore once plants are loaded (items must be in the DOM first).
+  useEffect(() => {
+    if (scrollRestoredRef.current) return;
+    if (!allPlants || allPlants.length === 0) return;
+    const saved = sessionStorage.getItem("plantsList.scrollY");
+    if (!saved) return;
+    scrollRestoredRef.current = true;
+    sessionStorage.removeItem("plantsList.scrollY");
+    const y = parseInt(saved, 10);
+    requestAnimationFrame(() => { window.scrollTo(0, y); });
+  }, [allPlants]);
 
   const filteredPlants = useMemo(() => {
     if (!allPlants) return [];

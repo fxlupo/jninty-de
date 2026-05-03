@@ -1583,6 +1583,12 @@ export default function GardenMapPage() {
     }
   }, []);
 
+  /** Persist current zoom+pan immediately — called before navigating away so
+   *  the cleanup useEffect is a backup, not the primary save point. */
+  const saveMapView = useCallback(() => {
+    sessionStorage.setItem("gardenMap.view", JSON.stringify(lastViewRef.current));
+  }, []);
+
   const handlePinClick = useCallback((pin: GardenMapPin) => {
     if (tool === "pin") {
       void gardenMapPinRepository.softDelete(pin.id);
@@ -1591,9 +1597,10 @@ export default function GardenMapPage() {
       setSelectedBedId(null);
     } else {
       // select mode: navigate directly to the plant page
+      saveMapView();
       void navigate(`/plants/${pin.plantInstanceId}`);
     }
-  }, [tool, navigate]);
+  }, [tool, navigate, saveMapView]);
 
   const handlePinSizeChange = useCallback((pinId: string, sizeM: number) => {
     void gardenMapPinRepository.update(pinId, { sizeM });
@@ -2237,7 +2244,7 @@ export default function GardenMapPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => void navigate(`/plants/${pin.plantInstanceId}`)}
+                  onClick={() => { saveMapView(); void navigate(`/plants/${pin.plantInstanceId}`); }}
                   className="flex-1 rounded-lg bg-primary px-2 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
                 >
                   Pflanzenseite
