@@ -6,11 +6,12 @@ import {
   useMemo,
   memo,
 } from "react";
-import { Stage, Layer, Rect, Text, Group, Shape, Circle } from "react-konva";
+import { Stage, Layer, Rect, Text, Group, Shape, Circle, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { useNavigate } from "react-router-dom";
-import { gardenBedRepository, plantingRepository, plantRepository, gardenMapPinRepository } from "../db/index.ts";
+import { gardenBedRepository, plantingRepository, plantRepository, gardenMapPinRepository, settingsRepository, photoRepository } from "../db/index.ts";
+import { processPhoto } from "../services/photoProcessor.ts";
 import type { GardenMapPin } from "../validation/gardenMapPin.schema.ts";
 import type {
   GardenBed,
@@ -96,7 +97,7 @@ const MAX_VISIBLE_TOKENS = 50;
 
 // ── Tool types ──
 
-type Tool = "select" | "edit" | "draw" | "pin";
+type Tool = "select" | "edit" | "draw" | "pin" | "bg";
 
 interface DrawRect {
   startX: number;
@@ -1209,6 +1210,14 @@ export default function GardenMapPage() {
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
 
+  // Background image state
+  const [bgPhotoId, setBgPhotoId] = useState<string | null>(null);
+  const [bgTransform, setBgTransform] = useState({ x: 0, y: 0, scaleX: 1, scaleY: 1 });
+  const [bgOpacity, setBgOpacity] = useState(0.6);
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  const [bgUploading, setBgUploading] = useState(false);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+
   // Refs for drawing — avoids stale closure in mouseUp when mouseDown
   // state hasn't been committed yet (React batches updates)
   const isDrawingRef = useRef(false);
@@ -1325,6 +1334,28 @@ export default function GardenMapPage() {
       sessionStorage.setItem("gardenMap.view", JSON.stringify(lastViewRef.current));
     };
   }, []);
+
+  // Load background image settings on mount
+  useEffect(() => {
+    void settingsRepository.get().then((s) => {
+      if (!s?.mapBgPhotoId) return;
+      setBgPhotoId(s.mapBgPhotoId);
+      setBgTransform({
+        x: s.mapBgX ?? 0,
+        y: s.mapBgY ?? 0,
+        scaleX: s.mapBgScaleX ?? 1,
+        scaleY: s.mapBgScaleY ?? 1,
+      });
+    });
+  }, []);
+
+  // Load HTMLImageElement when bgPhotoId changes
+  useEffect(() => {
+    if (!bgPhotoId) { setBgImage(null); return; }
+    const img = new window.Image();
+    img.onload = () => setBgImage(img);
+    img.src = `/uploads/${bgPhotoId}/display.jpg`;
+  }, [bgPhotoId]);
 
   // ── Zoom helpers ──
 
@@ -1664,6 +1695,74 @@ export default function GardenMapPage() {
     [beds],
   );
 
+  // ── Background image handlers ──
+
+  const handleBgFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so same file can be selected again
+    e.target.value = "";
+    setBgUploading(true);
+    try {
+      const processed = await processPhoto(file);
+      const photo = await photoRepository.createWithFiles({
+        thumbnailBlob: processed.thumbnailBlob,
+        displayBlob: processed.displayBlob,
+        width: processed.width,
+        height: processed.height,
+      });
+      // Auto-fit: scale image to cover the full grid
+      const img = new window.Image();
+      img.onload = () => {
+        const fitScale = Math.min(
+          (GRID_COLS * CELL_SIZE) / img.naturalWidth,
+          (GRID_ROWS * CELL_SIZE) / img.naturalHeight,
+        );
+        setBgTransform({ x: 0, y: 0, scaleX: fitScale, scaleY: fitScale });
+        setBgPhotoId(photo.id);
+        setBgImage(img);
+      };
+      img.src = `/uploads/${photo.id}/display.jpg`;
+    } catch (err) {
+      console.error("Hintergrundbild-Upload fehlgeschlagen:", err);
+      alert("Upload fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setBgUploading(false);
+    }
+  }, []);
+
+  const handleBgSave = useCallback(async () => {
+    try {
+      await settingsRepository.update({
+        mapBgPhotoId: bgPhotoId,
+        mapBgX: bgTransform.x,
+        mapBgY: bgTransform.y,
+        mapBgScaleX: bgTransform.scaleX,
+        mapBgScaleY: bgTransform.scaleY,
+      });
+      setTool("select");
+    } catch (err) {
+      console.error("Hintergrundbild speichern fehlgeschlagen:", err);
+      alert("Speichern fehlgeschlagen. Bitte erneut versuchen.");
+    }
+  }, [bgPhotoId, bgTransform]);
+
+  const handleBgRemove = useCallback(async () => {
+    if (!window.confirm("Hintergrundbild entfernen?")) return;
+    try {
+      await settingsRepository.update({ mapBgPhotoId: null });
+      if (bgPhotoId) {
+        await photoRepository.removeWithFiles(bgPhotoId);
+      }
+      setBgPhotoId(null);
+      setBgImage(null);
+      setBgTransform({ x: 0, y: 0, scaleX: 1, scaleY: 1 });
+      setTool("select");
+    } catch (err) {
+      console.error("Hintergrundbild entfernen fehlgeschlagen:", err);
+    }
+  }, [bgPhotoId]);
+
   // Stage cursor — set directly on Konva's container element so it isn't
   // overridden by the canvas element's inline styles.
   const stageCursor = tool === "draw" || tool === "pin" ? "crosshair" : "default";
@@ -1756,6 +1855,27 @@ export default function GardenMapPage() {
               <span className="hidden sm:inline">Pflanze</span>
             </span>
           </button>
+          <button
+            onClick={() => {
+              setTool("bg");
+              setSelectedBedId(null);
+              setSelectedPinId(null);
+            }}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              tool === "bg"
+                ? "bg-surface-elevated text-text-heading shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+              <span className="hidden sm:inline">Luftbild</span>
+            </span>
+          </button>
         </div>
 
         <div className="h-5 w-px bg-surface-muted" />
@@ -1804,6 +1924,11 @@ export default function GardenMapPage() {
         {tool === "edit" && (
           <span className="text-xs text-text-muted">
             Beete und Pflanzen ziehen zum Verschieben · Klick zum Bearbeiten
+          </span>
+        )}
+        {tool === "bg" && (
+          <span className="text-xs font-medium text-text-heading">
+            Luftbild hochladen und positionieren
           </span>
         )}
 
@@ -1869,8 +1994,38 @@ export default function GardenMapPage() {
                 height={GRID_ROWS * CELL_SIZE}
                 fill="#FDF6EC"
               />
+              {bgImage && (
+                <KonvaImage
+                  image={bgImage}
+                  x={bgTransform.x}
+                  y={bgTransform.y}
+                  scaleX={bgTransform.scaleX}
+                  scaleY={bgTransform.scaleY}
+                  opacity={bgOpacity}
+                  perfectDrawEnabled={false}
+                />
+              )}
               <GridLines cols={GRID_COLS} rows={GRID_ROWS} />
             </Layer>
+
+            {/* Draggable bg image overlay (only in bg mode) */}
+            {tool === "bg" && bgImage && (
+              <Layer>
+                <KonvaImage
+                  image={bgImage}
+                  x={bgTransform.x}
+                  y={bgTransform.y}
+                  scaleX={bgTransform.scaleX}
+                  scaleY={bgTransform.scaleY}
+                  opacity={0.01}
+                  draggable
+                  perfectDrawEnabled={false}
+                  onDragEnd={(e) => {
+                    setBgTransform((prev) => ({ ...prev, x: e.target.x(), y: e.target.y() }));
+                  }}
+                />
+              </Layer>
+            )}
 
             {/* Interactive layer — beds, pins, draw preview */}
             <Layer>
@@ -1923,6 +2078,97 @@ export default function GardenMapPage() {
             </Layer>
           </Stage>
         </div>
+
+        {/* Hidden file input for bg image upload */}
+        <input
+          ref={bgFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { void handleBgFileChange(e); }}
+        />
+
+        {/* Background image panel */}
+        {tool === "bg" && (
+          <div className="absolute left-4 top-4 z-30 w-64 rounded-xl border border-border-default bg-surface-elevated p-4 shadow-xl">
+            <h3 className="mb-3 font-display text-sm font-bold text-text-heading">Luftbild / Hintergrund</h3>
+
+            <button
+              onClick={() => bgFileInputRef.current?.click()}
+              disabled={bgUploading}
+              className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border-default bg-surface px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-green-500 hover:text-text-primary disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {bgUploading ? "Wird hochgeladen…" : bgImage ? "Bild ersetzen" : "Bild hochladen"}
+            </button>
+
+            {bgImage && (
+              <>
+                <div className="mb-2.5">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs text-text-secondary">Deckkraft</span>
+                    <span className="text-xs tabular-nums">{Math.round(bgOpacity * 100)} %</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.1} max={1} step={0.05}
+                    value={bgOpacity}
+                    onChange={(e) => setBgOpacity(Number(e.target.value))}
+                    className="w-full accent-green-600"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs text-text-secondary">Größe</span>
+                    <span className="text-xs tabular-nums">{Math.round(bgTransform.scaleX * 100)} %</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05} max={5} step={0.05}
+                    value={bgTransform.scaleX}
+                    onChange={(e) => {
+                      const s = Number(e.target.value);
+                      setBgTransform((prev) => ({ ...prev, scaleX: s, scaleY: s }));
+                    }}
+                    className="w-full accent-green-600"
+                  />
+                </div>
+
+                <p className="mb-3 text-xs text-text-muted">
+                  Bild in der Karte ziehen, um es zu positionieren.
+                </p>
+              </>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { void handleBgSave(); }}
+                className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+              >
+                Speichern
+              </button>
+              {bgImage && (
+                <button
+                  onClick={() => { void handleBgRemove(); }}
+                  className="w-full rounded-lg px-3 py-2 text-sm font-medium text-terracotta-600 hover:bg-terracotta-400/10 transition-colors"
+                >
+                  Entfernen
+                </button>
+              )}
+              <button
+                onClick={() => setTool("select")}
+                className="w-full rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-surface transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Version badge */}
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/20 px-1.5 py-0.5 text-[10px] text-white/60 select-none">

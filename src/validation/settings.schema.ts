@@ -17,6 +17,11 @@ export const settingsSchema = z
     lastExportDate: z.string().datetime().optional(),
     dbSchemaVersion: z.number().int().positive(),
     exportVersion: z.number().int().positive(),
+    mapBgPhotoId: z.string().nullable().optional(),
+    mapBgX: z.number().optional(),
+    mapBgY: z.number().optional(),
+    mapBgScaleX: z.number().optional(),
+    mapBgScaleY: z.number().optional(),
   })
   .strict();
 

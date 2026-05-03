@@ -57,6 +57,13 @@
       "when": 1776427878645,
       "tag": "0007_curly_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777820736730,
+      "tag": "0008_blue_tag",
+      "breakpoints": true
     }
   ]
 }

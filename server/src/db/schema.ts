@@ -455,4 +455,9 @@ export const settings = sqliteTable("settings", {
   lastExportDate: text("last_export_date"),
   dbSchemaVersion: integer("db_schema_version").notNull().default(1),
   exportVersion: integer("export_version").notNull().default(1),
+  mapBgPhotoId: text("map_bg_photo_id"),
+  mapBgX: real("map_bg_x"),
+  mapBgY: real("map_bg_y"),
+  mapBgScaleX: real("map_bg_scale_x"),
+  mapBgScaleY: real("map_bg_scale_y"),
 });
