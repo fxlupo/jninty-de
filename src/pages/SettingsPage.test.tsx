@@ -108,12 +108,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Vorschaubilder:/)).toBeInTheDocument();
+      expect(screen.getByText(/genutzt/)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Anzeige:/)).toBeInTheDocument();
-    expect(screen.getByText(/Daten:/)).toBeInTheDocument();
-    expect(screen.getByText(/Gesamt:/)).toBeInTheDocument();
+    expect(screen.getByText(/Speicher \(Browser\)/)).toBeInTheDocument();
   });
 
   it("renders app version", async () => {
