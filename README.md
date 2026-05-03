@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.2.4-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.5-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -265,6 +265,14 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.2.5 (2026-05-03)
+
+**Pflanzendetailseite**
+- Fotos löschen: jedes Foto in der Galerie hat ein Papierkorb-Icon (oben rechts); löscht das Foto nach Bestätigung aus der Pflanze und vom Server
+- Schnellaktionen aufgeteilt: links „Neues Foto" (öffnet Dateiauswahl, lädt direkt hoch), rechts „+ Quick Log"
+
+---
 
 ### 1.2.4 (2026-04-27)
 
