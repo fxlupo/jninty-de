@@ -220,6 +220,7 @@ router.post("/commands", requireAuth, async (c) => {
     durationMin?: number | null;
   }>();
   const ts = now();
+  const requestedBy = session?.user?.email ?? session?.user?.id ?? userId;
   const result = await db
     .insert(irrigationCommands)
     .values({
@@ -228,7 +229,7 @@ router.post("/commands", requireAuth, async (c) => {
       createdAt: ts,
       updatedAt: ts,
       requestedAt: ts,
-      requestedBy: session.user.email,
+      requestedBy,
       status: "pending",
       zoneId: body.zoneId ?? null,
       zoneNumber: body.zoneNumber ?? null,
@@ -343,7 +344,9 @@ deviceRouter.post("/commands/:id/ack", async (c) => {
 deviceRouter.post("/commands/:id/done", async (c) => {
   const userId = c.get("irrigationUserId");
   const id = c.req.param("id") ?? "";
-  const body = await c.req.json<{ ok?: boolean; result?: string }>().catch(() => ({}));
+  const body: { ok?: boolean; result?: string } = await c.req
+    .json<{ ok?: boolean; result?: string }>()
+    .catch(() => ({}));
   const ts = now();
   const result = await db
     .update(irrigationCommands)
