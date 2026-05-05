@@ -145,6 +145,7 @@ Wichtige Felder:
 
 - `GET /api/irrigation/device/config`
 - `GET /api/irrigation/device/commands`
+- `GET /api/irrigation/device/events?limit=12`
 - `POST /api/irrigation/device/status`
 - `POST /api/irrigation/device/events`
 - `POST /api/irrigation/device/sensors`

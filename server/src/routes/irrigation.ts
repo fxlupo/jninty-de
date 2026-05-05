@@ -309,6 +309,18 @@ deviceRouter.post("/events", async (c) => {
   return c.json(result, 201);
 });
 
+deviceRouter.get("/events", async (c) => {
+  const userId = c.get("irrigationUserId");
+  const limit = Math.min(200, Math.max(1, intParam(c.req.query("limit"), 12)));
+  const rows = await db
+    .select()
+    .from(irrigationEvents)
+    .where(eq(irrigationEvents.userId, userId))
+    .orderBy(desc(irrigationEvents.createdAt))
+    .limit(limit);
+  return c.json(rows);
+});
+
 deviceRouter.post("/sensors", async (c) => {
   const userId = c.get("irrigationUserId");
   const body = await c.req.json<Record<string, unknown> | Record<string, unknown>[]>();
