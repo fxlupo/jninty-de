@@ -11,6 +11,9 @@ services:
       BETTER_AUTH_URL: "https://<your-tld>"
       FRONTEND_ORIGIN: "https://<your-tld>"
       TRUSTED_ORIGINS: "https://<your-tld>"
+      IRRIGATION_ENABLED: "false"
+      IRRIGATION_DEVICE_TOKEN: ""
+      IRRIGATION_DEVICE_USER_ID: ""
     volumes:
       - jninty_data:/app/data
     networks:

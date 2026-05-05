@@ -429,6 +429,110 @@ export const gardenMapPins = sqliteTable("garden_map_pin", {
   label: text("label"),
 });
 
+// ─── Irrigation module ───────────────────────────────────────────────────────
+
+export const irrigationZones = sqliteTable("irrigation_zone", {
+  id: text("id").primaryKey(),
+  version: integer("version").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  valveNumber: integer("valve_number").notNull(),
+  name: text("name").notNull(),
+  wh52Channel: integer("wh52_channel").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  moistureThreshold: integer("moisture_threshold").notNull().default(45),
+  tempMinimum: real("temp_minimum").notNull().default(5),
+  rainThreshold6h: real("rain_threshold_6h").notNull().default(3),
+  maxDurationMin: integer("max_duration_min").notNull().default(90),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const irrigationSchedules = sqliteTable("irrigation_schedule", {
+  id: text("id").primaryKey(),
+  version: integer("version").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  zoneId: text("zone_id")
+    .notNull()
+    .references(() => irrigationZones.id, { onDelete: "cascade" }),
+  program: text("program").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  weekdays: integer("weekdays").notNull().default(127),
+  startTime: text("start_time").notNull().default("06:00"),
+  durationMin: integer("duration_min").notNull().default(30),
+});
+
+export const irrigationSensorReadings = sqliteTable("irrigation_sensor_reading", {
+  id: text("id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  channel: integer("channel").notNull(),
+  soilMoisture: real("soil_moisture"),
+  soilTemp: real("soil_temp"),
+  soilEc: real("soil_ec"),
+  batteryOk: integer("battery_ok", { mode: "boolean" }),
+  raw: text("raw", { mode: "json" }).$type<Record<string, unknown> | null>(),
+});
+
+export const irrigationEvents = sqliteTable("irrigation_event", {
+  id: text("id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  zoneId: text("zone_id").references(() => irrigationZones.id, { onDelete: "set null" }),
+  zoneNumber: integer("zone_number"),
+  action: text("action").notNull(),
+  reason: text("reason"),
+  detail: text("detail"),
+  durationSec: integer("duration_sec"),
+  raw: text("raw", { mode: "json" }).$type<Record<string, unknown> | null>(),
+});
+
+export const irrigationCommands = sqliteTable("irrigation_command", {
+  id: text("id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  zoneId: text("zone_id").references(() => irrigationZones.id, { onDelete: "set null" }),
+  zoneNumber: integer("zone_number"),
+  command: text("command").notNull(),
+  durationMin: integer("duration_min"),
+  status: text("status").notNull().default("pending"),
+  requestedBy: text("requested_by"),
+  requestedAt: text("requested_at").notNull(),
+  ackedAt: text("acked_at"),
+  completedAt: text("completed_at"),
+  result: text("result"),
+});
+
+export const irrigationStatus = sqliteTable("irrigation_status", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  updatedAt: text("updated_at").notNull(),
+  lastSeen: text("last_seen").notNull(),
+  wifiRssi: integer("wifi_rssi"),
+  ecowittOk: integer("ecowitt_ok", { mode: "boolean" }),
+  valveStates: text("valve_states").notNull().default("0000"),
+  firmwareVersion: text("firmware_version"),
+  ipAddress: text("ip_address"),
+  uptimeSec: integer("uptime_sec"),
+  raw: text("raw", { mode: "json" }).$type<Record<string, unknown> | null>(),
+});
+
 // ─── Settings (per-user singleton, no baseEntity base) ───────────────────────
 
 export const settings = sqliteTable("settings", {

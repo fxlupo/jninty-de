@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.2.6-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.7-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -33,6 +33,7 @@ Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Gartenkarte und Wetter in einer 
 - **Wetter** — Aktuelles Wetter und Frostwarnungen über [Open-Meteo](https://open-meteo.com) (kein API-Key nötig)
 - **Volltextsuche** — Schnelle Suche über Pflanzen und Journaleinträge (MiniSearch)
 - **Datenexport/-import** — ZIP-Backup und Wiederherstellung
+- **Bewaesserung (in Entwicklung)** — native API-Basis fuer ESP32-Bewaesserungssteuerung mit Zonen, Zeitplaenen, Sensorwerten, Events und Device-Token
 - **Mehrere Benutzer** — Jeder Benutzer hat ein eigenes Login, Daten sind vollständig getrennt
 - **PWA** — Installierbar auf jedem Gerät, funktioniert im Browser und als Home-Screen-App
 - **Dark Mode & Barrierefreiheit** — Systemthema oder manuell; hoher Kontrast, anpassbare Schriftgröße, Tastaturkürzel
@@ -68,6 +69,15 @@ Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Gartenkarte und Wetter in einer 
 | Karteeditor | Konva.js |
 | Tests | Vitest + Testing Library |
 | Wetter | Open-Meteo (kostenlos, kein Key) |
+
+### Bewaesserungsmodul
+
+Das Bewaesserungsmodul wird nativ in Jninty integriert. Die erste Ausbaustufe legt Datenbanktabellen und API-Endpunkte an:
+
+- Web-Endpunkte unter `/api/irrigation/*` nutzen die normale better-auth Session.
+- ESP-Endpunkte unter `/api/irrigation/device/*` nutzen `Authorization: Bearer <IRRIGATION_DEVICE_TOKEN>`.
+- Der ESP schreibt auf den Benutzer aus `IRRIGATION_DEVICE_USER_ID`.
+- Technische Details stehen in `docs/plans/2026-05-05-irrigation-module.md`.
 
 ### Verzeichnisstruktur
 
@@ -130,6 +140,9 @@ services:
       BETTER_AUTH_URL: "https://deine-domain.de"              # ← ändern
       FRONTEND_ORIGIN: "https://deine-domain.de"              # ← ändern
       TRUSTED_ORIGINS: "https://deine-domain.de"              # ← ändern
+      IRRIGATION_ENABLED: "false"
+      IRRIGATION_DEVICE_TOKEN: ""                              # spaeter fuer ESP setzen
+      IRRIGATION_DEVICE_USER_ID: ""                            # spaeter fuer ESP setzen
 
   frontend:
     labels:
