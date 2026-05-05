@@ -256,13 +256,14 @@ deviceRouter.get("/config", async (c) => {
 
 deviceRouter.get("/commands", async (c) => {
   const userId = c.get("irrigationUserId");
+  const freshAfter = new Date(Date.now() - 2 * 60 * 1000).toISOString();
   const rows = await db
     .select()
     .from(irrigationCommands)
     .where(and(eq(irrigationCommands.userId, userId), eq(irrigationCommands.status, "pending")))
     .orderBy(desc(irrigationCommands.createdAt))
     .limit(10);
-  return c.json(rows);
+  return c.json(rows.filter((row) => row.createdAt >= freshAfter).slice(0, 1));
 });
 
 deviceRouter.post("/status", async (c) => {
