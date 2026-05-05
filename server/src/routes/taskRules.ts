@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import { taskRules } from "../db/schema.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
@@ -17,6 +17,10 @@ type TaskRuleBody = Omit<
 >;
 
 type TaskRulePatch = Partial<TaskRuleBody>;
+
+function scopedBuiltInId(userId: string, id: string): string {
+  return `${userId}:${id}`;
+}
 
 /** GET /api/task-rules?builtIn=1 */
 router.get("/", requireAuth, async (c) => {
@@ -63,24 +67,25 @@ router.put("/:id", requireAuth, async (c) => {
   const id = c.req.param("id") ?? "";
   const body = await c.req.json<TaskRuleBody>();
   const timestamp = now();
+  const storageId = scopedBuiltInId(userId, id);
 
   const existing = await db
     .select()
     .from(taskRules)
-    .where(and(eq(taskRules.id, id), eq(taskRules.userId, userId)));
+    .where(and(inArray(taskRules.id, [id, storageId]), eq(taskRules.userId, userId)));
 
   if (existing[0]) {
     const result = await db
       .update(taskRules)
       .set({ ...body, version: sql`${taskRules.version} + 1`, updatedAt: timestamp })
-      .where(eq(taskRules.id, id))
+      .where(eq(taskRules.id, existing[0].id))
       .returning();
     return c.json(result[0] ?? existing[0]);
   }
 
   const result = await db
     .insert(taskRules)
-    .values({ ...body, id, userId, version: 1, createdAt: timestamp, updatedAt: timestamp })
+    .values({ ...body, id: storageId, userId, version: 1, createdAt: timestamp, updatedAt: timestamp })
     .returning();
   const row = result[0];
   if (!row) return c.json({ error: "Upsert failed" }, 500);
