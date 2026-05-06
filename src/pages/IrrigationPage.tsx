@@ -18,6 +18,7 @@ interface IrrigationZone {
 }
 
 interface IrrigationSensor {
+  id?: string;
   channel: number;
   soilMoisture: number | null;
   soilTemp: number | null;
@@ -32,6 +33,7 @@ interface IrrigationEvent {
   reason: string | null;
   detail: string | null;
   zoneNumber: number | null;
+  durationSec?: number | null;
   createdAt: string;
 }
 
@@ -69,6 +71,12 @@ interface IrrigationDashboard {
   events: IrrigationEvent[];
   commands: IrrigationCommand[];
   status: IrrigationStatus | null;
+}
+
+interface IrrigationHistory {
+  days: number;
+  sensors: IrrigationSensor[];
+  runs: IrrigationEvent[];
 }
 
 type CommandPayload =
@@ -256,6 +264,12 @@ function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): {
   return { text: "Plan: wird laufen", variant: "success" };
 }
 
+function durationText(seconds: number | null | undefined): string {
+  if (seconds == null || seconds <= 0) return "-";
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} min`;
+}
+
 export default function IrrigationPage() {
   const [dashboard, setDashboard] = useState<IrrigationDashboard | null>(null);
   const [activeTab, setActiveTab] = useState<IrrigationTab>("dashboard");
@@ -269,6 +283,9 @@ export default function IrrigationPage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [historyDays, setHistoryDays] = useState(30);
+  const [history, setHistory] = useState<IrrigationHistory | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -299,6 +316,25 @@ export default function IrrigationPage() {
     return () => window.clearInterval(timer);
   }, [loadDashboard]);
 
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await irrigationRequest<IrrigationHistory>(`/irrigation/history?days=${historyDays}`);
+      setHistory(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "History konnte nicht geladen werden.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [historyDays]);
+
+  useEffect(() => {
+    if (activeTab === "history") {
+      void loadHistory();
+    }
+  }, [activeTab, loadHistory]);
+
   const sensorsByChannel = useMemo(() => {
     const map = new Map<number, IrrigationSensor>();
     for (const sensor of dashboard?.sensors ?? []) {
@@ -320,6 +356,13 @@ export default function IrrigationPage() {
     return [...byId.values()].sort((a, b) => commandTime(b) - commandTime(a));
   }, [dashboard?.commands, localCommands]);
   const pendingCount = activeCommands.length;
+  const zoneNameByNumber = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const zone of dashboard?.zones ?? []) {
+      map.set(zone.valveNumber, zone.name);
+    }
+    return map;
+  }, [dashboard?.zones]);
 
   const commandByZone = useMemo(() => {
     const map = new Map<number, IrrigationCommand>();
@@ -850,12 +893,92 @@ export default function IrrigationPage() {
       )}
 
       {activeTab === "history" && (
-        <Card>
-          <h2 className="font-display text-lg font-semibold text-text-heading">History</h2>
-          <p className="mt-2 text-sm text-text-secondary">
-            Hier kommen als nächstes Verlaufsgrafiken und historische Sensorwerte rein.
-          </p>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-semibold text-text-heading">History</h2>
+                <p className="text-sm text-text-secondary">Sensorwerte und Bewässerungsläufe.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  className={INPUT_CLASS}
+                  value={historyDays}
+                  onChange={(event) => setHistoryDays(Number(event.target.value))}
+                >
+                  <option value={7}>7 Tage</option>
+                  <option value={30}>30 Tage</option>
+                  <option value={90}>90 Tage</option>
+                  <option value={365}>365 Tage</option>
+                </select>
+                <Button size="sm" variant="secondary" onClick={() => void loadHistory()} disabled={loadingHistory}>
+                  {loadingHistory ? "Lädt..." : "Aktualisieren"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Card>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-display text-lg font-semibold text-text-heading">Sensorverlauf</h3>
+                <Badge variant="default">{history?.sensors.length ?? 0} Werte</Badge>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead className="text-xs uppercase text-text-secondary">
+                    <tr>
+                      <th className="py-2 pr-3">Zeit</th>
+                      <th className="py-2 pr-3">Zone</th>
+                      <th className="py-2 pr-3">Feuchte</th>
+                      <th className="py-2 pr-3">Temp</th>
+                      <th className="py-2 pr-3">EC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-default">
+                    {(history?.sensors ?? []).slice(0, 80).map((sensor) => (
+                      <tr key={sensor.id ?? `${sensor.channel}-${sensor.createdAt}`}>
+                        <td className="py-2 pr-3 text-text-secondary">{formatDateTime(sensor.createdAt)}</td>
+                        <td className="py-2 pr-3 text-text-heading">
+                          {zoneNameByNumber.get(sensor.channel) ?? `Ch ${sensor.channel}`}
+                        </td>
+                        <td className="py-2 pr-3">{formatValue(sensor.soilMoisture, "%", 1)}</td>
+                        <td className="py-2 pr-3">{formatValue(sensor.soilTemp, "°C", 1)}</td>
+                        <td className="py-2 pr-3">{formatValue(sensor.soilEc, "uS")}</td>
+                      </tr>
+                    ))}
+                    {history && history.sensors.length === 0 && (
+                      <tr>
+                        <td className="py-4 text-text-secondary" colSpan={5}>Keine Sensorwerte im Zeitraum.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-display text-lg font-semibold text-text-heading">Bewässerungsläufe</h3>
+                <Badge variant="default">{history?.runs.length ?? 0} Events</Badge>
+              </div>
+              <div className="divide-y divide-dashed divide-border-default">
+                {(history?.runs ?? []).slice(0, 80).map((run) => (
+                  <div key={run.id} className="grid gap-1 py-2 text-sm md:grid-cols-[8rem_1fr_auto] md:items-center">
+                    <span className="text-text-secondary">{formatDateTime(run.createdAt)}</span>
+                    <span className="font-medium text-text-heading">
+                      {run.zoneNumber ? zoneNameByNumber.get(run.zoneNumber) ?? `V${run.zoneNumber}` : "System"} · {eventText(run)}
+                    </span>
+                    <span className="text-text-secondary">{durationText(run.durationSec)}</span>
+                  </div>
+                ))}
+                {history && history.runs.length === 0 && (
+                  <div className="py-4 text-sm text-text-secondary">Keine Bewässerungsläufe im Zeitraum.</div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   );
