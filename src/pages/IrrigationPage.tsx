@@ -44,6 +44,16 @@ interface IrrigationCommand {
   requestedAt: string;
 }
 
+interface IrrigationSchedule {
+  id: string;
+  zoneId: string;
+  program: string;
+  active: boolean;
+  weekdays: number;
+  startTime: string;
+  durationMin: number;
+}
+
 interface IrrigationStatus {
   espOnline: boolean | null;
   wifiRssi: number | null;
@@ -54,6 +64,7 @@ interface IrrigationStatus {
 
 interface IrrigationDashboard {
   zones: IrrigationZone[];
+  schedules: IrrigationSchedule[];
   sensors: IrrigationSensor[];
   events: IrrigationEvent[];
   commands: IrrigationCommand[];
@@ -75,12 +86,30 @@ interface ZoneDraft {
   maxDurationMin: number;
 }
 
+interface ScheduleDraft {
+  zoneId: string;
+  program: string;
+  active: boolean;
+  weekdays: number;
+  startTime: string;
+  durationMin: number;
+}
+
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
 const API_BASE = apiUrl ?? "/api";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
+const WEEKDAYS = [
+  { bit: 0, label: "Mo" },
+  { bit: 1, label: "Di" },
+  { bit: 2, label: "Mi" },
+  { bit: 3, label: "Do" },
+  { bit: 4, label: "Fr" },
+  { bit: 5, label: "Sa" },
+  { bit: 6, label: "So" },
+];
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -172,6 +201,22 @@ function eventText(event: IrrigationEvent): string {
   return `${zone}${eventLabel(event.action)}${reason}${detail}`;
 }
 
+function normalizeStartTime(value: string): string {
+  return value.slice(0, 5);
+}
+
+function weekdayText(mask: number): string {
+  if (mask === 127) return "täglich";
+  if (mask === 31) return "werktags";
+  if (mask === 96) return "Wochenende";
+  const labels = WEEKDAYS.filter((day) => (mask & (1 << day.bit)) !== 0).map((day) => day.label);
+  return labels.length > 0 ? labels.join(", ") : "keine Tage";
+}
+
+function zoneNameById(zones: IrrigationZone[], zoneId: string): string {
+  return zones.find((zone) => zone.id === zoneId)?.name ?? "Zone";
+}
+
 export default function IrrigationPage() {
   const [dashboard, setDashboard] = useState<IrrigationDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,6 +225,9 @@ export default function IrrigationPage() {
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
   const [savingZone, setSavingZone] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -270,6 +318,83 @@ export default function IrrigationPage() {
     }
   };
 
+  const startNewSchedule = () => {
+    const firstZone = dashboard?.zones[0];
+    if (!firstZone) return;
+    setEditingScheduleId("new");
+    setScheduleDraft({
+      zoneId: firstZone.id,
+      program: "A",
+      active: true,
+      weekdays: 127,
+      startTime: "06:00",
+      durationMin: 30,
+    });
+  };
+
+  const startEditSchedule = (schedule: IrrigationSchedule) => {
+    setEditingScheduleId(schedule.id);
+    setScheduleDraft({
+      zoneId: schedule.zoneId,
+      program: schedule.program,
+      active: schedule.active,
+      weekdays: schedule.weekdays,
+      startTime: normalizeStartTime(schedule.startTime),
+      durationMin: schedule.durationMin,
+    });
+  };
+
+  const cancelEditSchedule = () => {
+    setEditingScheduleId(null);
+    setScheduleDraft(null);
+  };
+
+  const updateScheduleDraft = <K extends keyof ScheduleDraft>(key: K, value: ScheduleDraft[K]) => {
+    setScheduleDraft((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const toggleScheduleWeekday = (bit: number) => {
+    setScheduleDraft((current) => {
+      if (!current) return current;
+      return { ...current, weekdays: current.weekdays ^ (1 << bit) };
+    });
+  };
+
+  const saveSchedule = async () => {
+    if (!scheduleDraft || !editingScheduleId) return;
+    setSavingSchedule(true);
+    try {
+      const path = editingScheduleId === "new" ? "/irrigation/schedules" : `/irrigation/schedules/${editingScheduleId}`;
+      const method = editingScheduleId === "new" ? "POST" : "PATCH";
+      await irrigationRequest<IrrigationSchedule>(path, {
+        method,
+        body: JSON.stringify(scheduleDraft),
+      });
+      await loadDashboard();
+      cancelEditSchedule();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Zeitplan konnte nicht gespeichert werden.");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const deleteSchedule = async (schedule: IrrigationSchedule) => {
+    if (!window.confirm("Zeitplan wirklich löschen?")) return;
+    setSavingSchedule(true);
+    try {
+      await irrigationRequest<{ ok: boolean }>(`/irrigation/schedules/${schedule.id}`, {
+        method: "DELETE",
+      });
+      await loadDashboard();
+      if (editingScheduleId === schedule.id) cancelEditSchedule();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Zeitplan konnte nicht gelöscht werden.");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-6 md:py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -330,6 +455,143 @@ export default function IrrigationPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Zeitpläne</h2>
+            <p className="text-sm text-text-secondary">
+              Automatische Läufe werden vom ESP beim nächsten Config-Sync übernommen.
+            </p>
+          </div>
+          <Button size="sm" onClick={startNewSchedule} disabled={!dashboard?.zones.length || editingScheduleId != null}>
+            Zeitplan hinzufügen
+          </Button>
+        </div>
+
+        {scheduleDraft && (
+          <div className="mb-4 rounded-lg border border-border-default bg-surface-muted p-3">
+            <div className="grid gap-3 md:grid-cols-6">
+              <label className="md:col-span-2">
+                <span className="mb-1 block text-xs font-medium text-text-secondary">Zone</span>
+                <select
+                  className={INPUT_CLASS}
+                  value={scheduleDraft.zoneId}
+                  onChange={(event) => updateScheduleDraft("zoneId", event.target.value)}
+                >
+                  {(dashboard?.zones ?? []).map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      V{zone.valveNumber} {zone.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-1 block text-xs font-medium text-text-secondary">Programm</span>
+                <select
+                  className={INPUT_CLASS}
+                  value={scheduleDraft.program}
+                  onChange={(event) => updateScheduleDraft("program", event.target.value)}
+                >
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </label>
+              <label>
+                <span className="mb-1 block text-xs font-medium text-text-secondary">Start</span>
+                <input
+                  className={INPUT_CLASS}
+                  type="time"
+                  value={scheduleDraft.startTime}
+                  onChange={(event) => updateScheduleDraft("startTime", event.target.value)}
+                />
+              </label>
+              <label>
+                <span className="mb-1 block text-xs font-medium text-text-secondary">Dauer</span>
+                <input
+                  className={INPUT_CLASS}
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={scheduleDraft.durationMin}
+                  onChange={(event) => updateScheduleDraft("durationMin", Number(event.target.value))}
+                />
+              </label>
+              <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
+                <input
+                  type="checkbox"
+                  checked={scheduleDraft.active}
+                  onChange={(event) => updateScheduleDraft("active", event.target.checked)}
+                />
+                aktiv
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WEEKDAYS.map((day) => {
+                const active = (scheduleDraft.weekdays & (1 << day.bit)) !== 0;
+                return (
+                  <button
+                    key={day.bit}
+                    type="button"
+                    onClick={() => toggleScheduleWeekday(day.bit)}
+                    className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-text-on-primary"
+                        : "border-border-strong bg-surface text-text-secondary"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => void saveSchedule()} disabled={savingSchedule || scheduleDraft.weekdays === 0}>
+                {savingSchedule ? "Speichert..." : "Speichern"}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={cancelEditSchedule} disabled={savingSchedule}>
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="divide-y divide-border-default">
+          {(dashboard?.schedules ?? []).map((schedule) => (
+            <div key={schedule.id} className="flex flex-wrap items-center gap-3 py-3">
+              <Badge variant={schedule.active ? "success" : "default"}>{schedule.active ? "aktiv" : "inaktiv"}</Badge>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-text-heading">
+                  {zoneNameById(dashboard?.zones ?? [], schedule.zoneId)} · {normalizeStartTime(schedule.startTime)} · {schedule.durationMin} min
+                </div>
+                <div className="text-sm text-text-secondary">
+                  Programm {schedule.program} · {weekdayText(schedule.weekdays)}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => startEditSchedule(schedule)}
+                disabled={editingScheduleId != null}
+              >
+                Bearbeiten
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => void deleteSchedule(schedule)}
+                disabled={savingSchedule}
+              >
+                Löschen
+              </Button>
+            </div>
+          ))}
+          {dashboard && dashboard.schedules.length === 0 && (
+            <div className="py-4 text-sm text-text-secondary">Noch keine Zeitpläne angelegt.</div>
+          )}
+        </div>
+      </Card>
 
       <section className="grid gap-3 lg:grid-cols-2">
         {(dashboard?.zones ?? []).map((zone) => {
