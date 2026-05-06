@@ -25,6 +25,7 @@ import ExpenseFormPage from "./pages/ExpenseFormPage";
 import KnowledgeHubPage from "./pages/KnowledgeHubPage";
 import KnowledgeDetailPage from "./pages/KnowledgeDetailPage";
 import KnowledgeFormPage from "./pages/KnowledgeFormPage";
+import IrrigationPage from "./pages/IrrigationPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import InstallPrompt from "./components/InstallPrompt";
 import { loadBuiltInRules } from "./services/taskRuleLoader.ts";
@@ -175,6 +176,7 @@ export default function App() {
               <Route path="expenses" element={<ExpensesPage />} />
               <Route path="expenses/new" element={<ExpenseFormPage />} />
               <Route path="expenses/:id/edit" element={<ExpenseFormPage />} />
+              <Route path="irrigation" element={<IrrigationPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="quick-log" element={<QuickLogPage />} />
