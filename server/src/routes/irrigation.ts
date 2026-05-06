@@ -75,7 +75,17 @@ async function ensureDefaultZones(userId: string) {
     sortOrder: valveNumber,
   }));
 
-  return db.insert(irrigationZones).values(defaults).returning();
+  await db
+    .insert(irrigationZones)
+    .values(defaults)
+    .onConflictDoNothing({
+      target: [irrigationZones.userId, irrigationZones.valveNumber],
+    });
+
+  return db
+    .select()
+    .from(irrigationZones)
+    .where(and(eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)));
 }
 
 async function latestSensors(userId: string) {

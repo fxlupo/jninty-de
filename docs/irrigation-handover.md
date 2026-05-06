@@ -1,8 +1,8 @@
 # Bewässerung Handover
 
 Stand: 2026-05-06
-Version: 1.3.0
-Branch der Umsetzung: `feature/irrigation-module`
+Version: 1.3.2
+Branch der Umsetzung: `main`
 
 ## Kurzfassung
 
@@ -101,6 +101,15 @@ Tabellen:
 - `irrigation_status`: Heartbeat, RSSI, GW1200-Status, Ventilzustände, Firmware
 
 Beim ersten Dashboard-Aufruf werden Default-Zonen für den Benutzer angelegt, falls noch keine existieren.
+Das Anlegen ist konfliktfest: parallele Erstaufrufe verwenden `onConflictDoNothing` und lesen die Zonen danach erneut.
+
+Migration `0010` härtet das Bewässerungsmodul nach:
+
+- Der alte normale Zone-Index wird vor dem neuen Unique-Index entfernt.
+- `irrigation_command` wird neu aufgebaut und alte/unerwartete Statuswerte werden auf `pending`, `acked` oder `done` normalisiert.
+- Der Status-Index für Commands wird nach dem Rebuild wieder angelegt.
+
+Falls in einer Bestandsdatenbank echte Duplikate für `(user_id, valve_number)` existieren, müssen diese vor dem Unique-Index bewusst bereinigt werden. Das wird nicht automatisch gelöscht, weil Zeitpläne und Historie an den Zonen hängen können.
 
 ## ESP-Verhalten
 
@@ -166,9 +175,20 @@ Nach Merge auf `main`:
 
 Bei persistentem NAS-nginx muss sichergestellt sein, dass `/api/*` an den Server-Container geleitet wird und die SPA-Fallback-Regel nur für Frontend-Routen greift.
 
+## Tests und Checks
+
+Vor Release/Deployment ausführen:
+
+```bash
+npm run build:check
+npm run test
+npm run build
+```
+
+Für die Bewässerungs-Migration gibt es einen SQLite-Regressionscheck für `0009 -> 0010`. Der Test wird automatisch übersprungen, falls lokal kein `sqlite3` CLI verfügbar ist.
+
 ## Bekannte Hinweise
 
-- Lokaler Build in der Codex-Umgebung war nicht möglich, weil dort kein Node/npm verfügbar war. Der Docker-Build war während der Entwicklung der relevante Check.
 - Das ESP-Firmware-Projekt liegt außerhalb dieses Repos. Die Firmware wurde parallel angepasst und per OTA erfolgreich geflasht.
 - Die alte PHP-Anwendung kann abgeschaltet werden, sobald der NAS-Betrieb mit Jninty `main` stabil läuft.
 

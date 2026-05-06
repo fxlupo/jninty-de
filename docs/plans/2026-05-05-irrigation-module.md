@@ -1,7 +1,7 @@
 # Bewaesserungsmodul fuer Jninty
 
-Status: Phase 1 umgesetzt
-Zielversion: 1.3.0
+Status: umgesetzt und stabilisiert
+Zielversion: 1.3.0, stabilisiert bis 1.3.2
 Ausgangsversion: 1.2.7
 
 ## Ziel
@@ -159,6 +159,9 @@ Wichtige Felder:
 - Web UI ist als Tab-Oberfläche auf `/irrigation` umgesetzt.
 - Manuelle Kommandos werden im Backend angelegt, vom ESP gepollt, geacknowledged und abgeschlossen.
 - Sensorwerte, Status und Events werden vom ESP in die SQLite-Datenbank geschrieben.
+- Migration `0010` ist gegen vorhandene Indizes und Legacy-Command-Status abgesichert.
+- Default-Zonen werden konfliktfest angelegt und danach erneut gelesen.
+- Bestehende Zeitpläne zeigen die Zone beim Bearbeiten read-only, damit UI und API-Vertrag eindeutig bleiben.
 - Alte PHP/MySQL Daten können bei Bedarf noch separat migriert werden.
 
 ## UI-Plan

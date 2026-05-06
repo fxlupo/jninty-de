@@ -39,6 +39,8 @@ Empfehlung:
 
 - Fuer weniger Ueberraschung im Frontend: Zone beim bestehenden Zeitplan als read-only anzeigen. Fuer Zone-Wechsel einen neuen Zeitplan anlegen und alten loeschen.
 
+Status: umgesetzt. Bestehende Zeitplaene zeigen die Zone read-only; nur neue Zeitplaene haben eine Zonen-Auswahl.
+
 ## Prioritaet 3: Default-Zone-Race sauber behandeln
 
 Finding:
@@ -51,6 +53,8 @@ Empfehlung:
 - Defaults mit `onConflictDoNothing` einfuegen.
 - Danach Zonen erneut selektieren und zurueckgeben.
 
+Status: umgesetzt. `ensureDefaultZones()` fuegt konfliktfest ein und liest danach erneut.
+
 ## Prioritaet 4: Version-Endpoint konsistent abrufen
 
 Finding:
@@ -62,13 +66,16 @@ Empfehlung:
 
 - Version-Request ueber dieselbe API-Hilfsfunktion oder dieselbe `apiUrl`-Basis laufen lassen.
 
+Status: umgesetzt. `VersionInfo` verwendet die konfigurierte `apiUrl`-Basis oder faellt lokal auf `/api` zurueck.
+
 ## Prioritaet 5: Tests ergaenzen
 
 Empfohlene Tests:
 
-- Migration 0009 -> 0010 auf leerer DB.
+- Migration 0009 -> 0010 auf leerer DB. Status: umgesetzt.
+- Migration 0009 -> 0010 mit unerwartetem Command-Status. Status: umgesetzt.
+- Version-Endpoint nutzt konfigurierte API-Basis. Status: umgesetzt.
 - Migration 0009 -> 0010 mit bestehenden Commands in allen gueltigen Statuswerten.
-- Migration 0009 -> 0010 mit unerwartetem Command-Status.
 - `POST /api/irrigation/schedules` validiert Zone-Besitz.
 - `PATCH /api/irrigation/schedules/:id` spiegelt die UI-Entscheidung zu `zoneId`.
 - `GET /api/irrigation/device/commands` liefert nur frische pending Commands.
@@ -76,5 +83,5 @@ Empfohlene Tests:
 
 ## Prioritaet 6: Dokumentation glattziehen
 
-- README-Badge von `1.3.0` auf aktuelle Version setzen oder dynamische Badge-Quelle verwenden.
-- Handover um den Migrationshinweis zu 0010 ergaenzen.
+- README-Badge auf aktuelle Version setzen. Status: umgesetzt fuer `1.3.2`.
+- Handover um den Migrationshinweis zu 0010 ergaenzen. Status: umgesetzt.
