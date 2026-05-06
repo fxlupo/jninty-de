@@ -1,7 +1,7 @@
 # Bewaesserungsmodul fuer Jninty
 
 Status: umgesetzt und stabilisiert
-Zielversion: 1.3.0, stabilisiert bis 1.3.5
+Zielversion: 1.3.0, stabilisiert bis 1.3.6
 Ausgangsversion: 1.2.7
 
 ## Ziel
