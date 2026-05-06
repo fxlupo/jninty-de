@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.3.6-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.7-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -281,6 +281,11 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.3.7 (2026-05-06)
+
+**Bewässerung**
+- Eventlog-Filter für Scheduler- und Zonen-Events erkennen ESP-Eventvarianten robuster
 
 ### 1.3.6 (2026-05-06)
 
