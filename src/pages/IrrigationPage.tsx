@@ -95,6 +95,8 @@ interface ScheduleDraft {
   durationMin: number;
 }
 
+type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
+
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
@@ -109,6 +111,13 @@ const WEEKDAYS = [
   { bit: 4, label: "Fr" },
   { bit: 5, label: "Sa" },
   { bit: 6, label: "So" },
+];
+const TABS: Array<{ id: IrrigationTab; label: string }> = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "programs", label: "Programme" },
+  { id: "manual", label: "Manuell" },
+  { id: "events", label: "Eventlog" },
+  { id: "history", label: "History" },
 ];
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -217,8 +226,25 @@ function zoneNameById(zones: IrrigationZone[], zoneId: string): string {
   return zones.find((zone) => zone.id === zoneId)?.name ?? "Zone";
 }
 
+function nextScheduleForZone(schedules: IrrigationSchedule[], zoneId: string): IrrigationSchedule | null {
+  return schedules.find((schedule) => schedule.zoneId === zoneId && schedule.active) ?? null;
+}
+
+function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): { text: string; variant: "success" | "warning" | "default" } {
+  if (!zone.active) return { text: "Skip: Zone inaktiv", variant: "warning" };
+  if (!sensor) return { text: "Skip: keine Sensor Daten", variant: "warning" };
+  if (sensor.soilTemp != null && sensor.soilTemp < zone.tempMinimum) {
+    return { text: "Skip: Boden zu kalt", variant: "warning" };
+  }
+  if (sensor.soilMoisture != null && sensor.soilMoisture >= zone.moistureThreshold) {
+    return { text: "Skip: Boden zu feucht", variant: "warning" };
+  }
+  return { text: "Plan: wird laufen", variant: "success" };
+}
+
 export default function IrrigationPage() {
   const [dashboard, setDashboard] = useState<IrrigationDashboard | null>(null);
+  const [activeTab, setActiveTab] = useState<IrrigationTab>("dashboard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
@@ -400,9 +426,7 @@ export default function IrrigationPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-text-heading">Bewässerung</h1>
-          <p className="text-sm text-text-secondary">
-            ESP-Steuerung, Sensorwerte und manuelle Ventilbefehle.
-          </p>
+          <p className="text-sm text-text-secondary">ESP-Steuerung, Sensorwerte und Programme.</p>
         </div>
         <Button
           variant="danger"
@@ -419,372 +443,359 @@ export default function IrrigationPage() {
         </Card>
       )}
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="space-y-2">
-          <div className="text-sm font-semibold text-text-heading">ESP</div>
-          <Badge variant={online ? "success" : "danger"}>{online ? "online" : "offline"}</Badge>
-          <div className="text-xs text-text-secondary">
-            zuletzt {formatDateTime(dashboard?.status?.lastSeen)}
-          </div>
-          {dashboard?.status?.wifiRssi != null && (
-            <div className="text-xs text-text-secondary">RSSI {dashboard.status.wifiRssi} dBm</div>
-          )}
-        </Card>
-        <Card className="space-y-2">
-          <div className="text-sm font-semibold text-text-heading">GW1200</div>
-          <Badge variant={dashboard?.status?.ecowittOk ? "success" : "warning"}>
-            {dashboard?.status?.ecowittOk ? "erreichbar" : "offen"}
-          </Badge>
-        </Card>
-        <Card className="space-y-2 md:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-text-heading">Ventile</div>
-            <Badge variant={pendingCount > 0 ? "warning" : "default"}>
-              {pendingCount > 0 ? `${pendingCount} wartet` : "keine Befehle"}
-            </Badge>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {[1, 2, 3, 4].map((valve) => {
-              const isOpen = valveStates[valve - 1] ?? false;
-              return (
-                <span key={valve} className={isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}>
-                  V{valve} {isOpen ? "On" : "Off"}
-                </span>
-              );
-            })}
-          </div>
-        </Card>
+      <div className="flex gap-2 overflow-x-auto rounded-xl border border-border-default bg-surface-elevated p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? "bg-primary text-text-on-primary"
+                : "text-text-secondary hover:bg-surface-muted hover:text-text-heading"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold text-text-heading">Zeitpläne</h2>
-            <p className="text-sm text-text-secondary">
-              Automatische Läufe werden vom ESP beim nächsten Config-Sync übernommen.
-            </p>
-          </div>
-          <Button size="sm" onClick={startNewSchedule} disabled={!dashboard?.zones.length || editingScheduleId != null}>
-            Zeitplan hinzufügen
-          </Button>
-        </div>
+      {activeTab === "dashboard" && (
+        <>
+          <section className="grid gap-3 lg:grid-cols-2">
+            {(dashboard?.zones ?? []).map((zone) => {
+              const sensor = zone.wh52Channel ? sensorsByChannel.get(zone.wh52Channel) : undefined;
+              const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+              const isEditing = editingZoneId === zone.id;
+              const draft = isEditing ? zoneDraft : null;
+              const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
+              const hint = planHint(zone, sensor);
+              return (
+                <Card key={zone.id} className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-display text-lg font-semibold text-text-heading">{zone.name}</h2>
+                        <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+                      </div>
+                      <div className="mt-1 text-xs text-text-secondary">
+                        WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => startEditZone(zone)}
+                        disabled={editingZoneId != null && editingZoneId !== zone.id}
+                      >
+                        Bearbeiten
+                      </Button>
+                      <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
+                    </div>
+                  </div>
 
-        {scheduleDraft && (
-          <div className="mb-4 rounded-lg border border-border-default bg-surface-muted p-3">
-            <div className="grid gap-3 md:grid-cols-6">
-              <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-medium text-text-secondary">Zone</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={scheduleDraft.zoneId}
-                  onChange={(event) => updateScheduleDraft("zoneId", event.target.value)}
-                >
-                  {(dashboard?.zones ?? []).map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      V{zone.valveNumber} {zone.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-medium text-text-secondary">Programm</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={scheduleDraft.program}
-                  onChange={(event) => updateScheduleDraft("program", event.target.value)}
-                >
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                </select>
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-medium text-text-secondary">Start</span>
-                <input
-                  className={INPUT_CLASS}
-                  type="time"
-                  value={scheduleDraft.startTime}
-                  onChange={(event) => updateScheduleDraft("startTime", event.target.value)}
-                />
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-medium text-text-secondary">Dauer</span>
-                <input
-                  className={INPUT_CLASS}
-                  type="number"
-                  min={1}
-                  max={180}
-                  value={scheduleDraft.durationMin}
-                  onChange={(event) => updateScheduleDraft("durationMin", Number(event.target.value))}
-                />
-              </label>
-              <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
-                <input
-                  type="checkbox"
-                  checked={scheduleDraft.active}
-                  onChange={(event) => updateScheduleDraft("active", event.target.checked)}
-                />
-                aktiv
-              </label>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {WEEKDAYS.map((day) => {
-                const active = (scheduleDraft.weekdays & (1 << day.bit)) !== 0;
-                return (
-                  <button
-                    key={day.bit}
-                    type="button"
-                    onClick={() => toggleScheduleWeekday(day.bit)}
-                    className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-colors ${
-                      active
-                        ? "border-primary bg-primary text-text-on-primary"
-                        : "border-border-strong bg-surface text-text-secondary"
-                    }`}
-                  >
-                    {day.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => void saveSchedule()} disabled={savingSchedule || scheduleDraft.weekdays === 0}>
-                {savingSchedule ? "Speichert..." : "Speichern"}
-              </Button>
-              <Button size="sm" variant="secondary" onClick={cancelEditSchedule} disabled={savingSchedule}>
-                Abbrechen
-              </Button>
-            </div>
-          </div>
-        )}
+                  {draft && (
+                    <div className="rounded-lg border border-border-default bg-surface-muted p-3">
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <label className="md:col-span-2">
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">Name</span>
+                          <input className={INPUT_CLASS} value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">WH52 Ch</span>
+                          <input className={INPUT_CLASS} type="number" min={1} max={8} value={draft.wh52Channel} onChange={(event) => updateDraft("wh52Channel", Number(event.target.value))} />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">Feuchte Limit</span>
+                          <input className={INPUT_CLASS} type="number" min={0} max={100} value={draft.moistureThreshold} onChange={(event) => updateDraft("moistureThreshold", Number(event.target.value))} />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">Temp Minimum</span>
+                          <input className={INPUT_CLASS} type="number" step={0.5} value={draft.tempMinimum} onChange={(event) => updateDraft("tempMinimum", Number(event.target.value))} />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">Regen 6h Limit</span>
+                          <input className={INPUT_CLASS} type="number" step={0.5} min={0} value={draft.rainThreshold6h} onChange={(event) => updateDraft("rainThreshold6h", Number(event.target.value))} />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-medium text-text-secondary">Max-Dauer</span>
+                          <input className={INPUT_CLASS} type="number" min={1} max={180} value={draft.maxDurationMin} onChange={(event) => updateDraft("maxDurationMin", Number(event.target.value))} />
+                        </label>
+                        <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
+                          <input type="checkbox" checked={draft.active} onChange={(event) => updateDraft("active", event.target.checked)} />
+                          Zone aktiv
+                        </label>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => void saveZone(zone)} disabled={savingZone}>
+                          {savingZone ? "Speichert..." : "Speichern"}
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={cancelEditZone} disabled={savingZone}>
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-        <div className="divide-y divide-border-default">
-          {(dashboard?.schedules ?? []).map((schedule) => (
-            <div key={schedule.id} className="flex flex-wrap items-center gap-3 py-3">
-              <Badge variant={schedule.active ? "success" : "default"}>{schedule.active ? "aktiv" : "inaktiv"}</Badge>
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-text-heading">
-                  {zoneNameById(dashboard?.zones ?? [], schedule.zoneId)} · {normalizeStartTime(schedule.startTime)} · {schedule.durationMin} min
-                </div>
-                <div className="text-sm text-text-secondary">
-                  Programm {schedule.program} · {weekdayText(schedule.weekdays)}
-                </div>
+                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-3 text-sm">
+                    <div>
+                      <div className="text-xs text-text-secondary">Feuchte</div>
+                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilMoisture, "%", 1)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-text-secondary">Temp</div>
+                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilTemp, "°C", 1)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-text-secondary">EC</div>
+                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilEc, "uS")}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="text-text-secondary">
+                      Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}
+                    </span>
+                    <Badge variant={hint.variant}>{hint.text}</Badge>
+                  </div>
+                </Card>
+              );
+            })}
+          </section>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <Card className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-text-heading">Ventile</div>
+                <Badge variant={pendingCount > 0 ? "warning" : "default"}>
+                  {pendingCount > 0 ? `${pendingCount} wartet` : "keine Befehle"}
+                </Badge>
               </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => startEditSchedule(schedule)}
-                disabled={editingScheduleId != null}
-              >
-                Bearbeiten
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                onClick={() => void deleteSchedule(schedule)}
-                disabled={savingSchedule}
-              >
-                Löschen
-              </Button>
-            </div>
-          ))}
-          {dashboard && dashboard.schedules.length === 0 && (
-            <div className="py-4 text-sm text-text-secondary">Noch keine Zeitpläne angelegt.</div>
-          )}
-        </div>
-      </Card>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {[1, 2, 3, 4].map((valve) => {
+                  const isOpen = valveStates[valve - 1] ?? false;
+                  return (
+                    <span key={valve} className={isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}>
+                      V{valve} {isOpen ? "On" : "Off"}
+                    </span>
+                  );
+                })}
+              </div>
+            </Card>
+            <Card className="space-y-2">
+              <div className="text-sm font-semibold text-text-heading">ESP</div>
+              <Badge variant={online ? "success" : "danger"}>{online ? "online" : "offline"}</Badge>
+              <div className="text-xs text-text-secondary">zuletzt {formatDateTime(dashboard?.status?.lastSeen)}</div>
+              {dashboard?.status?.wifiRssi != null && (
+                <div className="text-xs text-text-secondary">RSSI {dashboard.status.wifiRssi} dBm</div>
+              )}
+            </Card>
+            <Card className="space-y-2">
+              <div className="text-sm font-semibold text-text-heading">GW1200</div>
+              <Badge variant={dashboard?.status?.ecowittOk ? "success" : "warning"}>
+                {dashboard?.status?.ecowittOk ? "erreichbar" : "offen"}
+              </Badge>
+            </Card>
+            <Card className="space-y-2">
+              <div className="text-sm font-semibold text-text-heading">Sync</div>
+              <Badge variant={pendingCount > 0 ? "warning" : "success"}>
+                {pendingCount > 0 ? "wartet" : "aktuell"}
+              </Badge>
+              <div className="text-xs text-text-secondary">{loading ? "lädt..." : "Auto-Refresh 10s"}</div>
+            </Card>
+          </div>
+        </>
+      )}
 
-      <section className="grid gap-3 lg:grid-cols-2">
-        {(dashboard?.zones ?? []).map((zone) => {
-          const sensor = zone.wh52Channel ? sensorsByChannel.get(zone.wh52Channel) : undefined;
-          const isOpen = valveStates[zone.valveNumber - 1] ?? false;
-          const commandKey = `open-${String(zone.valveNumber)}`;
-          const closeKey = `close-${String(zone.valveNumber)}`;
-          const isEditing = editingZoneId === zone.id;
-          const draft = isEditing ? zoneDraft : null;
-          return (
-            <Card key={zone.id} className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-display text-lg font-semibold text-text-heading">{zone.name}</h2>
-                    <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+      {activeTab === "programs" && (
+        <Card>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-text-heading">Programme</h2>
+              <p className="text-sm text-text-secondary">Automatische Läufe werden vom ESP beim nächsten Config-Sync übernommen.</p>
+            </div>
+            <Button size="sm" onClick={startNewSchedule} disabled={!dashboard?.zones.length || editingScheduleId != null}>
+              Zeitplan hinzufügen
+            </Button>
+          </div>
+
+          {scheduleDraft && (
+            <div className="mb-4 rounded-lg border border-border-default bg-surface-muted p-3">
+              <div className="grid gap-3 md:grid-cols-6">
+                <label className="md:col-span-2">
+                  <span className="mb-1 block text-xs font-medium text-text-secondary">Zone</span>
+                  <select className={INPUT_CLASS} value={scheduleDraft.zoneId} onChange={(event) => updateScheduleDraft("zoneId", event.target.value)}>
+                    {(dashboard?.zones ?? []).map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        V{zone.valveNumber} {zone.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-text-secondary">Programm</span>
+                  <select className={INPUT_CLASS} value={scheduleDraft.program} onChange={(event) => updateScheduleDraft("program", event.target.value)}>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-text-secondary">Start</span>
+                  <input className={INPUT_CLASS} type="time" value={scheduleDraft.startTime} onChange={(event) => updateScheduleDraft("startTime", event.target.value)} />
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-text-secondary">Dauer</span>
+                  <input className={INPUT_CLASS} type="number" min={1} max={180} value={scheduleDraft.durationMin} onChange={(event) => updateScheduleDraft("durationMin", Number(event.target.value))} />
+                </label>
+                <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
+                  <input type="checkbox" checked={scheduleDraft.active} onChange={(event) => updateScheduleDraft("active", event.target.checked)} />
+                  aktiv
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {WEEKDAYS.map((day) => {
+                  const active = (scheduleDraft.weekdays & (1 << day.bit)) !== 0;
+                  return (
+                    <button
+                      key={day.bit}
+                      type="button"
+                      onClick={() => toggleScheduleWeekday(day.bit)}
+                      className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-colors ${
+                        active ? "border-primary bg-primary text-text-on-primary" : "border-border-strong bg-surface text-text-secondary"
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => void saveSchedule()} disabled={savingSchedule || scheduleDraft.weekdays === 0}>
+                  {savingSchedule ? "Speichert..." : "Speichern"}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={cancelEditSchedule} disabled={savingSchedule}>
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="divide-y divide-border-default">
+            {(dashboard?.schedules ?? []).map((schedule) => (
+              <div key={schedule.id} className="flex flex-wrap items-center gap-3 py-3">
+                <Badge variant={schedule.active ? "success" : "default"}>{schedule.active ? "aktiv" : "inaktiv"}</Badge>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-text-heading">
+                    {zoneNameById(dashboard?.zones ?? [], schedule.zoneId)} · {normalizeStartTime(schedule.startTime)} · {schedule.durationMin} min
                   </div>
-                  <div className="mt-1 text-xs text-text-secondary">
-                    WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
-                  </div>
+                  <div className="text-sm text-text-secondary">Programm {schedule.program} · {weekdayText(schedule.weekdays)}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => startEditZone(zone)}
-                    disabled={editingZoneId != null && editingZoneId !== zone.id}
-                  >
-                    Bearbeiten
-                  </Button>
+                <Button size="sm" variant="secondary" onClick={() => startEditSchedule(schedule)} disabled={editingScheduleId != null}>
+                  Bearbeiten
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => void deleteSchedule(schedule)} disabled={savingSchedule}>
+                  Löschen
+                </Button>
+              </div>
+            ))}
+            {dashboard && dashboard.schedules.length === 0 && (
+              <div className="py-4 text-sm text-text-secondary">Noch keine Zeitpläne angelegt.</div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {activeTab === "manual" && (
+        <section className="grid gap-3 lg:grid-cols-2">
+          {(dashboard?.zones ?? []).map((zone) => {
+            const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+            const commandKey = `open-${String(zone.valveNumber)}`;
+            const closeKey = `close-${String(zone.valveNumber)}`;
+            return (
+              <Card key={zone.id} className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-display text-lg font-semibold text-text-heading">{zone.name}</h2>
+                      <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-text-secondary">Max {zone.maxDurationMin} min</div>
+                  </div>
                   <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
                 </div>
-              </div>
-
-              {draft && (
-                <div className="rounded-lg border border-border-default bg-surface-muted p-3">
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <label className="md:col-span-2">
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">Name</span>
-                      <input
-                        className={INPUT_CLASS}
-                        value={draft.name}
-                        onChange={(event) => updateDraft("name", event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">WH52 Ch</span>
-                      <input
-                        className={INPUT_CLASS}
-                        type="number"
-                        min={1}
-                        max={8}
-                        value={draft.wh52Channel}
-                        onChange={(event) => updateDraft("wh52Channel", Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">Feuchte Limit</span>
-                      <input
-                        className={INPUT_CLASS}
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={draft.moistureThreshold}
-                        onChange={(event) => updateDraft("moistureThreshold", Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">Temp Minimum</span>
-                      <input
-                        className={INPUT_CLASS}
-                        type="number"
-                        step={0.5}
-                        value={draft.tempMinimum}
-                        onChange={(event) => updateDraft("tempMinimum", Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">Regen 6h Limit</span>
-                      <input
-                        className={INPUT_CLASS}
-                        type="number"
-                        step={0.5}
-                        min={0}
-                        value={draft.rainThreshold6h}
-                        onChange={(event) => updateDraft("rainThreshold6h", Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-xs font-medium text-text-secondary">Max-Dauer</span>
-                      <input
-                        className={INPUT_CLASS}
-                        type="number"
-                        min={1}
-                        max={180}
-                        value={draft.maxDurationMin}
-                        onChange={(event) => updateDraft("maxDurationMin", Number(event.target.value))}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
-                      <input
-                        type="checkbox"
-                        checked={draft.active}
-                        onChange={(event) => updateDraft("active", event.target.checked)}
-                      />
-                      Zone aktiv
-                    </label>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => void saveZone(zone)} disabled={savingZone}>
-                      {savingZone ? "Speichert..." : "Speichern"}
+                <div className="flex flex-wrap gap-2">
+                  {[15, 30, 60, 90].map((duration) => (
+                    <Button
+                      key={duration}
+                      size="sm"
+                      variant="secondary"
+                      disabled={pendingCommand != null}
+                      onClick={() =>
+                        void sendCommand({
+                          command: "open",
+                          zoneId: zone.id,
+                          zoneNumber: zone.valveNumber,
+                          durationMin: duration,
+                        })
+                      }
+                    >
+                      {pendingCommand === commandKey ? "Sendet..." : `${duration} min`}
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={cancelEditZone} disabled={savingZone}>
-                      Abbrechen
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-3 text-sm">
-                <div>
-                  <div className="text-xs text-text-secondary">Feuchte</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilMoisture, "%", 1)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-text-secondary">Temp</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilTemp, "°C", 1)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-text-secondary">EC</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilEc, "uS")}</div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {[15, 30, 60, 90].map((duration) => (
+                  ))}
                   <Button
-                    key={duration}
                     size="sm"
-                    variant="secondary"
+                    variant="danger"
                     disabled={pendingCommand != null}
                     onClick={() =>
                       void sendCommand({
-                        command: "open",
+                        command: "close",
                         zoneId: zone.id,
                         zoneNumber: zone.valveNumber,
-                        durationMin: duration,
                       })
                     }
                   >
-                    {pendingCommand === commandKey ? "Sendet..." : `${duration} min`}
+                    {pendingCommand === closeKey ? "Sendet..." : "Schließen"}
                   </Button>
-                ))}
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={pendingCommand != null}
-                  onClick={() =>
-                    void sendCommand({
-                      command: "close",
-                      zoneId: zone.id,
-                      zoneNumber: zone.valveNumber,
-                    })
-                  }
-                >
-                  {pendingCommand === closeKey ? "Sendet..." : "Schließen"}
-                </Button>
-              </div>
-            </Card>
-          );
-        })}
-      </section>
+                </div>
+              </Card>
+            );
+          })}
+        </section>
+      )}
 
-      <Card>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold text-text-heading">Eventlog</h2>
-          {loading && <span className="text-xs text-text-secondary">lädt...</span>}
-        </div>
-        <div className="divide-y divide-dashed divide-border-default">
-          {(dashboard?.events ?? []).slice(0, 10).map((event) => (
-            <div key={event.id} className="flex gap-3 py-2 text-sm">
-              <span className="w-24 shrink-0 text-text-secondary">{formatDateTime(event.createdAt)}</span>
-              <Badge variant="default" className="shrink-0">
-                {eventLabel(event.action)}
-              </Badge>
-              <span className="min-w-0 text-text-primary">{eventText(event)}</span>
-            </div>
-          ))}
-          {dashboard && dashboard.events.length === 0 && (
-            <div className="py-4 text-sm text-text-secondary">Noch keine Events vorhanden.</div>
-          )}
-        </div>
-      </Card>
+      {activeTab === "events" && (
+        <Card>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-display text-lg font-semibold text-text-heading">Eventlog</h2>
+            {loading && <span className="text-xs text-text-secondary">lädt...</span>}
+          </div>
+          <div className="divide-y divide-dashed divide-border-default">
+            {(dashboard?.events ?? []).slice(0, 40).map((event) => (
+              <div key={event.id} className="flex gap-3 py-2 text-sm">
+                <span className="w-24 shrink-0 text-text-secondary">{formatDateTime(event.createdAt)}</span>
+                <Badge variant="default" className="shrink-0">
+                  {eventLabel(event.action)}
+                </Badge>
+                <span className="min-w-0 text-text-primary">{eventText(event)}</span>
+              </div>
+            ))}
+            {dashboard && dashboard.events.length === 0 && (
+              <div className="py-4 text-sm text-text-secondary">Noch keine Events vorhanden.</div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {activeTab === "history" && (
+        <Card>
+          <h2 className="font-display text-lg font-semibold text-text-heading">History</h2>
+          <p className="mt-2 text-sm text-text-secondary">
+            Hier kommen als nächstes Verlaufsgrafiken und historische Sensorwerte rein.
+          </p>
+        </Card>
+      )}
     </div>
   );
 }
