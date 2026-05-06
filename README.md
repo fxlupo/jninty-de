@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.3.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.2-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -281,6 +281,15 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.3.2 (2026-05-06)
+
+**Bewässerung**
+- Migration `0010` gegen vorhandene Indizes und Legacy-Command-Status abgesichert
+- Default-Zonen werden konfliktfest angelegt und danach erneut gelesen
+- Beim Bearbeiten bestehender Zeitpläne ist die Zone read-only; Zonenwechsel erfolgt über neuen Zeitplan
+- Version-Info nutzt die konfigurierte API-Basis statt festem Origin
+- Regressionstests für Migration `0009 -> 0010` und den Version-Endpoint ergänzt
 
 ### 1.3.0 (2026-05-06)
 

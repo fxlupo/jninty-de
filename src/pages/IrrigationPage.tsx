@@ -1002,13 +1002,19 @@ export default function IrrigationPage() {
               <div className="grid gap-3 md:grid-cols-6">
                 <label className="md:col-span-2">
                   <span className="mb-1 block text-xs font-medium text-text-secondary">Zone</span>
-                  <select className={INPUT_CLASS} value={scheduleDraft.zoneId} onChange={(event) => updateScheduleDraft("zoneId", event.target.value)}>
-                    {(dashboard?.zones ?? []).map((zone) => (
-                      <option key={zone.id} value={zone.id}>
-                        V{zone.valveNumber} {zone.name}
-                      </option>
-                    ))}
-                  </select>
+                  {editingScheduleId === "new" ? (
+                    <select className={INPUT_CLASS} value={scheduleDraft.zoneId} onChange={(event) => updateScheduleDraft("zoneId", event.target.value)}>
+                      {(dashboard?.zones ?? []).map((zone) => (
+                        <option key={zone.id} value={zone.id}>
+                          V{zone.valveNumber} {zone.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="rounded-lg border border-border-strong bg-surface-muted px-3 py-2 text-sm text-text-secondary">
+                      {zoneNameById(dashboard?.zones ?? [], scheduleDraft.zoneId)}
+                    </div>
+                  )}
                 </label>
                 <label>
                   <span className="mb-1 block text-xs font-medium text-text-secondary">Programm</span>
