@@ -104,6 +104,7 @@ interface ScheduleDraft {
 
 type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
 type SensorField = "soilMoisture" | "soilTemp";
+type EventFilter = "all" | "open" | "close" | "skip" | "manual" | "scheduler" | "zone";
 
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
@@ -127,6 +128,15 @@ const TABS: Array<{ id: IrrigationTab; label: string }> = [
   { id: "manual", label: "Manuell" },
   { id: "events", label: "Eventlog" },
   { id: "history", label: "History" },
+];
+const EVENT_FILTERS: Array<{ id: EventFilter; label: string }> = [
+  { id: "all", label: "Alle" },
+  { id: "open", label: "Öffnen" },
+  { id: "close", label: "Schließen" },
+  { id: "skip", label: "Skip" },
+  { id: "manual", label: "Manuell" },
+  { id: "scheduler", label: "Scheduler" },
+  { id: "zone", label: "Zone" },
 ];
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -235,6 +245,26 @@ function eventText(event: IrrigationEvent): string {
   const reason = event.reason ? ` · ${event.reason}` : "";
   const detail = event.detail ? ` · ${event.detail}` : "";
   return `${zone}${eventLabel(event.action)}${reason}${detail}`;
+}
+
+function matchesEventFilter(event: IrrigationEvent, filter: EventFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "open") return event.action === "open";
+  if (filter === "close") return event.action === "close" || event.action === "close_all";
+  if (filter === "skip") return event.action === "skip" || event.reason === "skip";
+  if (filter === "manual") return event.reason === "manual";
+  if (filter === "scheduler") return event.reason === "scheduler";
+  return (event.zoneNumber ?? 0) > 0;
+}
+
+function downloadJson(filename: string, payload: unknown): void {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function normalizeStartTime(value: string): string {
@@ -414,6 +444,7 @@ export default function IrrigationPage() {
   const [historyDays, setHistoryDays] = useState(1);
   const [history, setHistory] = useState<IrrigationHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [eventFilter, setEventFilter] = useState<EventFilter>("all");
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -493,6 +524,10 @@ export default function IrrigationPage() {
     }
     return map;
   }, [activeCommands]);
+  const filteredEvents = useMemo(
+    () => (dashboard?.events ?? []).filter((event) => matchesEventFilter(event, eventFilter)).slice(0, 40),
+    [dashboard?.events, eventFilter],
+  );
 
   const sendCommand = async (payload: CommandPayload) => {
     setPendingCommand(`${payload.command}-${String(payload.zoneNumber)}`);
@@ -624,6 +659,15 @@ export default function IrrigationPage() {
     } finally {
       setSavingSchedule(false);
     }
+  };
+
+  const exportConfig = () => {
+    downloadJson(`bewaesserung-config-${new Date().toISOString().slice(0, 10)}.json`, {
+      exportedAt: new Date().toISOString(),
+      source: "jninty-irrigation",
+      zones: dashboard?.zones ?? [],
+      schedules: dashboard?.schedules ?? [],
+    });
   };
 
   return (
@@ -920,6 +964,12 @@ export default function IrrigationPage() {
               <div className="py-4 text-sm text-text-secondary">Noch keine Zeitpläne angelegt.</div>
             )}
           </div>
+
+          <div className="mt-4 flex justify-end border-t border-border-default pt-4">
+            <Button size="sm" variant="secondary" onClick={exportConfig} disabled={!dashboard}>
+              Konfiguration exportieren
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -991,12 +1041,31 @@ export default function IrrigationPage() {
 
       {activeTab === "events" && (
         <Card>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-heading">Eventlog</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-text-heading">Eventlog</h2>
+              <p className="text-sm text-text-secondary">Gefilterte Ereignisse vom ESP und Scheduler.</p>
+            </div>
             {loading && <span className="text-xs text-text-secondary">lädt...</span>}
           </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {EVENT_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setEventFilter(filter.id)}
+                className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-colors ${
+                  eventFilter === filter.id
+                    ? "border-primary bg-primary text-text-on-primary"
+                    : "border-border-strong bg-surface text-text-secondary hover:bg-surface-muted hover:text-text-heading"
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
           <div className="divide-y divide-dashed divide-border-default">
-            {(dashboard?.events ?? []).slice(0, 40).map((event) => (
+            {filteredEvents.map((event) => (
               <div key={event.id} className="flex gap-3 py-2 text-sm">
                 <span className="w-24 shrink-0 text-text-secondary">{formatDateTime(event.createdAt)}</span>
                 <Badge variant="default" className="shrink-0">
@@ -1005,8 +1074,10 @@ export default function IrrigationPage() {
                 <span className="min-w-0 text-text-primary">{eventText(event)}</span>
               </div>
             ))}
-            {dashboard && dashboard.events.length === 0 && (
-              <div className="py-4 text-sm text-text-secondary">Noch keine Events vorhanden.</div>
+            {dashboard && filteredEvents.length === 0 && (
+              <div className="py-4 text-sm text-text-secondary">
+                {dashboard.events.length === 0 ? "Noch keine Events vorhanden." : "Keine Events passen zum Filter."}
+              </div>
             )}
           </div>
         </Card>
