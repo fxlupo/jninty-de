@@ -3,10 +3,8 @@
 CREATE UNIQUE INDEX `irrigation_zone_user_valve_idx` ON `irrigation_zone` (`user_id`,`valve_number`);
 --> statement-breakpoint
 
--- M6: add a CHECK constraint so the DB enforces the command status lifecycle
---     (pending → acked → done / failed). SQLite requires full table recreation.
-PRAGMA foreign_keys=OFF;
---> statement-breakpoint
+-- M6: add CHECK constraint on irrigation_command.status (pending/acked/done/failed).
+--     SQLite requires full table recreation to add a constraint to an existing table.
 CREATE TABLE `__new_irrigation_command` (
 	`id` text PRIMARY KEY NOT NULL,
 	`created_at` text NOT NULL,
@@ -35,5 +33,3 @@ INSERT INTO `__new_irrigation_command`
 DROP TABLE `irrigation_command`;
 --> statement-breakpoint
 ALTER TABLE `__new_irrigation_command` RENAME TO `irrigation_command`;
---> statement-breakpoint
-PRAGMA foreign_keys=ON;
