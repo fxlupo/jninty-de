@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { apiUrl } from "../config/cloud";
 import { getLegacyToken, hasLoggedInCookie } from "../lib/apiClient";
+
+// M5: Zod schemas validate user input before it reaches the API
+const ZoneDraftSchema = z.object({
+  name:               z.string().min(1, "Name darf nicht leer sein"),
+  wh52Channel:        z.number().int().min(1).max(8),
+  active:             z.boolean(),
+  moistureThreshold:  z.number().int().min(0).max(100),
+  tempMinimum:        z.number().min(-20).max(40),
+  rainThreshold6h:    z.number().min(0).max(100),
+  maxDurationMin:     z.number().int().min(1).max(480),
+});
+
+const ScheduleDraftSchema = z.object({
+  zoneId:     z.string().uuid(),
+  program:    z.string().min(1, "Programm darf nicht leer sein"),
+  active:     z.boolean(),
+  weekdays:   z.number().int().min(0).max(127),
+  startTime:  z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Ungültige Uhrzeit"),
+  durationMin: z.number().int().min(1).max(480),
+});
 
 interface IrrigationZone {
   id: string;
@@ -653,11 +674,17 @@ export default function IrrigationPage() {
 
   const saveZone = async (zone: IrrigationZone) => {
     if (!zoneDraft) return;
+    // M5: validate before sending to the API
+    const parsed = ZoneDraftSchema.safeParse(zoneDraft);
+    if (!parsed.success) {
+      setError(parsed.error.errors.map((e) => e.message).join(", "));
+      return;
+    }
     setSavingZone(true);
     try {
       await irrigationRequest<IrrigationZone>(`/irrigation/zones/${zone.id}`, {
         method: "PATCH",
-        body: JSON.stringify(zoneDraft),
+        body: JSON.stringify(parsed.data),
       });
       await loadDashboard();
       cancelEditZone();
@@ -712,13 +739,19 @@ export default function IrrigationPage() {
 
   const saveSchedule = async () => {
     if (!scheduleDraft || !editingScheduleId) return;
+    // M5: validate before sending to the API
+    const parsed = ScheduleDraftSchema.safeParse(scheduleDraft);
+    if (!parsed.success) {
+      setError(parsed.error.errors.map((e) => e.message).join(", "));
+      return;
+    }
     setSavingSchedule(true);
     try {
       const path = editingScheduleId === "new" ? "/irrigation/schedules" : `/irrigation/schedules/${editingScheduleId}`;
       const method = editingScheduleId === "new" ? "POST" : "PATCH";
       await irrigationRequest<IrrigationSchedule>(path, {
         method,
-        body: JSON.stringify(scheduleDraft),
+        body: JSON.stringify(parsed.data),
       });
       await loadDashboard();
       cancelEditSchedule();
