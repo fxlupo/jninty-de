@@ -187,6 +187,11 @@ function formatValue(value: number | null | undefined, unit: string, digits = 0)
   return `${value.toFixed(digits)} ${unit}`;
 }
 
+function formatCompactValue(value: number | null | undefined, unit: string, digits = 0): string {
+  if (value == null || Number.isNaN(value)) return "--";
+  return `${value.toFixed(digits)}${unit}`;
+}
+
 function isStatusOnline(status: IrrigationStatus | null): boolean {
   if (!status?.lastSeen) return false;
   const lastSeen = new Date(status.lastSeen).getTime();
@@ -786,14 +791,14 @@ export default function IrrigationPage() {
               const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
               const hint = planHint(zone, sensor);
               return (
-                <Card key={zone.id} className="space-y-2 p-3 md:space-y-3 md:p-4">
+                <Card key={zone.id} className="space-y-1.5 p-2 md:space-y-3 md:p-4">
                   <div className="flex items-start justify-between gap-2 md:gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="truncate font-display text-base font-semibold text-text-heading md:text-lg">{zone.name}</h2>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="mt-0.5 text-xs text-text-secondary md:mt-1">
+                      <div className="hidden text-xs text-text-secondary sm:mt-0.5 sm:block md:mt-1">
                         WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
                       </div>
                     </div>
@@ -856,24 +861,34 @@ export default function IrrigationPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-2 text-xs md:p-3 md:text-sm">
+                  <div className="grid grid-cols-3 gap-1 rounded-lg bg-surface-muted px-2 py-1.5 text-xs md:gap-2 md:p-3 md:text-sm">
                     <div>
                       <div className="text-xs text-text-secondary">Feuchte</div>
-                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilMoisture, "%", 1)}</div>
+                      <div className="font-semibold text-text-heading">
+                        <span className="md:hidden">{formatCompactValue(sensor?.soilMoisture, "%", 1)}</span>
+                        <span className="hidden md:inline">{formatValue(sensor?.soilMoisture, "%", 1)}</span>
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-text-secondary">Temp</div>
-                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilTemp, "°C", 1)}</div>
+                      <div className="font-semibold text-text-heading">
+                        <span className="md:hidden">{formatCompactValue(sensor?.soilTemp, "°C", 1)}</span>
+                        <span className="hidden md:inline">{formatValue(sensor?.soilTemp, "°C", 1)}</span>
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-text-secondary">EC</div>
-                      <div className="font-semibold text-text-heading">{formatValue(sensor?.soilEc, "uS")}</div>
+                      <div className="font-semibold text-text-heading">
+                        <span className="md:hidden">{formatCompactValue(sensor?.soilEc, "uS")}</span>
+                        <span className="hidden md:inline">{formatValue(sensor?.soilEc, "uS")}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs md:gap-2 md:text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs leading-tight md:gap-2 md:text-sm">
                     <span className="text-text-secondary">
-                      Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}
+                      <span className="md:hidden">{next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin}m` : "kein Programm"}</span>
+                      <span className="hidden md:inline">Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}</span>
                     </span>
                     {zoneCommand ? (
                       <Badge variant="warning">{commandLabel(zoneCommand)}</Badge>
@@ -1040,8 +1055,8 @@ export default function IrrigationPage() {
       )}
 
       {activeTab === "manual" && (
-        <div className="space-y-3">
-          <section className="grid gap-2 lg:grid-cols-2">
+        <div className="space-y-2 md:space-y-3">
+          <section className="grid gap-1.5 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const isOpen = valveStates[zone.valveNumber - 1] ?? false;
               const zoneCommand = commandByZone.get(zone.valveNumber);
@@ -1056,17 +1071,17 @@ export default function IrrigationPage() {
               return (
                 <Card
                   key={zone.id}
-                  className={`space-y-2 p-3 ${
+                  className={`space-y-1.5 p-2 md:space-y-2 md:p-3 ${
                     isOpen ? "border-green-300 bg-green-50" : ""
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2 md:gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="truncate font-display text-base font-semibold text-text-heading sm:text-lg">{zone.name}</h2>
+                        <h2 className="truncate font-display text-sm font-semibold text-text-heading sm:text-lg">{zone.name}</h2>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="mt-1 text-xs text-text-secondary">Max {zone.maxDurationMin} min</div>
+                      <div className="hidden text-xs text-text-secondary sm:mt-1 sm:block">Max {zone.maxDurationMin} min</div>
                     </div>
                     <Badge
                       variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
@@ -1076,16 +1091,16 @@ export default function IrrigationPage() {
                     </Badge>
                   </div>
                   {zoneCommand && (
-                    <div className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm font-medium text-status-warning-text">
+                    <div className="rounded-lg bg-status-warning-bg px-2 py-1 text-xs font-medium text-status-warning-text md:px-3 md:py-2 md:text-sm">
                       {commandLabel(zoneCommand)}
                     </div>
                   )}
                   {isOpen && remainingMs != null && (
-                    <div className="rounded-lg bg-status-success-bg px-3 py-2 text-sm font-semibold text-status-success-text">
+                    <div className="rounded-lg bg-status-success-bg px-2 py-1 text-xs font-semibold text-status-success-text md:px-3 md:py-2 md:text-sm">
                       Restlaufzeit {formatRemaining(remainingMs)}
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {[15, 30, 60, 90].map((duration) => (
                       <Button
                         key={duration}
@@ -1123,7 +1138,7 @@ export default function IrrigationPage() {
               );
             })}
           </section>
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-1">
             <Button
               variant="danger"
               onClick={() => void sendCommand({ command: "close_all", zoneNumber: 0 })}
