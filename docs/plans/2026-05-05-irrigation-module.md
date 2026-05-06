@@ -1,6 +1,6 @@
 # Bewaesserungsmodul fuer Jninty
 
-Status: Phase 1 in Umsetzung  
+Status: Phase 1 umgesetzt
 Zielversion: 1.3.0  
 Ausgangsversion: 1.2.7
 
@@ -14,7 +14,7 @@ Das Modul soll:
 - Zonen, Zeitplaene, Sensorwerte, Events, Status und Kommandos in derselben SQLite-Datenbank speichern,
 - die bestehende better-auth Web-Session fuer Benutzer verwenden,
 - fuer den ESP einen separaten Device-Token verwenden,
-- spaeter eine React UI im bestehenden Jninty Layout bereitstellen.
+- eine React UI im bestehenden Jninty Layout bereitstellen.
 
 ## Architektur
 
@@ -152,13 +152,14 @@ Wichtige Felder:
 - `POST /api/irrigation/device/commands/:id/ack`
 - `POST /api/irrigation/device/commands/:id/done`
 
-## Migrationsstrategie
+## Umsetzungsstand
 
-1. Schema/API in Jninty einfuehren.
-2. ESP Firmware auf neue Endpunkte umstellen.
-3. Web UI in Jninty bauen.
-4. Bestehende PHP/MySQL Daten optional einmalig per Export/Import migrieren.
-5. Altes Bewaesserungsbackend abschalten, wenn ESP und Web stabil laufen.
+- Schema und API sind in Jninty integriert.
+- ESP Device-Endpunkte sind angebunden und werden produktiv vom ESP genutzt.
+- Web UI ist als Tab-Oberfläche auf `/irrigation` umgesetzt.
+- Manuelle Kommandos werden im Backend angelegt, vom ESP gepollt, geacknowledged und abgeschlossen.
+- Sensorwerte, Status und Events werden vom ESP in die SQLite-Datenbank geschrieben.
+- Alte PHP/MySQL Daten können bei Bedarf noch separat migriert werden.
 
 ## UI-Plan
 
@@ -166,11 +167,12 @@ Route: `/irrigation`
 
 Ansichten:
 
-- Dashboard mit Zonenstatus, naechstem Lauf, Plan-/Skip-Grund und Statuskarte
-- Manuelle Steuerung
-- Sensorhistorie
+- Dashboard mit Zonenstatus, Sensorwerten, naechstem Lauf, Plan-/Skip-Grund und Statuskarten
+- Programme fuer automatische Laeufe
+- Manuelle Steuerung mit Laufzeitfeedback
 - Eventlog mit Filtern
-- Konfiguration fuer Zonen und Zeitprogramme
-- Diagnose/Systemstatus
+- History mit Sensorgraphen fuer Bodenfeuchte und Bodentemperatur
+- Konfiguration fuer Zonen direkt ueber Dashboard-Bearbeitung
+- JSON-Konfigurationsexport fuer Zonen und Zeitplaene
 
 Die Navigation soll als normaler Eintrag in Sidebar und Mobile Navigation erscheinen.
