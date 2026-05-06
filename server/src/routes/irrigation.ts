@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
@@ -17,6 +18,13 @@ const router = new Hono<{ Variables: AppVariables }>();
 
 type DeviceVariables = AppVariables & { irrigationUserId: string };
 const deviceRouter = new Hono<{ Variables: DeviceVariables }>();
+
+// K1: known command strings the frontend may send and the ESP understands
+const VALID_COMMANDS = ["open", "close", "close_all"] as const;
+type IrrigationCommand = (typeof VALID_COMMANDS)[number];
+
+// K1: known event actions the ESP firmware may report
+const VALID_ACTIONS = ["open", "close", "close_all", "skip", "system", "error"] as const;
 
 function now(): string {
   return new Date().toISOString();
@@ -126,7 +134,12 @@ function requireDeviceToken() {
 
     const header = c.req.header("authorization") ?? "";
     const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7) : "";
-    if (token !== expected) {
+    // K4: timing-safe comparison prevents token length/content leaks via timing side-channel
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(expected);
+    const tokenValid =
+      tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf);
+    if (!tokenValid) {
       return c.json({ error: "Unauthorized." }, 401);
     }
 
@@ -196,6 +209,14 @@ router.post("/schedules", requireAuth, async (c) => {
   const body = await c.req.json<
     Pick<typeof irrigationSchedules.$inferInsert, "zoneId" | "program" | "active" | "weekdays" | "startTime" | "durationMin">
   >();
+  // K3: verify the target zone belongs to the requesting user before inserting
+  const zone = await db
+    .select({ id: irrigationZones.id })
+    .from(irrigationZones)
+    .where(and(eq(irrigationZones.id, body.zoneId), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+    .limit(1);
+  if (!zone[0]) return c.json({ error: "Zone not found" }, 404);
+
   const ts = now();
   const result = await db
     .insert(irrigationSchedules)
@@ -280,6 +301,23 @@ router.post("/commands", requireAuth, async (c) => {
     command: string;
     durationMin?: number | null;
   }>();
+
+  // K1: reject unknown command strings before they reach the database
+  if (!(VALID_COMMANDS as readonly string[]).includes(body.command)) {
+    return c.json({ error: `Unknown command. Valid: ${VALID_COMMANDS.join(", ")}` }, 400);
+  }
+  const command = body.command as IrrigationCommand;
+
+  // K3: if a zoneId is supplied, verify it belongs to the requesting user
+  if (body.zoneId) {
+    const zone = await db
+      .select({ id: irrigationZones.id })
+      .from(irrigationZones)
+      .where(and(eq(irrigationZones.id, body.zoneId), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+      .limit(1);
+    if (!zone[0]) return c.json({ error: "Zone not found" }, 404);
+  }
+
   const ts = now();
   const requestedBy = session?.user?.email ?? session?.user?.id ?? userId;
   const result = await db
@@ -294,7 +332,7 @@ router.post("/commands", requireAuth, async (c) => {
       status: "pending",
       zoneId: body.zoneId ?? null,
       zoneNumber: body.zoneNumber ?? null,
-      command: body.command,
+      command,
       durationMin: body.durationMin ?? null,
     })
     .returning();
@@ -371,10 +409,16 @@ deviceRouter.post("/events", async (c) => {
   const rows = events.map((event) => ({
     id: crypto.randomUUID(),
     userId,
-    createdAt: typeof event["createdAt"] === "string" ? event["createdAt"] : now(),
+    // K5: always use the server's receive time — the ESP RTC has no NTP sync and
+    //     can drift significantly; the ESP timestamp is preserved in raw.
+    createdAt: now(),
     zoneId: typeof event["zoneId"] === "string" ? event["zoneId"] : null,
     zoneNumber: typeof event["zoneNumber"] === "number" ? event["zoneNumber"] : null,
-    action: typeof event["action"] === "string" ? event["action"] : "system",
+    // K1: only store known action strings; unknown values fall back to "system"
+    action:
+      typeof event["action"] === "string" && (VALID_ACTIONS as readonly string[]).includes(event["action"])
+        ? event["action"]
+        : "system",
     reason: typeof event["reason"] === "string" ? event["reason"] : null,
     detail: typeof event["detail"] === "string" ? event["detail"] : null,
     durationSec: typeof event["durationSec"] === "number" ? event["durationSec"] : null,
@@ -403,7 +447,8 @@ deviceRouter.post("/sensors", async (c) => {
   const rows = readings.map((reading) => ({
     id: crypto.randomUUID(),
     userId,
-    createdAt: typeof reading["createdAt"] === "string" ? reading["createdAt"] : now(),
+    // K5: always use the server's receive time (ESP RTC has no NTP sync)
+    createdAt: now(),
     channel: typeof reading["channel"] === "number" ? reading["channel"] : 0,
     soilMoisture: typeof reading["soilMoisture"] === "number" ? reading["soilMoisture"] : null,
     soilTemp: typeof reading["soilTemp"] === "number" ? reading["soilTemp"] : null,
