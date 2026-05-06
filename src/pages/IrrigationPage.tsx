@@ -445,6 +445,8 @@ export default function IrrigationPage() {
   const [history, setHistory] = useState<IrrigationHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
+  const [eventLog, setEventLog] = useState<IrrigationEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -494,6 +496,25 @@ export default function IrrigationPage() {
     }
   }, [activeTab, loadHistory]);
 
+  const loadEvents = useCallback(async () => {
+    setLoadingEvents(true);
+    try {
+      const data = await irrigationRequest<IrrigationEvent[]>("/irrigation/events?limit=200");
+      setEventLog(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eventlog konnte nicht geladen werden.");
+    } finally {
+      setLoadingEvents(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "events") {
+      void loadEvents();
+    }
+  }, [activeTab, loadEvents]);
+
   const sensorsByChannel = useMemo(() => {
     const map = new Map<number, IrrigationSensor>();
     for (const sensor of dashboard?.sensors ?? []) {
@@ -525,8 +546,8 @@ export default function IrrigationPage() {
     return map;
   }, [activeCommands]);
   const filteredEvents = useMemo(
-    () => (dashboard?.events ?? []).filter((event) => matchesEventFilter(event, eventFilter)).slice(0, 40),
-    [dashboard?.events, eventFilter],
+    () => (eventLog.length > 0 ? eventLog : (dashboard?.events ?? [])).filter((event) => matchesEventFilter(event, eventFilter)),
+    [dashboard?.events, eventFilter, eventLog],
   );
 
   const sendCommand = async (payload: CommandPayload) => {
@@ -1046,7 +1067,12 @@ export default function IrrigationPage() {
               <h2 className="font-display text-lg font-semibold text-text-heading">Eventlog</h2>
               <p className="text-sm text-text-secondary">Gefilterte Ereignisse vom ESP und Scheduler.</p>
             </div>
-            {loading && <span className="text-xs text-text-secondary">lädt...</span>}
+            <div className="flex items-center gap-2">
+              {loadingEvents && <span className="text-xs text-text-secondary">lädt...</span>}
+              <Button size="sm" variant="secondary" onClick={() => void loadEvents()} disabled={loadingEvents}>
+                Aktualisieren
+              </Button>
+            </div>
           </div>
           <div className="mb-4 flex flex-wrap gap-2">
             {EVENT_FILTERS.map((filter) => (
@@ -1076,7 +1102,7 @@ export default function IrrigationPage() {
             ))}
             {dashboard && filteredEvents.length === 0 && (
               <div className="py-4 text-sm text-text-secondary">
-                {dashboard.events.length === 0 ? "Noch keine Events vorhanden." : "Keine Events passen zum Filter."}
+                {(eventLog.length > 0 ? eventLog : dashboard.events).length === 0 ? "Noch keine Events vorhanden." : "Keine Events passen zum Filter."}
               </div>
             )}
           </div>
