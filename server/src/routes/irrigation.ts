@@ -148,10 +148,33 @@ router.get("/zones", requireAuth, async (c) => {
 router.patch("/zones/:id", requireAuth, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id") ?? "";
-  const body = await c.req.json<Partial<typeof irrigationZones.$inferInsert>>();
+  const body = await c.req.json<Record<string, unknown>>();
+
+  // Explicitly whitelist the fields the UI is allowed to change.
+  // This prevents a client from overwriting id, userId, valveNumber (hardware-
+  // bound), createdAt, deletedAt, or version through a crafted request body.
+  const patch: {
+    name?: string;
+    wh52Channel?: number;
+    active?: boolean;
+    moistureThreshold?: number;
+    tempMinimum?: number;
+    rainThreshold6h?: number;
+    maxDurationMin?: number;
+    sortOrder?: number;
+  } = {};
+  if (typeof body["name"] === "string")              patch.name              = body["name"];
+  if (typeof body["wh52Channel"] === "number")       patch.wh52Channel       = body["wh52Channel"];
+  if (typeof body["active"] === "boolean")           patch.active            = body["active"];
+  if (typeof body["moistureThreshold"] === "number") patch.moistureThreshold = body["moistureThreshold"];
+  if (typeof body["tempMinimum"] === "number")       patch.tempMinimum       = body["tempMinimum"];
+  if (typeof body["rainThreshold6h"] === "number")   patch.rainThreshold6h   = body["rainThreshold6h"];
+  if (typeof body["maxDurationMin"] === "number")    patch.maxDurationMin    = body["maxDurationMin"];
+  if (typeof body["sortOrder"] === "number")         patch.sortOrder         = body["sortOrder"];
+
   const result = await db
     .update(irrigationZones)
-    .set({ ...body, userId, version: sql`${irrigationZones.version} + 1`, updatedAt: now() })
+    .set({ ...patch, version: sql`${irrigationZones.version} + 1`, updatedAt: now() })
     .where(and(eq(irrigationZones.id, id), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
     .returning();
   const row = result[0];
@@ -184,10 +207,24 @@ router.post("/schedules", requireAuth, async (c) => {
 router.patch("/schedules/:id", requireAuth, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id") ?? "";
-  const body = await c.req.json<Partial<typeof irrigationSchedules.$inferInsert>>();
+  // K2: only accept mutable schedule fields — never zoneId, userId, or timestamps
+  const body = await c.req.json<Record<string, unknown>>();
+  const patch: {
+    program?: string;
+    active?: boolean;
+    weekdays?: number;
+    startTime?: string;
+    durationMin?: number;
+  } = {};
+  if (typeof body["program"]     === "string")  patch.program     = body["program"];
+  if (typeof body["active"]      === "boolean") patch.active      = body["active"];
+  if (typeof body["weekdays"]    === "number")  patch.weekdays    = body["weekdays"];
+  if (typeof body["startTime"]   === "string")  patch.startTime   = body["startTime"];
+  if (typeof body["durationMin"] === "number")  patch.durationMin = body["durationMin"];
+
   const result = await db
     .update(irrigationSchedules)
-    .set({ ...body, userId, version: sql`${irrigationSchedules.version} + 1`, updatedAt: now() })
+    .set({ ...patch, version: sql`${irrigationSchedules.version} + 1`, updatedAt: now() })
     .where(and(eq(irrigationSchedules.id, id), eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)))
     .returning();
   const row = result[0];
@@ -286,14 +323,21 @@ deviceRouter.get("/config", async (c) => {
 
 deviceRouter.get("/commands", async (c) => {
   const userId = c.get("irrigationUserId");
+  // M2: freshAfter filter belongs in the DB query, not in app code.
+  // Fetch at most 1 pending command that was created within the last 2 minutes
+  // so stale commands (e.g. from a previous ESP downtime) are never delivered.
   const freshAfter = new Date(Date.now() - 2 * 60 * 1000).toISOString();
   const rows = await db
     .select()
     .from(irrigationCommands)
-    .where(and(eq(irrigationCommands.userId, userId), eq(irrigationCommands.status, "pending")))
+    .where(and(
+      eq(irrigationCommands.userId, userId),
+      eq(irrigationCommands.status, "pending"),
+      gte(irrigationCommands.createdAt, freshAfter),
+    ))
     .orderBy(desc(irrigationCommands.createdAt))
-    .limit(10);
-  return c.json(rows.filter((row) => row.createdAt >= freshAfter).slice(0, 1));
+    .limit(1);
+  return c.json(rows);
 });
 
 deviceRouter.post("/status", async (c) => {
