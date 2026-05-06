@@ -134,6 +134,13 @@ const LOCAL_COMMAND_GRACE_MS = 15000;
 const API_BASE = apiUrl ?? "/api";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
+const OPEN_ZONE_CARD_CLASS =
+  "border-green-300 bg-surface-nav text-text-on-primary shadow-lg shadow-green-900/20 ring-2 ring-green-300";
+const OPEN_ZONE_HEADING_CLASS = "text-text-on-primary";
+const OPEN_ZONE_MUTED_CLASS = "text-green-100";
+const OPEN_ZONE_PANEL_CLASS = "bg-primary-active/70 text-text-on-primary";
+const OPEN_ZONE_BADGE_CLASS =
+  "animate-pulse bg-green-300 text-green-950 ring-2 ring-green-100";
 const WEEKDAYS = [
   { bit: 0, label: "Mo" },
   { bit: 1, label: "Di" },
@@ -841,16 +848,16 @@ export default function IrrigationPage() {
                 <Card
                   key={zone.id}
                   className={`space-y-1.5 p-2 md:space-y-3 md:p-4 ${
-                    isOpen ? "border-green-300 bg-green-50" : ""
+                    isOpen ? OPEN_ZONE_CARD_CLASS : ""
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 md:gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="truncate font-display text-base font-semibold text-text-heading md:text-lg">{zone.name}</h2>
+                        <h2 className={`truncate font-display text-base font-semibold md:text-lg ${isOpen ? OPEN_ZONE_HEADING_CLASS : "text-text-heading"}`}>{zone.name}</h2>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="hidden text-xs text-text-secondary sm:mt-0.5 sm:block md:mt-1">
+                      <div className={`hidden text-xs sm:mt-0.5 sm:block md:mt-1 ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>
                         WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
                       </div>
                     </div>
@@ -866,7 +873,7 @@ export default function IrrigationPage() {
                       </Button>
                       <Badge
                         variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
-                        className={isOpen ? "animate-pulse" : ""}
+                        className={isOpen ? OPEN_ZONE_BADGE_CLASS : ""}
                       >
                         {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
                       </Badge>
@@ -916,24 +923,24 @@ export default function IrrigationPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-1 rounded-lg bg-surface-muted px-2 py-1.5 text-xs md:gap-2 md:p-3 md:text-sm">
+                  <div className={`grid grid-cols-3 gap-1 rounded-lg px-2 py-1.5 text-xs md:gap-2 md:p-3 md:text-sm ${isOpen ? OPEN_ZONE_PANEL_CLASS : "bg-surface-muted"}`}>
                     <div>
-                      <div className="text-xs text-text-secondary">Feuchte</div>
-                      <div className="font-semibold text-text-heading">
+                      <div className={`text-xs ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>Feuchte</div>
+                      <div className={`font-semibold ${isOpen ? OPEN_ZONE_HEADING_CLASS : "text-text-heading"}`}>
                         <span className="md:hidden">{formatCompactValue(sensor?.soilMoisture, "%", 1)}</span>
                         <span className="hidden md:inline">{formatValue(sensor?.soilMoisture, "%", 1)}</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-text-secondary">Temp</div>
-                      <div className="font-semibold text-text-heading">
+                      <div className={`text-xs ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>Temp</div>
+                      <div className={`font-semibold ${isOpen ? OPEN_ZONE_HEADING_CLASS : "text-text-heading"}`}>
                         <span className="md:hidden">{formatCompactValue(sensor?.soilTemp, "°C", 1)}</span>
                         <span className="hidden md:inline">{formatValue(sensor?.soilTemp, "°C", 1)}</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-text-secondary">EC</div>
-                      <div className="font-semibold text-text-heading">
+                      <div className={`text-xs ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>EC</div>
+                      <div className={`font-semibold ${isOpen ? OPEN_ZONE_HEADING_CLASS : "text-text-heading"}`}>
                         <span className="md:hidden">{formatCompactValue(sensor?.soilEc, "uS")}</span>
                         <span className="hidden md:inline">{formatValue(sensor?.soilEc, "uS")}</span>
                       </div>
@@ -941,7 +948,7 @@ export default function IrrigationPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs leading-tight md:gap-2 md:text-sm">
-                    <span className="text-text-secondary">
+                    <span className={isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}>
                       <span className="md:hidden">{next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin}m` : "kein Programm"}</span>
                       <span className="hidden md:inline">Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}</span>
                     </span>
@@ -1133,20 +1140,20 @@ export default function IrrigationPage() {
                 <Card
                   key={zone.id}
                   className={`space-y-1.5 p-2 md:space-y-2 md:p-3 ${
-                    isOpen ? "border-green-300 bg-green-50" : ""
+                    isOpen ? OPEN_ZONE_CARD_CLASS : ""
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 md:gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="truncate font-display text-sm font-semibold text-text-heading sm:text-lg">{zone.name}</h2>
+                        <h2 className={`truncate font-display text-sm font-semibold sm:text-lg ${isOpen ? OPEN_ZONE_HEADING_CLASS : "text-text-heading"}`}>{zone.name}</h2>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="hidden text-xs text-text-secondary sm:mt-1 sm:block">Max {zone.maxDurationMin} min</div>
+                      <div className={`hidden text-xs sm:mt-1 sm:block ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>Max {zone.maxDurationMin} min</div>
                     </div>
                     <Badge
                       variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
-                      className={isOpen ? "animate-pulse" : ""}
+                      className={isOpen ? OPEN_ZONE_BADGE_CLASS : ""}
                     >
                       {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
                     </Badge>
