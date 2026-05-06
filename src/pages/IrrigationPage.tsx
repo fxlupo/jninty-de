@@ -776,7 +776,7 @@ export default function IrrigationPage() {
 
       {activeTab === "dashboard" && (
         <>
-          <section className="grid gap-3 lg:grid-cols-2">
+          <section className="grid gap-2 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const sensor = zone.wh52Channel ? sensorsByChannel.get(zone.wh52Channel) : undefined;
               const isOpen = valveStates[zone.valveNumber - 1] ?? false;
@@ -786,21 +786,22 @@ export default function IrrigationPage() {
               const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
               const hint = planHint(zone, sensor);
               return (
-                <Card key={zone.id} className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                <Card key={zone.id} className="space-y-2 p-3 md:space-y-3 md:p-4">
+                  <div className="flex items-start justify-between gap-2 md:gap-3">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="font-display text-lg font-semibold text-text-heading">{zone.name}</h2>
+                        <h2 className="truncate font-display text-base font-semibold text-text-heading md:text-lg">{zone.name}</h2>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="mt-1 text-xs text-text-secondary">
+                      <div className="mt-0.5 text-xs text-text-secondary md:mt-1">
                         WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1 md:gap-2">
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="hidden md:inline-flex"
                         onClick={() => startEditZone(zone)}
                         disabled={editingZoneId != null && editingZoneId !== zone.id}
                       >
@@ -855,7 +856,7 @@ export default function IrrigationPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-3 text-sm">
+                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-2 text-xs md:p-3 md:text-sm">
                     <div>
                       <div className="text-xs text-text-secondary">Feuchte</div>
                       <div className="font-semibold text-text-heading">{formatValue(sensor?.soilMoisture, "%", 1)}</div>
@@ -870,7 +871,7 @@ export default function IrrigationPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs md:gap-2 md:text-sm">
                     <span className="text-text-secondary">
                       Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}
                     </span>
@@ -936,10 +937,7 @@ export default function IrrigationPage() {
       {activeTab === "programs" && (
         <Card>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-lg font-semibold text-text-heading">Programme</h2>
-              <p className="text-sm text-text-secondary">Automatische Läufe werden vom ESP beim nächsten Config-Sync übernommen.</p>
-            </div>
+            <h2 className="font-display text-lg font-semibold text-text-heading">Programme</h2>
             <Button size="sm" onClick={startNewSchedule} disabled={!dashboard?.zones.length || editingScheduleId != null}>
               Zeitplan hinzufügen
             </Button>
@@ -1043,15 +1041,6 @@ export default function IrrigationPage() {
 
       {activeTab === "manual" && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button
-              variant="danger"
-              onClick={() => void sendCommand({ command: "close_all", zoneNumber: 0 })}
-              disabled={pendingCommand != null}
-            >
-              Alle stoppen
-            </Button>
-          </div>
           <section className="grid gap-2 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const isOpen = valveStates[zone.valveNumber - 1] ?? false;
@@ -1134,6 +1123,15 @@ export default function IrrigationPage() {
               );
             })}
           </section>
+          <div className="flex justify-end">
+            <Button
+              variant="danger"
+              onClick={() => void sendCommand({ command: "close_all", zoneNumber: 0 })}
+              disabled={pendingCommand != null}
+            >
+              Alle stoppen
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1178,15 +1176,22 @@ export default function IrrigationPage() {
             {filteredEvents.map((event) => (
               <div
                 key={event.id}
-                className="grid gap-1 py-2 text-sm md:grid-cols-[110px_90px_minmax(150px,1fr)_100px_80px] md:gap-3"
+                className="py-2 text-sm md:grid md:grid-cols-[110px_90px_minmax(150px,1fr)_100px_80px] md:gap-3"
               >
-                <span className="text-text-secondary">{formatDateTime(event.createdAt)}</span>
-                <span className="font-semibold text-text-heading">{eventLabel(event.action)}</span>
-                <span className="min-w-0 text-text-primary">{eventZoneText(event, dashboard?.zones ?? [])}</span>
-                <span className="text-text-secondary">{eventTriggerText(event.reason)}</span>
-                <span className="text-text-secondary">{eventDurationText(event)}</span>
+                <div className="flex min-w-0 items-center gap-2 md:contents">
+                  <span className="shrink-0 text-xs text-text-secondary md:text-sm">{formatDateTime(event.createdAt)}</span>
+                  <span className="shrink-0 font-semibold text-text-heading">{eventLabel(event.action)}</span>
+                  <span className="min-w-0 truncate text-text-primary">{eventZoneText(event, dashboard?.zones ?? [])}</span>
+                  <span className="hidden text-text-secondary md:inline">{eventTriggerText(event.reason)}</span>
+                  <span className="hidden text-text-secondary md:inline">{eventDurationText(event)}</span>
+                </div>
+                <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-text-secondary md:hidden">
+                  <span>{eventTriggerText(event.reason)}</span>
+                  <span>{eventDurationText(event)}</span>
+                  {event.detail && <span className="min-w-0 truncate text-text-muted">{event.detail}</span>}
+                </div>
                 {event.detail && (
-                  <span className="text-xs text-text-muted md:col-start-3 md:col-span-3">{event.detail}</span>
+                  <span className="hidden text-xs text-text-muted md:col-start-3 md:col-span-3 md:block">{event.detail}</span>
                 )}
               </div>
             ))}
