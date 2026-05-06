@@ -27,6 +27,10 @@ function intParam(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizeDeviceStartTime(value: string): string {
+  return value.length === 5 ? `${value}:00` : value;
+}
+
 async function ensureDefaultZones(userId: string) {
   const rows = await db
     .select()
@@ -251,7 +255,13 @@ deviceRouter.get("/config", async (c) => {
     .select()
     .from(irrigationSchedules)
     .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)));
-  return c.json({ zones, schedules });
+  const valveNumberByZoneId = new Map(zones.map((zone) => [zone.id, zone.valveNumber]));
+  const deviceSchedules = schedules.map((schedule) => ({
+    ...schedule,
+    zoneNumber: valveNumberByZoneId.get(schedule.zoneId) ?? 0,
+    startTime: normalizeDeviceStartTime(schedule.startTime),
+  }));
+  return c.json({ zones, schedules: deviceSchedules });
 });
 
 deviceRouter.get("/commands", async (c) => {
