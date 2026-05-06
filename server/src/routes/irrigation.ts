@@ -26,6 +26,12 @@ type IrrigationCommand = (typeof VALID_COMMANDS)[number];
 // K1: known event actions the ESP firmware may report
 const VALID_ACTIONS = ["open", "close", "close_all", "skip", "system", "error"] as const;
 
+// Query limits — named so magic numbers don't spread through the codebase
+const LIMIT_DASHBOARD_EVENTS  = 40;   // recent events shown on the dashboard
+const LIMIT_DEVICE_EVENTS      = 12;   // events returned to the ESP per poll
+const LIMIT_HISTORY_SENSORS    = 800;  // sensor rows for history graphs (≈ 1 per 10 min over 90 days)
+const COMMAND_FRESH_WINDOW_MS  = 2 * 60 * 1000; // commands older than 2 min are considered stale
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -35,13 +41,17 @@ function intParam(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// #3: validate format with regex instead of relying on string length
 function normalizeDeviceStartTime(value: string): string {
-  return value.length === 5 ? `${value}:00` : value;
+  if (/^\d{2}:\d{2}$/.test(value))    return `${value}:00`;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(value)) return value;
+  return "00:00:00"; // fallback for unexpected formats
 }
 
-function cutoffDateSql(days: number): string {
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  return cutoff.toISOString().slice(0, 19).replace("T", " ");
+// #6: use ISO-8601 consistently — was using SQLite space-separator format which
+// sorts differently from the ISO strings stored by now() (space < T in ASCII)
+function cutoffDate(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 async function ensureDefaultZones(userId: string) {
@@ -108,7 +118,7 @@ async function irrigationDashboard(userId: string) {
       .from(irrigationEvents)
       .where(eq(irrigationEvents.userId, userId))
       .orderBy(desc(irrigationEvents.createdAt))
-      .limit(40),
+      .limit(LIMIT_DASHBOARD_EVENTS),
     db
       .select()
       .from(irrigationCommands)
@@ -265,9 +275,11 @@ router.patch("/schedules/:id", requireAuth, async (c) => {
 router.delete("/schedules/:id", requireAuth, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id") ?? "";
+  // #1: single now() call so deletedAt and updatedAt share the same timestamp
+  const ts = now();
   const result = await db
     .update(irrigationSchedules)
-    .set({ deletedAt: now(), updatedAt: now(), version: sql`${irrigationSchedules.version} + 1` })
+    .set({ deletedAt: ts, updatedAt: ts, version: sql`${irrigationSchedules.version} + 1` })
     .where(and(eq(irrigationSchedules.id, id), eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)))
     .returning();
   if (!result[0]) return c.json({ error: "Not found" }, 404);
@@ -289,14 +301,14 @@ router.get("/events", requireAuth, async (c) => {
 router.get("/history", requireAuth, async (c) => {
   const userId = c.get("userId");
   const days = Math.min(365, Math.max(1, intParam(c.req.query("days"), 30)));
-  const since = cutoffDateSql(days);
+  const since = cutoffDate(days);
 
   const sensors = await db
     .select()
     .from(irrigationSensorReadings)
     .where(and(eq(irrigationSensorReadings.userId, userId), gte(irrigationSensorReadings.createdAt, since)))
     .orderBy(desc(irrigationSensorReadings.createdAt))
-    .limit(800);
+    .limit(LIMIT_HISTORY_SENSORS);
 
   return c.json({ days, sensors });
 });
@@ -373,7 +385,7 @@ deviceRouter.get("/commands", async (c) => {
   // M2: freshAfter filter belongs in the DB query, not in app code.
   // Fetch at most 1 pending command that was created within the last 2 minutes
   // so stale commands (e.g. from a previous ESP downtime) are never delivered.
-  const freshAfter = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const freshAfter = new Date(Date.now() - COMMAND_FRESH_WINDOW_MS).toISOString();
   const rows = await db
     .select()
     .from(irrigationCommands)
@@ -439,7 +451,7 @@ deviceRouter.post("/events", async (c) => {
 
 deviceRouter.get("/events", async (c) => {
   const userId = c.get("irrigationUserId");
-  const limit = Math.min(200, Math.max(1, intParam(c.req.query("limit"), 12)));
+  const limit = Math.min(200, Math.max(1, intParam(c.req.query("limit"), LIMIT_DEVICE_EVENTS)));
   const rows = await db
     .select()
     .from(irrigationEvents)

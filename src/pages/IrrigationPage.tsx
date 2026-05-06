@@ -240,14 +240,17 @@ function commandLabel(command: IrrigationCommand): string {
   return prefix;
 }
 
+// #5: compile once at module load instead of creating new RegExp objects on every call
+const VALVE_PATTERNS = [1, 2, 3, 4].map((v) => new RegExp(`V${v}\\s+(On|Off)`, "i"));
+
 function parseValveStates(value: string | null | undefined): boolean[] {
   if (!value) return [false, false, false, false];
   const compact = value.trim();
   if (/^[01]{4}$/.test(compact)) {
     return compact.split("").map((state) => state === "1");
   }
-  return [1, 2, 3, 4].map((valve) => {
-    const match = compact.match(new RegExp(`V${String(valve)}\\s+(On|Off)`, "i"));
+  return VALVE_PATTERNS.map((pattern) => {
+    const match = compact.match(pattern);
     return match?.[1]?.toLowerCase() === "on";
   });
 }
@@ -306,7 +309,10 @@ function downloadJson(filename: string, payload: unknown): void {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  // #7: append to DOM so Firefox triggers the download, then remove immediately
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
