@@ -18,16 +18,19 @@ interface IrrigationZone {
 
 interface IrrigationSensor {
   channel: number;
-  moisture: number | null;
-  temperature: number | null;
-  batteryMv: number | null;
-  receivedAt: string;
+  soilMoisture: number | null;
+  soilTemp: number | null;
+  soilEc: number | null;
+  batteryOk: boolean | null;
+  createdAt: string;
 }
 
 interface IrrigationEvent {
   id: string;
-  eventType: string;
-  message: string;
+  action: string;
+  reason: string | null;
+  detail: string | null;
+  zoneNumber: number | null;
   createdAt: string;
 }
 
@@ -63,6 +66,7 @@ type CommandPayload =
 
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
+const FRESH_COMMAND_MS = 120000;
 const API_BASE = apiUrl ?? "/api";
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -93,7 +97,7 @@ async function irrigationRequest<T>(path: string, options: RequestInit = {}): Pr
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "offen";
-  const date = new Date(value);
+  const date = new Date(value.includes(" ") ? value.replace(" ", "T") : value);
   if (Number.isNaN(date.getTime())) return "offen";
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",
@@ -113,6 +117,13 @@ function isStatusOnline(status: IrrigationStatus | null): boolean {
   const lastSeen = new Date(status.lastSeen).getTime();
   if (Number.isNaN(lastSeen)) return false;
   return Date.now() - lastSeen < ONLINE_WINDOW_MS;
+}
+
+function isFreshPendingCommand(command: IrrigationCommand): boolean {
+  if (command.status !== "pending") return false;
+  const requestedAt = new Date(command.requestedAt).getTime();
+  if (Number.isNaN(requestedAt)) return false;
+  return Date.now() - requestedAt < FRESH_COMMAND_MS;
 }
 
 function parseValveStates(value: string | null | undefined): boolean[] {
@@ -139,6 +150,13 @@ function eventLabel(type: string): string {
     system: "System",
   };
   return labels[type] ?? type;
+}
+
+function eventText(event: IrrigationEvent): string {
+  const zone = event.zoneNumber && event.zoneNumber > 0 ? `V${event.zoneNumber} ` : "";
+  const reason = event.reason ? ` · ${event.reason}` : "";
+  const detail = event.detail ? ` · ${event.detail}` : "";
+  return `${zone}${eventLabel(event.action)}${reason}${detail}`;
 }
 
 export default function IrrigationPage() {
@@ -180,7 +198,7 @@ export default function IrrigationPage() {
     [dashboard?.status?.valveStates],
   );
   const online = isStatusOnline(dashboard?.status ?? null);
-  const pendingCount = dashboard?.commands.filter((command) => command.status === "pending").length ?? 0;
+  const pendingCount = dashboard?.commands.filter(isFreshPendingCommand).length ?? 0;
 
   const sendCommand = async (payload: CommandPayload) => {
     setPendingCommand(`${payload.command}-${String(payload.zoneNumber)}`);
@@ -282,15 +300,15 @@ export default function IrrigationPage() {
               <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-3 text-sm">
                 <div>
                   <div className="text-xs text-text-secondary">Feuchte</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.moisture, "%")}</div>
+                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilMoisture, "%", 1)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-text-secondary">Temp</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.temperature, "°C", 1)}</div>
+                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilTemp, "°C", 1)}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-text-secondary">Akku</div>
-                  <div className="font-semibold text-text-heading">{formatValue(sensor?.batteryMv, "mV")}</div>
+                  <div className="text-xs text-text-secondary">EC</div>
+                  <div className="font-semibold text-text-heading">{formatValue(sensor?.soilEc, "uS")}</div>
                 </div>
               </div>
 
@@ -343,9 +361,9 @@ export default function IrrigationPage() {
             <div key={event.id} className="flex gap-3 py-2 text-sm">
               <span className="w-24 shrink-0 text-text-secondary">{formatDateTime(event.createdAt)}</span>
               <Badge variant="default" className="shrink-0">
-                {eventLabel(event.eventType)}
+                {eventLabel(event.action)}
               </Badge>
-              <span className="min-w-0 text-text-primary">{event.message}</span>
+              <span className="min-w-0 text-text-primary">{eventText(event)}</span>
             </div>
           ))}
           {dashboard && dashboard.events.length === 0 && (
