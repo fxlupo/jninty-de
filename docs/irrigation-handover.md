@@ -1,7 +1,7 @@
 # Bewässerung Handover
 
 Stand: 2026-05-06
-Version: 1.3.4
+Version: 1.3.5
 Branch der Umsetzung: `main`
 
 ## Kurzfassung

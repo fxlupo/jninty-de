@@ -378,6 +378,12 @@ function nextScheduleForZone(schedules: IrrigationSchedule[], zoneId: string): I
   return schedules.find((schedule) => schedule.zoneId === zoneId && schedule.active) ?? null;
 }
 
+function compareSchedules(a: IrrigationSchedule, b: IrrigationSchedule): number {
+  const byProgram = a.program.localeCompare(b.program, "de", { sensitivity: "base" });
+  if (byProgram !== 0) return byProgram;
+  return normalizeStartTime(a.startTime).localeCompare(normalizeStartTime(b.startTime));
+}
+
 function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): { text: string; variant: "success" | "warning" | "default" } {
   if (!zone.active) return { text: "Skip: Zone inaktiv", variant: "warning" };
   if (!sensor) return { text: "Skip: keine Sensor Daten", variant: "warning" };
@@ -650,6 +656,18 @@ export default function IrrigationPage() {
     }
     return map;
   }, [activeCommands]);
+  const schedulesByZone = useMemo(() => {
+    const grouped = new Map<string, IrrigationSchedule[]>();
+    for (const schedule of dashboard?.schedules ?? []) {
+      const list = grouped.get(schedule.zoneId) ?? [];
+      list.push(schedule);
+      grouped.set(schedule.zoneId, list);
+    }
+    for (const list of grouped.values()) {
+      list.sort(compareSchedules);
+    }
+    return grouped;
+  }, [dashboard?.schedules]);
   const filteredEvents = useMemo(
     () => (eventLog.length > 0 ? eventLog : (dashboard?.events ?? [])).filter((event) => matchesEventFilter(event, eventFilter)),
     [dashboard?.events, eventFilter, eventLog],
@@ -1088,30 +1106,57 @@ export default function IrrigationPage() {
             </div>
           )}
 
-          <div className="divide-y divide-border-default">
-            {(dashboard?.schedules ?? []).map((schedule) => (
-              <div key={schedule.id} className="grid gap-2 py-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-3">
-                <Badge variant={schedule.active ? "success" : "default"} className="w-fit">{schedule.active ? "aktiv" : "inaktiv"}</Badge>
-                <div className="min-w-0">
-                  <div className="font-semibold text-text-heading">{zoneNameById(dashboard?.zones ?? [], schedule.zoneId)}</div>
-                  <div className="text-sm text-text-secondary">
-                    Programm {schedule.program} · Start {normalizeStartTime(schedule.startTime)} · Dauer {schedule.durationMin} min
+          <div className="grid gap-3 lg:grid-cols-2">
+            {(dashboard?.zones ?? []).map((zone) => {
+              const schedules = schedulesByZone.get(zone.id) ?? [];
+              return (
+                <section key={zone.id} className="rounded-lg border border-border-default bg-surface-elevated p-3 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-border-default pb-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate font-display text-base font-semibold text-text-heading">{zone.name}</h3>
+                        <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+                      </div>
+                      <div className="mt-0.5 text-xs text-text-secondary">WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min</div>
+                    </div>
+                    <Badge variant={schedules.length > 0 ? "success" : "default"}>
+                      {schedules.length > 0 ? `${schedules.length} ${schedules.length === 1 ? "Plan" : "Pläne"}` : "kein Plan"}
+                    </Badge>
                   </div>
-                  <div className="text-sm text-text-secondary">Wochentage: {weekdayText(schedule.weekdays)}</div>
-                </div>
-                <div className="flex flex-wrap gap-2 md:justify-end">
-                  <Button size="sm" variant="secondary" onClick={() => startEditSchedule(schedule)} disabled={editingScheduleId != null}>
-                    Bearbeiten
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => void deleteSchedule(schedule)} disabled={savingSchedule}>
-                    Löschen
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {dashboard && dashboard.schedules.length === 0 && (
-              <div className="py-4 text-sm text-text-secondary">Noch keine Zeitpläne angelegt.</div>
-            )}
+
+                  {schedules.length > 0 ? (
+                    <div className="space-y-2">
+                      {schedules.map((schedule) => (
+                        <div key={schedule.id} className="rounded-lg border border-border-default bg-surface-muted p-2 md:p-3">
+                          <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-3">
+                            <Badge variant={schedule.active ? "success" : "default"} className="w-fit">{schedule.active ? "aktiv" : "inaktiv"}</Badge>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-text-heading">Programm {schedule.program}</div>
+                              <div className="text-sm text-text-secondary">
+                                Start {normalizeStartTime(schedule.startTime)} · Dauer {schedule.durationMin} min
+                              </div>
+                              <div className="text-sm text-text-secondary">Wochentage: {weekdayText(schedule.weekdays)}</div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <Button size="sm" variant="secondary" onClick={() => startEditSchedule(schedule)} disabled={editingScheduleId != null}>
+                                Bearbeiten
+                              </Button>
+                              <Button size="sm" variant="danger" onClick={() => void deleteSchedule(schedule)} disabled={savingSchedule}>
+                                Löschen
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border-default bg-surface-muted p-3 text-sm text-text-secondary">
+                      Für diese Zone ist noch kein Zeitplan angelegt.
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
 
           <div className="mt-4 flex justify-end border-t border-border-default pt-4">
