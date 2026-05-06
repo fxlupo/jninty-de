@@ -64,6 +64,13 @@
       "when": 1777820736730,
       "tag": "0008_blue_tag",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1777939200000,
+      "tag": "0009_irrigation_module",
+      "breakpoints": true
     }
   ]
 }

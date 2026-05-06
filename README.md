@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.2.6-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.0-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -33,6 +33,7 @@ Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Gartenkarte und Wetter in einer 
 - **Wetter** — Aktuelles Wetter und Frostwarnungen über [Open-Meteo](https://open-meteo.com) (kein API-Key nötig)
 - **Volltextsuche** — Schnelle Suche über Pflanzen und Journaleinträge (MiniSearch)
 - **Datenexport/-import** — ZIP-Backup und Wiederherstellung
+- **Bewässerung** — native ESP32-S3 Bewässerungssteuerung mit Zonen, Zeitplänen, manueller Steuerung, Sensorhistorie, Eventlog, Status-Sync und Device-Token
 - **Mehrere Benutzer** — Jeder Benutzer hat ein eigenes Login, Daten sind vollständig getrennt
 - **PWA** — Installierbar auf jedem Gerät, funktioniert im Browser und als Home-Screen-App
 - **Dark Mode & Barrierefreiheit** — Systemthema oder manuell; hoher Kontrast, anpassbare Schriftgröße, Tastaturkürzel
@@ -68,6 +69,18 @@ Pflanzen, Journal, Aufgaben, Saatgut, Ausgaben, Gartenkarte und Wetter in einer 
 | Karteeditor | Konva.js |
 | Tests | Vitest + Testing Library |
 | Wetter | Open-Meteo (kostenlos, kein Key) |
+
+### Bewässerungsmodul
+
+Das Bewässerungsmodul ist nativ in Jninty integriert. Es ersetzt das vorherige PHP-Backend und synchronisiert mit dem ESP32-S3 über eigene Device-Endpunkte:
+
+- Web-Endpunkte unter `/api/irrigation/*` nutzen die normale better-auth Session.
+- ESP-Endpunkte unter `/api/irrigation/device/*` nutzen `Authorization: Bearer <IRRIGATION_DEVICE_TOKEN>`.
+- Der ESP schreibt auf den Benutzer aus `IRRIGATION_DEVICE_USER_ID`.
+- Die Web-UI liegt auf `/irrigation` und enthält Dashboard, Programme, Manuell, Eventlog und History.
+- Das Eventlog wird zwischen ESP und Backend synchronisiert; Sensorwerte werden als Verlaufsgrafen dargestellt.
+- Technische Details stehen in `docs/plans/2026-05-05-irrigation-module.md`.
+  Eine Übergabe für Betrieb und Weiterentwicklung steht in `docs/irrigation-handover.md`.
 
 ### Verzeichnisstruktur
 
@@ -130,6 +143,9 @@ services:
       BETTER_AUTH_URL: "https://deine-domain.de"              # ← ändern
       FRONTEND_ORIGIN: "https://deine-domain.de"              # ← ändern
       TRUSTED_ORIGINS: "https://deine-domain.de"              # ← ändern
+      IRRIGATION_ENABLED: "true"
+      IRRIGATION_DEVICE_TOKEN: "<langes-zufaelliges-token>"     # ESP Bearer Token
+      IRRIGATION_DEVICE_USER_ID: "<jninty-user-id>"             # Benutzer, dem der ESP zugeordnet ist
 
   frontend:
     labels:
@@ -265,6 +281,21 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 1.3.0 (2026-05-06)
+
+**Bewässerung**
+- Neues natives Bewässerungsmodul unter `/irrigation`
+- SQLite/Drizzle-Schema für Zonen, Zeitpläne, Sensorwerte, Events, Kommandos und ESP-Status
+- Web-API unter `/api/irrigation/*` mit better-auth Session
+- Device-API unter `/api/irrigation/device/*` mit Bearer Token für ESP32-S3
+- Dashboard mit vier Zonen, Sensorwerten, nächstem Lauf, Plan-/Skip-Grund und Statuskarten
+- Programme verwalten: Zone, Programm, Wochentage, Startzeit, Dauer, aktiv/inaktiv
+- Manuelle Steuerung mit 15/30/60/90 Minuten, Stop pro Ventil, Alle stoppen, Pending-Status und Restlaufzeit
+- Eventlog mit Filtern für Alle, Öffnen, Schließen, Skip, Manuell, Scheduler und Zone
+- History mit Sensorgraphen für Bodenfeuchte und Bodentemperatur
+- JSON-Konfigurations-Export für Zonen und Zeitpläne
+- Responsive Layouts für Desktop und Mobile
 
 ### 1.2.5 (2026-05-03)
 
