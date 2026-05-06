@@ -626,6 +626,14 @@ export default function IrrigationPage() {
     return [...byId.values()].sort((a, b) => commandTime(b) - commandTime(a));
   }, [dashboard?.commands, localCommands]);
   const pendingCount = activeCommands.length;
+  useEffect(() => {
+    if (pendingCount === 0) return;
+    const timer = window.setInterval(() => {
+      void loadDashboard();
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [loadDashboard, pendingCount]);
+
   const commandByZone = useMemo(() => {
     const map = new Map<number, IrrigationCommand>();
     for (const command of activeCommands) {
@@ -830,7 +838,12 @@ export default function IrrigationPage() {
               const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
               const hint = planHint(zone, sensor);
               return (
-                <Card key={zone.id} className="space-y-1.5 p-2 md:space-y-3 md:p-4">
+                <Card
+                  key={zone.id}
+                  className={`space-y-1.5 p-2 md:space-y-3 md:p-4 ${
+                    isOpen ? "border-green-300 bg-green-50" : ""
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2 md:gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -851,7 +864,10 @@ export default function IrrigationPage() {
                       >
                         Bearbeiten
                       </Button>
-                      <Badge variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}>
+                      <Badge
+                        variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
+                        className={isOpen ? "animate-pulse" : ""}
+                      >
                         {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
                       </Badge>
                     </div>
