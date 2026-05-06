@@ -1,10 +1,19 @@
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import pkg from "./package.json" with { type: "json" };
+
+function resolveCommit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    return "unknown";
+  }
+}
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
@@ -18,6 +27,7 @@ const httpsConfig = fs.existsSync(path.resolve(__dirname, ".certs/cert.pem"))
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __GIT_COMMIT__: JSON.stringify(resolveCommit()),
   },
   resolve: {
     alias: {

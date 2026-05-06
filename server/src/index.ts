@@ -3,6 +3,8 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import type { AppVariables } from "./types.ts";
 import { auth } from "./auth.ts";
 import { runMigrations } from "./db/client.ts";
@@ -27,6 +29,25 @@ import irrigationRouter from "./routes/irrigation.ts";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 const FRONTEND_ORIGIN = process.env["FRONTEND_ORIGIN"] ?? "http://localhost:5173";
+
+// ─── Version info (resolved once at startup) ──────────────────────────────────
+
+const pkg = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf-8"),
+) as { version: string };
+
+function resolveCommit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+const SERVER_VERSION = pkg.version;
+const SERVER_COMMIT = resolveCommit();
 
 // ─── Run DB migrations before accepting requests ──────────────────────────────
 
@@ -84,6 +105,12 @@ app.use("/uploads/*", serveStatic({ root: "./data" }));
 
 app.get("/api/health", (c) =>
   c.json({ status: "ok", timestamp: new Date().toISOString() }),
+);
+
+// ─── Version info ─────────────────────────────────────────────────────────────
+
+app.get("/api/version", (c) =>
+  c.json({ version: SERVER_VERSION, commit: SERVER_COMMIT }),
 );
 
 // ─── Start server ─────────────────────────────────────────────────────────────
