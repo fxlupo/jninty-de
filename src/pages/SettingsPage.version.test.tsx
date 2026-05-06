@@ -11,7 +11,7 @@ describe("VersionInfo", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        new Response(JSON.stringify({ version: "1.3.2", commit: "abc1234" }), {
+        new Response(JSON.stringify({ version: "1.3.3", commit: "abc1234" }), {
           headers: { "Content-Type": "application/json" },
         }),
       ),
