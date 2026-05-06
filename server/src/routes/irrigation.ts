@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gte, inArray, isNull, max, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import {
   irrigationCommands,
@@ -69,50 +69,59 @@ async function ensureDefaultZones(userId: string) {
 }
 
 async function latestSensors(userId: string) {
-  const rows = await db
-    .select()
+  // M3: resolve the latest reading per channel in the DB via a GROUP BY subquery
+  // instead of fetching 80 rows and deduplicating in application code.
+  const subq = db
+    .select({
+      channel: irrigationSensorReadings.channel,
+      maxCreatedAt: max(irrigationSensorReadings.createdAt).as("max_created_at"),
+    })
     .from(irrigationSensorReadings)
     .where(eq(irrigationSensorReadings.userId, userId))
-    .orderBy(desc(irrigationSensorReadings.createdAt))
-    .limit(80);
+    .groupBy(irrigationSensorReadings.channel)
+    .as("latest_per_channel");
 
-  const seen = new Set<number>();
-  const latest = [];
-  for (const row of rows) {
-    if (seen.has(row.channel)) continue;
-    seen.add(row.channel);
-    latest.push(row);
-  }
-  return latest;
+  return db
+    .select(getTableColumns(irrigationSensorReadings))
+    .from(irrigationSensorReadings)
+    .innerJoin(
+      subq,
+      and(
+        eq(irrigationSensorReadings.channel, subq.channel),
+        eq(irrigationSensorReadings.createdAt, subq.maxCreatedAt),
+      ),
+    )
+    .where(eq(irrigationSensorReadings.userId, userId));
 }
 
 async function irrigationDashboard(userId: string) {
-  const zones = await ensureDefaultZones(userId);
-  const schedules = await db
-    .select()
-    .from(irrigationSchedules)
-    .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)));
-  const sensors = await latestSensors(userId);
-  const events = await db
-    .select()
-    .from(irrigationEvents)
-    .where(eq(irrigationEvents.userId, userId))
-    .orderBy(desc(irrigationEvents.createdAt))
-    .limit(40);
-  const commands = await db
-    .select()
-    .from(irrigationCommands)
-    .where(
-      and(
+  // M4: all five queries are independent — run them in parallel
+  const [zones, schedules, sensors, events, commands, statusRows] = await Promise.all([
+    ensureDefaultZones(userId),
+    db
+      .select()
+      .from(irrigationSchedules)
+      .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt))),
+    latestSensors(userId),
+    db
+      .select()
+      .from(irrigationEvents)
+      .where(eq(irrigationEvents.userId, userId))
+      .orderBy(desc(irrigationEvents.createdAt))
+      .limit(40),
+    db
+      .select()
+      .from(irrigationCommands)
+      .where(and(
         eq(irrigationCommands.userId, userId),
         inArray(irrigationCommands.status, ["pending", "acked"]),
-      ),
-    )
-    .orderBy(desc(irrigationCommands.createdAt));
-  const statusRows = await db
-    .select()
-    .from(irrigationStatus)
-    .where(eq(irrigationStatus.userId, userId));
+      ))
+      .orderBy(desc(irrigationCommands.createdAt)),
+    db
+      .select()
+      .from(irrigationStatus)
+      .where(eq(irrigationStatus.userId, userId)),
+  ]);
 
   return {
     zones,
