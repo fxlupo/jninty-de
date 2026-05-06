@@ -65,10 +65,6 @@ const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (!apiUrl) {
-    throw new Error("API URL ist nicht konfiguriert.");
-  }
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
@@ -81,7 +77,7 @@ async function irrigationRequest<T>(path: string, options: RequestInit = {}): Pr
     }
   }
 
-  const res = await fetch(`${apiUrl}${path}`, {
+  const res = await fetch(`${apiUrl ?? ""}${path}`, {
     ...options,
     headers,
     credentials: "include",
