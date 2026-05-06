@@ -1,6 +1,7 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gte, inArray, isNull, max, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import {
   irrigationCommands,
@@ -17,6 +18,13 @@ const router = new Hono<{ Variables: AppVariables }>();
 
 type DeviceVariables = AppVariables & { irrigationUserId: string };
 const deviceRouter = new Hono<{ Variables: DeviceVariables }>();
+
+// K1: known command strings the frontend may send and the ESP understands
+const VALID_COMMANDS = ["open", "close", "close_all"] as const;
+type IrrigationCommand = (typeof VALID_COMMANDS)[number];
+
+// K1: known event actions the ESP firmware may report
+const VALID_ACTIONS = ["open", "close", "close_all", "skip", "system", "error"] as const;
 
 function now(): string {
   return new Date().toISOString();
@@ -61,50 +69,59 @@ async function ensureDefaultZones(userId: string) {
 }
 
 async function latestSensors(userId: string) {
-  const rows = await db
-    .select()
+  // M3: resolve the latest reading per channel in the DB via a GROUP BY subquery
+  // instead of fetching 80 rows and deduplicating in application code.
+  const subq = db
+    .select({
+      channel: irrigationSensorReadings.channel,
+      maxCreatedAt: max(irrigationSensorReadings.createdAt).as("max_created_at"),
+    })
     .from(irrigationSensorReadings)
     .where(eq(irrigationSensorReadings.userId, userId))
-    .orderBy(desc(irrigationSensorReadings.createdAt))
-    .limit(80);
+    .groupBy(irrigationSensorReadings.channel)
+    .as("latest_per_channel");
 
-  const seen = new Set<number>();
-  const latest = [];
-  for (const row of rows) {
-    if (seen.has(row.channel)) continue;
-    seen.add(row.channel);
-    latest.push(row);
-  }
-  return latest;
+  return db
+    .select(getTableColumns(irrigationSensorReadings))
+    .from(irrigationSensorReadings)
+    .innerJoin(
+      subq,
+      and(
+        eq(irrigationSensorReadings.channel, subq.channel),
+        eq(irrigationSensorReadings.createdAt, subq.maxCreatedAt),
+      ),
+    )
+    .where(eq(irrigationSensorReadings.userId, userId));
 }
 
 async function irrigationDashboard(userId: string) {
-  const zones = await ensureDefaultZones(userId);
-  const schedules = await db
-    .select()
-    .from(irrigationSchedules)
-    .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)));
-  const sensors = await latestSensors(userId);
-  const events = await db
-    .select()
-    .from(irrigationEvents)
-    .where(eq(irrigationEvents.userId, userId))
-    .orderBy(desc(irrigationEvents.createdAt))
-    .limit(40);
-  const commands = await db
-    .select()
-    .from(irrigationCommands)
-    .where(
-      and(
+  // M4: all five queries are independent — run them in parallel
+  const [zones, schedules, sensors, events, commands, statusRows] = await Promise.all([
+    ensureDefaultZones(userId),
+    db
+      .select()
+      .from(irrigationSchedules)
+      .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt))),
+    latestSensors(userId),
+    db
+      .select()
+      .from(irrigationEvents)
+      .where(eq(irrigationEvents.userId, userId))
+      .orderBy(desc(irrigationEvents.createdAt))
+      .limit(40),
+    db
+      .select()
+      .from(irrigationCommands)
+      .where(and(
         eq(irrigationCommands.userId, userId),
         inArray(irrigationCommands.status, ["pending", "acked"]),
-      ),
-    )
-    .orderBy(desc(irrigationCommands.createdAt));
-  const statusRows = await db
-    .select()
-    .from(irrigationStatus)
-    .where(eq(irrigationStatus.userId, userId));
+      ))
+      .orderBy(desc(irrigationCommands.createdAt)),
+    db
+      .select()
+      .from(irrigationStatus)
+      .where(eq(irrigationStatus.userId, userId)),
+  ]);
 
   return {
     zones,
@@ -126,7 +143,12 @@ function requireDeviceToken() {
 
     const header = c.req.header("authorization") ?? "";
     const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7) : "";
-    if (token !== expected) {
+    // K4: timing-safe comparison prevents token length/content leaks via timing side-channel
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(expected);
+    const tokenValid =
+      tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf);
+    if (!tokenValid) {
       return c.json({ error: "Unauthorized." }, 401);
     }
 
@@ -148,10 +170,33 @@ router.get("/zones", requireAuth, async (c) => {
 router.patch("/zones/:id", requireAuth, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id") ?? "";
-  const body = await c.req.json<Partial<typeof irrigationZones.$inferInsert>>();
+  const body = await c.req.json<Record<string, unknown>>();
+
+  // Explicitly whitelist the fields the UI is allowed to change.
+  // This prevents a client from overwriting id, userId, valveNumber (hardware-
+  // bound), createdAt, deletedAt, or version through a crafted request body.
+  const patch: {
+    name?: string;
+    wh52Channel?: number;
+    active?: boolean;
+    moistureThreshold?: number;
+    tempMinimum?: number;
+    rainThreshold6h?: number;
+    maxDurationMin?: number;
+    sortOrder?: number;
+  } = {};
+  if (typeof body["name"] === "string")              patch.name              = body["name"];
+  if (typeof body["wh52Channel"] === "number")       patch.wh52Channel       = body["wh52Channel"];
+  if (typeof body["active"] === "boolean")           patch.active            = body["active"];
+  if (typeof body["moistureThreshold"] === "number") patch.moistureThreshold = body["moistureThreshold"];
+  if (typeof body["tempMinimum"] === "number")       patch.tempMinimum       = body["tempMinimum"];
+  if (typeof body["rainThreshold6h"] === "number")   patch.rainThreshold6h   = body["rainThreshold6h"];
+  if (typeof body["maxDurationMin"] === "number")    patch.maxDurationMin    = body["maxDurationMin"];
+  if (typeof body["sortOrder"] === "number")         patch.sortOrder         = body["sortOrder"];
+
   const result = await db
     .update(irrigationZones)
-    .set({ ...body, userId, version: sql`${irrigationZones.version} + 1`, updatedAt: now() })
+    .set({ ...patch, version: sql`${irrigationZones.version} + 1`, updatedAt: now() })
     .where(and(eq(irrigationZones.id, id), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
     .returning();
   const row = result[0];
@@ -173,6 +218,14 @@ router.post("/schedules", requireAuth, async (c) => {
   const body = await c.req.json<
     Pick<typeof irrigationSchedules.$inferInsert, "zoneId" | "program" | "active" | "weekdays" | "startTime" | "durationMin">
   >();
+  // K3: verify the target zone belongs to the requesting user before inserting
+  const zone = await db
+    .select({ id: irrigationZones.id })
+    .from(irrigationZones)
+    .where(and(eq(irrigationZones.id, body.zoneId), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+    .limit(1);
+  if (!zone[0]) return c.json({ error: "Zone not found" }, 404);
+
   const ts = now();
   const result = await db
     .insert(irrigationSchedules)
@@ -184,10 +237,24 @@ router.post("/schedules", requireAuth, async (c) => {
 router.patch("/schedules/:id", requireAuth, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id") ?? "";
-  const body = await c.req.json<Partial<typeof irrigationSchedules.$inferInsert>>();
+  // K2: only accept mutable schedule fields — never zoneId, userId, or timestamps
+  const body = await c.req.json<Record<string, unknown>>();
+  const patch: {
+    program?: string;
+    active?: boolean;
+    weekdays?: number;
+    startTime?: string;
+    durationMin?: number;
+  } = {};
+  if (typeof body["program"]     === "string")  patch.program     = body["program"];
+  if (typeof body["active"]      === "boolean") patch.active      = body["active"];
+  if (typeof body["weekdays"]    === "number")  patch.weekdays    = body["weekdays"];
+  if (typeof body["startTime"]   === "string")  patch.startTime   = body["startTime"];
+  if (typeof body["durationMin"] === "number")  patch.durationMin = body["durationMin"];
+
   const result = await db
     .update(irrigationSchedules)
-    .set({ ...body, userId, version: sql`${irrigationSchedules.version} + 1`, updatedAt: now() })
+    .set({ ...patch, version: sql`${irrigationSchedules.version} + 1`, updatedAt: now() })
     .where(and(eq(irrigationSchedules.id, id), eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)))
     .returning();
   const row = result[0];
@@ -243,6 +310,23 @@ router.post("/commands", requireAuth, async (c) => {
     command: string;
     durationMin?: number | null;
   }>();
+
+  // K1: reject unknown command strings before they reach the database
+  if (!(VALID_COMMANDS as readonly string[]).includes(body.command)) {
+    return c.json({ error: `Unknown command. Valid: ${VALID_COMMANDS.join(", ")}` }, 400);
+  }
+  const command = body.command as IrrigationCommand;
+
+  // K3: if a zoneId is supplied, verify it belongs to the requesting user
+  if (body.zoneId) {
+    const zone = await db
+      .select({ id: irrigationZones.id })
+      .from(irrigationZones)
+      .where(and(eq(irrigationZones.id, body.zoneId), eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+      .limit(1);
+    if (!zone[0]) return c.json({ error: "Zone not found" }, 404);
+  }
+
   const ts = now();
   const requestedBy = session?.user?.email ?? session?.user?.id ?? userId;
   const result = await db
@@ -257,7 +341,7 @@ router.post("/commands", requireAuth, async (c) => {
       status: "pending",
       zoneId: body.zoneId ?? null,
       zoneNumber: body.zoneNumber ?? null,
-      command: body.command,
+      command,
       durationMin: body.durationMin ?? null,
     })
     .returning();
@@ -286,14 +370,21 @@ deviceRouter.get("/config", async (c) => {
 
 deviceRouter.get("/commands", async (c) => {
   const userId = c.get("irrigationUserId");
+  // M2: freshAfter filter belongs in the DB query, not in app code.
+  // Fetch at most 1 pending command that was created within the last 2 minutes
+  // so stale commands (e.g. from a previous ESP downtime) are never delivered.
   const freshAfter = new Date(Date.now() - 2 * 60 * 1000).toISOString();
   const rows = await db
     .select()
     .from(irrigationCommands)
-    .where(and(eq(irrigationCommands.userId, userId), eq(irrigationCommands.status, "pending")))
+    .where(and(
+      eq(irrigationCommands.userId, userId),
+      eq(irrigationCommands.status, "pending"),
+      gte(irrigationCommands.createdAt, freshAfter),
+    ))
     .orderBy(desc(irrigationCommands.createdAt))
-    .limit(10);
-  return c.json(rows.filter((row) => row.createdAt >= freshAfter).slice(0, 1));
+    .limit(1);
+  return c.json(rows);
 });
 
 deviceRouter.post("/status", async (c) => {
@@ -327,10 +418,16 @@ deviceRouter.post("/events", async (c) => {
   const rows = events.map((event) => ({
     id: crypto.randomUUID(),
     userId,
-    createdAt: typeof event["createdAt"] === "string" ? event["createdAt"] : now(),
+    // K5: always use the server's receive time — the ESP RTC has no NTP sync and
+    //     can drift significantly; the ESP timestamp is preserved in raw.
+    createdAt: now(),
     zoneId: typeof event["zoneId"] === "string" ? event["zoneId"] : null,
     zoneNumber: typeof event["zoneNumber"] === "number" ? event["zoneNumber"] : null,
-    action: typeof event["action"] === "string" ? event["action"] : "system",
+    // K1: only store known action strings; unknown values fall back to "system"
+    action:
+      typeof event["action"] === "string" && (VALID_ACTIONS as readonly string[]).includes(event["action"])
+        ? event["action"]
+        : "system",
     reason: typeof event["reason"] === "string" ? event["reason"] : null,
     detail: typeof event["detail"] === "string" ? event["detail"] : null,
     durationSec: typeof event["durationSec"] === "number" ? event["durationSec"] : null,
@@ -359,7 +456,8 @@ deviceRouter.post("/sensors", async (c) => {
   const rows = readings.map((reading) => ({
     id: crypto.randomUUID(),
     userId,
-    createdAt: typeof reading["createdAt"] === "string" ? reading["createdAt"] : now(),
+    // K5: always use the server's receive time (ESP RTC has no NTP sync)
+    createdAt: now(),
     channel: typeof reading["channel"] === "number" ? reading["channel"] : 0,
     soilMoisture: typeof reading["soilMoisture"] === "number" ? reading["soilMoisture"] : null,
     soilTemp: typeof reading["soilTemp"] === "number" ? reading["soilTemp"] : null,
