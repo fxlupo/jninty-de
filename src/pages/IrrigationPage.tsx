@@ -76,7 +76,6 @@ interface IrrigationDashboard {
 interface IrrigationHistory {
   days: number;
   sensors: IrrigationSensor[];
-  runs: IrrigationEvent[];
 }
 
 type CommandPayload =
@@ -104,6 +103,7 @@ interface ScheduleDraft {
 }
 
 type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
+type SensorField = "soilMoisture" | "soilTemp";
 
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
@@ -165,6 +165,11 @@ function formatDateTime(value: string | null | undefined): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function parseDateMs(value: string): number {
+  const date = new Date(value.includes(" ") ? value.replace(" ", "T") : value);
+  return date.getTime();
 }
 
 function formatValue(value: number | null | undefined, unit: string, digits = 0): string {
@@ -264,10 +269,133 @@ function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): {
   return { text: "Plan: wird laufen", variant: "success" };
 }
 
-function durationText(seconds: number | null | undefined): string {
-  if (seconds == null || seconds <= 0) return "-";
-  const minutes = Math.round(seconds / 60);
-  return `${minutes} min`;
+function sensorColor(channel: number): string {
+  const colors = ["#4ade80", "#a78bfa", "#fbbf24", "#f472b6"];
+  return colors[(channel - 1) % colors.length] ?? "#60a5fa";
+}
+
+function chartTimeLabel(ms: number, days: number): string {
+  const date = new Date(ms);
+  if (days <= 1) {
+    return new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" }).format(date);
+}
+
+function SensorLineChart({
+  title,
+  sensors,
+  zones,
+  field,
+  unit,
+  min,
+  max,
+  days,
+}: {
+  title: string;
+  sensors: IrrigationSensor[];
+  zones: IrrigationZone[];
+  field: SensorField;
+  unit: string;
+  min: number;
+  max: number;
+  days: number;
+}) {
+  const width = 720;
+  const height = 260;
+  const pad = { left: 42, right: 16, top: 18, bottom: 32 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  const xMin = Date.now() - days * 24 * 60 * 60 * 1000;
+  const xMax = Date.now();
+  const yTicks = [min, (min + max) / 2, max];
+
+  const byChannel = new Map<number, IrrigationSensor[]>();
+  for (const sensor of sensors) {
+    const value = sensor[field];
+    const ms = parseDateMs(sensor.createdAt);
+    if (value == null || Number.isNaN(value) || Number.isNaN(ms)) continue;
+    if (ms < xMin || ms > xMax) continue;
+    const list = byChannel.get(sensor.channel) ?? [];
+    list.push(sensor);
+    byChannel.set(sensor.channel, list);
+  }
+
+  const x = (ms: number) => pad.left + ((ms - xMin) / Math.max(1, xMax - xMin)) * innerW;
+  const y = (value: number) => pad.top + (1 - (value - min) / (max - min)) * innerH;
+
+  const channelLines = [1, 2, 3, 4].map((channel) => {
+    const points = (byChannel.get(channel) ?? [])
+      .slice()
+      .sort((a, b) => parseDateMs(a.createdAt) - parseDateMs(b.createdAt))
+      .map((sensor) => {
+        const value = sensor[field];
+        if (value == null) return "";
+        return `${x(parseDateMs(sensor.createdAt)).toFixed(1)},${y(value).toFixed(1)}`;
+      })
+      .filter(Boolean)
+      .join(" ");
+    return { channel, points };
+  });
+
+  const zoneName = (channel: number) =>
+    zones.find((zone) => zone.wh52Channel === channel)?.name ?? `Kanal ${channel}`;
+
+  return (
+    <Card>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-display text-lg font-semibold text-text-heading">{title}</h3>
+        <span className="text-sm text-text-secondary">{unit}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-64 min-w-[620px] w-full">
+          <rect x={pad.left} y={pad.top} width={innerW} height={innerH} fill="transparent" />
+          {yTicks.map((tick) => (
+            <g key={tick}>
+              <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} stroke="currentColor" className="text-border-default" strokeDasharray="4 4" />
+              <text x={8} y={y(tick) + 4} className="fill-text-secondary text-[11px]">
+                {tick.toFixed(0)}
+              </text>
+            </g>
+          ))}
+          {[0, 0.5, 1].map((ratio) => {
+            const ms = xMin + (xMax - xMin) * ratio;
+            return (
+              <text key={ratio} x={x(ms)} y={height - 8} textAnchor={ratio === 0 ? "start" : ratio === 1 ? "end" : "middle"} className="fill-text-secondary text-[11px]">
+                {chartTimeLabel(ms, days)}
+              </text>
+            );
+          })}
+          <line x1={pad.left} x2={pad.left} y1={pad.top} y2={pad.top + innerH} stroke="currentColor" className="text-border-strong" />
+          <line x1={pad.left} x2={pad.left + innerW} y1={pad.top + innerH} y2={pad.top + innerH} stroke="currentColor" className="text-border-strong" />
+          {channelLines.map(({ channel, points }) =>
+            points ? (
+              <polyline
+                key={channel}
+                points={points}
+                fill="none"
+                stroke={sensorColor(channel)}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ) : null,
+          )}
+        </svg>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
+        {[1, 2, 3, 4].map((channel) => (
+          <div key={channel} className="flex items-center gap-2 text-text-secondary">
+            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: sensorColor(channel) }} />
+            <span className="truncate">{zoneName(channel)}</span>
+          </div>
+        ))}
+      </div>
+      {sensors.length === 0 && (
+        <div className="mt-3 text-sm text-text-secondary">Keine Sensorwerte im Zeitraum.</div>
+      )}
+    </Card>
+  );
 }
 
 export default function IrrigationPage() {
@@ -283,7 +411,7 @@ export default function IrrigationPage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
-  const [historyDays, setHistoryDays] = useState(30);
+  const [historyDays, setHistoryDays] = useState(1);
   const [history, setHistory] = useState<IrrigationHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -356,14 +484,6 @@ export default function IrrigationPage() {
     return [...byId.values()].sort((a, b) => commandTime(b) - commandTime(a));
   }, [dashboard?.commands, localCommands]);
   const pendingCount = activeCommands.length;
-  const zoneNameByNumber = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const zone of dashboard?.zones ?? []) {
-      map.set(zone.valveNumber, zone.name);
-    }
-    return map;
-  }, [dashboard?.zones]);
-
   const commandByZone = useMemo(() => {
     const map = new Map<number, IrrigationCommand>();
     for (const command of activeCommands) {
@@ -898,7 +1018,7 @@ export default function IrrigationPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-display text-lg font-semibold text-text-heading">History</h2>
-                <p className="text-sm text-text-secondary">Sensorwerte und Bewässerungsläufe.</p>
+                <p className="text-sm text-text-secondary">Sensorverlauf für Bodenfeuchte und Bodentemperatur.</p>
               </div>
               <div className="flex items-center gap-2">
                 <select
@@ -906,6 +1026,7 @@ export default function IrrigationPage() {
                   value={historyDays}
                   onChange={(event) => setHistoryDays(Number(event.target.value))}
                 >
+                  <option value={1}>24 Stunden</option>
                   <option value={7}>7 Tage</option>
                   <option value={30}>30 Tage</option>
                   <option value={90}>90 Tage</option>
@@ -919,64 +1040,26 @@ export default function IrrigationPage() {
           </Card>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <Card>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-display text-lg font-semibold text-text-heading">Sensorverlauf</h3>
-                <Badge variant="default">{history?.sensors.length ?? 0} Werte</Badge>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead className="text-xs uppercase text-text-secondary">
-                    <tr>
-                      <th className="py-2 pr-3">Zeit</th>
-                      <th className="py-2 pr-3">Zone</th>
-                      <th className="py-2 pr-3">Feuchte</th>
-                      <th className="py-2 pr-3">Temp</th>
-                      <th className="py-2 pr-3">EC</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-default">
-                    {(history?.sensors ?? []).slice(0, 80).map((sensor) => (
-                      <tr key={sensor.id ?? `${sensor.channel}-${sensor.createdAt}`}>
-                        <td className="py-2 pr-3 text-text-secondary">{formatDateTime(sensor.createdAt)}</td>
-                        <td className="py-2 pr-3 text-text-heading">
-                          {zoneNameByNumber.get(sensor.channel) ?? `Ch ${sensor.channel}`}
-                        </td>
-                        <td className="py-2 pr-3">{formatValue(sensor.soilMoisture, "%", 1)}</td>
-                        <td className="py-2 pr-3">{formatValue(sensor.soilTemp, "°C", 1)}</td>
-                        <td className="py-2 pr-3">{formatValue(sensor.soilEc, "uS")}</td>
-                      </tr>
-                    ))}
-                    {history && history.sensors.length === 0 && (
-                      <tr>
-                        <td className="py-4 text-text-secondary" colSpan={5}>Keine Sensorwerte im Zeitraum.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-display text-lg font-semibold text-text-heading">Bewässerungsläufe</h3>
-                <Badge variant="default">{history?.runs.length ?? 0} Events</Badge>
-              </div>
-              <div className="divide-y divide-dashed divide-border-default">
-                {(history?.runs ?? []).slice(0, 80).map((run) => (
-                  <div key={run.id} className="grid gap-1 py-2 text-sm md:grid-cols-[8rem_1fr_auto] md:items-center">
-                    <span className="text-text-secondary">{formatDateTime(run.createdAt)}</span>
-                    <span className="font-medium text-text-heading">
-                      {run.zoneNumber ? zoneNameByNumber.get(run.zoneNumber) ?? `V${run.zoneNumber}` : "System"} · {eventText(run)}
-                    </span>
-                    <span className="text-text-secondary">{durationText(run.durationSec)}</span>
-                  </div>
-                ))}
-                {history && history.runs.length === 0 && (
-                  <div className="py-4 text-sm text-text-secondary">Keine Bewässerungsläufe im Zeitraum.</div>
-                )}
-              </div>
-            </Card>
+            <SensorLineChart
+              title="Bodenfeuchte"
+              sensors={history?.sensors ?? []}
+              zones={dashboard?.zones ?? []}
+              field="soilMoisture"
+              unit="%"
+              min={0}
+              max={100}
+              days={historyDays}
+            />
+            <SensorLineChart
+              title="Bodentemperatur"
+              sensors={history?.sensors ?? []}
+              zones={dashboard?.zones ?? []}
+              field="soilTemp"
+              unit="°C"
+              min={-10}
+              max={40}
+              days={historyDays}
+            />
           </div>
         </div>
       )}

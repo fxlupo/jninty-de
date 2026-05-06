@@ -231,20 +231,7 @@ router.get("/history", requireAuth, async (c) => {
     .orderBy(desc(irrigationSensorReadings.createdAt))
     .limit(800);
 
-  const runs = await db
-    .select()
-    .from(irrigationEvents)
-    .where(
-      and(
-        eq(irrigationEvents.userId, userId),
-        gte(irrigationEvents.createdAt, since),
-        inArray(irrigationEvents.action, ["open", "close", "skip"]),
-      ),
-    )
-    .orderBy(desc(irrigationEvents.createdAt))
-    .limit(300);
-
-  return c.json({ days, sensors, runs });
+  return c.json({ days, sensors });
 });
 
 router.post("/commands", requireAuth, async (c) => {
