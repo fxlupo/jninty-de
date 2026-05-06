@@ -83,5 +83,5 @@ Empfohlene Tests:
 
 ## Prioritaet 6: Dokumentation glattziehen
 
-- README-Badge auf aktuelle Version setzen. Status: umgesetzt fuer `1.3.5`.
+- README-Badge auf aktuelle Version setzen. Status: umgesetzt fuer `1.3.6`.
 - Handover um den Migrationshinweis zu 0010 ergaenzen. Status: umgesetzt.

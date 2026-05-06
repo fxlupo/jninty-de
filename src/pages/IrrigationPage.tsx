@@ -127,6 +127,13 @@ type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
 type SensorField = "soilMoisture" | "soilTemp";
 type EventFilter = "all" | "open" | "close" | "skip" | "manual" | "scheduler" | "zone";
 
+interface NextScheduleRun {
+  label: string;
+  time: string;
+  durationMin: number;
+  startsAtMs: number;
+}
+
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
@@ -150,6 +157,7 @@ const WEEKDAYS = [
   { bit: 5, label: "Sa" },
   { bit: 6, label: "So" },
 ];
+const JS_WEEKDAY_LABELS = ["So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa."];
 const TABS: Array<{ id: IrrigationTab; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
   { id: "programs", label: "Programme" },
@@ -374,8 +382,61 @@ function zoneNameById(zones: IrrigationZone[], zoneId: string): string {
   return zones.find((zone) => zone.id === zoneId)?.name ?? "Zone";
 }
 
-function nextScheduleForZone(schedules: IrrigationSchedule[], zoneId: string): IrrigationSchedule | null {
-  return schedules.find((schedule) => schedule.zoneId === zoneId && schedule.active) ?? null;
+function weekdayBitForDate(date: Date): number {
+  const jsDay = date.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function dateWithScheduleTime(baseDate: Date, startTime: string): Date | null {
+  const [hourText, minuteText] = normalizeStartTime(startTime).split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  const date = new Date(baseDate);
+  date.setHours(hour, minute, 0, 0);
+  return date;
+}
+
+function nextRunLabel(date: Date, dayOffset: number): string {
+  if (dayOffset === 0) return "Heute";
+  if (dayOffset === 1) return "Morgen";
+  return JS_WEEKDAY_LABELS[date.getDay()] ?? "";
+}
+
+function nextScheduleRunForZone(
+  schedules: IrrigationSchedule[],
+  zoneId: string,
+  now = new Date(),
+): NextScheduleRun | null {
+  let nextRun: NextScheduleRun | null = null;
+  const candidates = schedules.filter((schedule) => schedule.zoneId === zoneId && schedule.active);
+
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() + dayOffset);
+    date.setHours(0, 0, 0, 0);
+    const bit = weekdayBitForDate(date);
+
+    for (const schedule of candidates) {
+      if ((schedule.weekdays & (1 << bit)) === 0) continue;
+
+      const startsAt = dateWithScheduleTime(date, schedule.startTime);
+      if (!startsAt || startsAt.getTime() <= now.getTime()) continue;
+
+      const run: NextScheduleRun = {
+        label: nextRunLabel(startsAt, dayOffset),
+        time: normalizeStartTime(schedule.startTime),
+        durationMin: schedule.durationMin,
+        startsAtMs: startsAt.getTime(),
+      };
+
+      if (!nextRun || run.startsAtMs < nextRun.startsAtMs) {
+        nextRun = run;
+      }
+    }
+  }
+
+  return nextRun;
 }
 
 function compareSchedules(a: IrrigationSchedule, b: IrrigationSchedule): number {
@@ -860,7 +921,13 @@ export default function IrrigationPage() {
               const zoneCommand = commandByZone.get(zone.valveNumber);
               const isEditing = editingZoneId === zone.id;
               const draft = isEditing ? zoneDraft : null;
-              const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
+              const nextRun = nextScheduleRunForZone(dashboard?.schedules ?? [], zone.id, new Date(nowMs));
+              const nextRunMobileText = nextRun
+                ? `${nextRun.label} ${nextRun.time} · ${nextRun.durationMin}m`
+                : "kein Programm";
+              const nextRunText = nextRun
+                ? `${nextRun.label} ${nextRun.time} · ${nextRun.durationMin} min`
+                : "kein Programm";
               const hint = planHint(zone, sensor);
               return (
                 <Card
@@ -967,8 +1034,8 @@ export default function IrrigationPage() {
 
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs leading-tight md:gap-2 md:text-sm">
                     <span className={isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}>
-                      <span className="md:hidden">{next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin}m` : "kein Programm"}</span>
-                      <span className="hidden md:inline">Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}</span>
+                      <span className="md:hidden">{nextRunMobileText}</span>
+                      <span className="hidden md:inline">Nächster Lauf: {nextRunText}</span>
                     </span>
                     {zoneCommand ? (
                       <Badge variant="warning">{commandLabel(zoneCommand)}</Badge>
