@@ -192,6 +192,23 @@ function ExpenseIcon({ className }: { className?: string }) {
   );
 }
 
+function IrrigationIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3C8.5 7.2 6 10.8 6 14a6 6 0 0 0 12 0c0-3.2-2.5-6.8-6-11z" />
+      <path d="M9 15a3 3 0 0 0 3 3" />
+    </svg>
+  );
+}
+
 function LogOutIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -262,6 +279,7 @@ function getSecondaryNav(overdueCount: number): NavItem[] {
     { to: "/seeds", label: "Saatgut", icon: SeedNavIcon },
     { to: "/knowledge", label: "Wissen", icon: BookIcon },
     { to: "/expenses", label: "Ausgaben", icon: ExpenseIcon },
+    { to: "/irrigation", label: "Bewässerung", icon: IrrigationIcon },
     { to: "/tasks", label: "Aufgaben", icon: TaskIcon, badge: overdueCount },
     { to: "/settings", label: "Einstellungen", icon: SettingsIcon },
   ];
@@ -563,6 +581,15 @@ export default function AppShell() {
               }
             >
               <ExpenseIcon className="h-5 w-5" />
+            </NavLink>
+            <NavLink
+              to="/irrigation"
+              aria-label="Bewässerung"
+              className={({ isActive }) =>
+                `p-1 ${isActive ? "text-text-heading" : "text-text-secondary hover:text-text-heading"}`
+              }
+            >
+              <IrrigationIcon className="h-5 w-5" />
             </NavLink>
             <NavLink
               to="/settings"
