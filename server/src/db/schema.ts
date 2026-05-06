@@ -5,6 +5,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 /**
@@ -431,25 +432,34 @@ export const gardenMapPins = sqliteTable("garden_map_pin", {
 
 // ─── Irrigation module ───────────────────────────────────────────────────────
 
-export const irrigationZones = sqliteTable("irrigation_zone", {
-  id: text("id").primaryKey(),
-  version: integer("version").notNull().default(1),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-  deletedAt: text("deleted_at"),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  valveNumber: integer("valve_number").notNull(),
-  name: text("name").notNull(),
-  wh52Channel: integer("wh52_channel").notNull(),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  moistureThreshold: integer("moisture_threshold").notNull().default(45),
-  tempMinimum: real("temp_minimum").notNull().default(5),
-  rainThreshold6h: real("rain_threshold_6h").notNull().default(3),
-  maxDurationMin: integer("max_duration_min").notNull().default(90),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
+export const irrigationZones = sqliteTable(
+  "irrigation_zone",
+  {
+    id: text("id").primaryKey(),
+    version: integer("version").notNull().default(1),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    deletedAt: text("deleted_at"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    valveNumber: integer("valve_number").notNull(),
+    name: text("name").notNull(),
+    wh52Channel: integer("wh52_channel").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    moistureThreshold: integer("moisture_threshold").notNull().default(45),
+    tempMinimum: real("temp_minimum").notNull().default(5),
+    rainThreshold6h: real("rain_threshold_6h").notNull().default(3),
+    maxDurationMin: integer("max_duration_min").notNull().default(90),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  // M1: prevent duplicate zones per user+valve via a DB-level unique constraint.
+  // ensureDefaultZones() had a race condition where concurrent requests could
+  // insert duplicate default rows — the constraint makes that impossible.
+  (table) => [
+    uniqueIndex("irrigation_zone_user_valve_idx").on(table.userId, table.valveNumber),
+  ],
+);
 
 export const irrigationSchedules = sqliteTable("irrigation_schedule", {
   id: text("id").primaryKey(),
@@ -510,7 +520,8 @@ export const irrigationCommands = sqliteTable("irrigation_command", {
   zoneNumber: integer("zone_number"),
   command: text("command").notNull(),
   durationMin: integer("duration_min"),
-  status: text("status").notNull().default("pending"),
+  // M6: constrain status to the known lifecycle values via a DB-level CHECK constraint
+  status: text("status", { enum: ["pending", "acked", "done", "failed"] }).notNull().default("pending"),
   requestedBy: text("requested_by"),
   requestedAt: text("requested_at").notNull(),
   ackedAt: text("acked_at"),
