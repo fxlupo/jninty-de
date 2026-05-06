@@ -240,11 +240,28 @@ function eventLabel(type: string): string {
   return labels[type] ?? type;
 }
 
-function eventText(event: IrrigationEvent): string {
-  const zone = event.zoneNumber && event.zoneNumber > 0 ? `V${event.zoneNumber} ` : "";
-  const reason = event.reason ? ` · ${event.reason}` : "";
-  const detail = event.detail ? ` · ${event.detail}` : "";
-  return `${zone}${eventLabel(event.action)}${reason}${detail}`;
+function eventTriggerText(reason: string | null): string {
+  if (reason === "manual") return "Manuell";
+  if (reason === "scheduler" || reason === "schedule") return "Scheduler";
+  if (reason === "sensor") return "Sensor";
+  if (reason === "system") return "System";
+  return reason ?? "-";
+}
+
+function eventDurationText(event: IrrigationEvent): string {
+  if (event.durationSec != null && event.durationSec > 0) {
+    const min = Math.round(event.durationSec / 60);
+    return min >= 1 ? `${min} min` : `${event.durationSec} s`;
+  }
+  const match = event.detail?.match(/(\d+)\s*min/i);
+  return match?.[1] ? `${match[1]} min` : "-";
+}
+
+function eventZoneText(event: IrrigationEvent, zones: IrrigationZone[]): string {
+  const zoneNumber = event.zoneNumber ?? 0;
+  if (zoneNumber <= 0) return "Alle";
+  const zone = zones.find((item) => item.valveNumber === zoneNumber);
+  return `V${zoneNumber} ${zone?.name ?? "Zone"}`;
 }
 
 function matchesEventFilter(event: IrrigationEvent, filter: EventFilter): boolean {
@@ -265,6 +282,41 @@ function downloadJson(filename: string, payload: unknown): void {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function eventDurationMs(event: IrrigationEvent): number {
+  if (event.durationSec != null && event.durationSec > 0) return event.durationSec * 1000;
+  const match = event.detail?.match(/(\d+)\s*min/i);
+  return match?.[1] ? Number(match[1]) * 60 * 1000 : 0;
+}
+
+function formatRemaining(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${String(min)}:${String(sec).padStart(2, "0")} min`;
+}
+
+function remainingRunMs(
+  zoneNumber: number,
+  events: IrrigationEvent[],
+  command: IrrigationCommand | undefined,
+  nowMs: number,
+): number | null {
+  if (command?.command === "open" && command.durationMin != null) {
+    const startMs = parseDateMs(command.requestedAt);
+    if (!Number.isNaN(startMs)) {
+      return Math.max(0, startMs + command.durationMin * 60 * 1000 - nowMs);
+    }
+  }
+  const latestOpen = events
+    .filter((event) => event.zoneNumber === zoneNumber && event.action === "open")
+    .sort((a, b) => parseDateMs(b.createdAt) - parseDateMs(a.createdAt))[0];
+  if (!latestOpen) return null;
+  const startMs = parseDateMs(latestOpen.createdAt);
+  const durationMs = eventDurationMs(latestOpen);
+  if (Number.isNaN(startMs) || durationMs <= 0) return null;
+  return Math.max(0, startMs + durationMs - nowMs);
 }
 
 function normalizeStartTime(value: string): string {
@@ -378,7 +430,7 @@ function SensorLineChart({
         <span className="text-sm text-text-secondary">{unit}</span>
       </div>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-64 min-w-[620px] w-full">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full sm:h-64">
           <rect x={pad.left} y={pad.top} width={innerW} height={innerH} fill="transparent" />
           {yTicks.map((tick) => (
             <g key={tick}>
@@ -447,6 +499,7 @@ export default function IrrigationPage() {
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [eventLog, setEventLog] = useState<IrrigationEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [nowMs, setNowMs] = useState(Date.now());
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -476,6 +529,11 @@ export default function IrrigationPage() {
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -692,34 +750,14 @@ export default function IrrigationPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-6 md:py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-text-heading">Bewässerung</h1>
-          <p className="text-sm text-text-secondary">ESP-Steuerung, Sensorwerte und Programme.</p>
-        </div>
-        <Button
-          variant="danger"
-          onClick={() => void sendCommand({ command: "close_all", zoneNumber: 0 })}
-          disabled={pendingCommand != null}
-        >
-          Alle stoppen
-        </Button>
-      </div>
-
-      {error && (
-        <Card className="border-status-danger-text bg-status-danger-bg text-status-danger-text">
-          {error}
-        </Card>
-      )}
-
-      <div className="flex gap-2 overflow-x-auto rounded-xl border border-border-default bg-surface-elevated p-1">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 md:gap-4 md:px-6 md:py-6">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border-default bg-surface-elevated p-1 sm:gap-2">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+            className={`shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors sm:px-3 sm:py-2 sm:text-sm ${
               activeTab === tab.id
                 ? "bg-primary text-text-on-primary"
                 : "text-text-secondary hover:bg-surface-muted hover:text-text-heading"
@@ -729,6 +767,12 @@ export default function IrrigationPage() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <Card className="border-status-danger-text bg-status-danger-bg text-status-danger-text">
+          {error}
+        </Card>
+      )}
 
       {activeTab === "dashboard" && (
         <>
@@ -965,20 +1009,23 @@ export default function IrrigationPage() {
 
           <div className="divide-y divide-border-default">
             {(dashboard?.schedules ?? []).map((schedule) => (
-              <div key={schedule.id} className="flex flex-wrap items-center gap-3 py-3">
-                <Badge variant={schedule.active ? "success" : "default"}>{schedule.active ? "aktiv" : "inaktiv"}</Badge>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-text-heading">
-                    {zoneNameById(dashboard?.zones ?? [], schedule.zoneId)} · {normalizeStartTime(schedule.startTime)} · {schedule.durationMin} min
+              <div key={schedule.id} className="grid gap-2 py-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-3">
+                <Badge variant={schedule.active ? "success" : "default"} className="w-fit">{schedule.active ? "aktiv" : "inaktiv"}</Badge>
+                <div className="min-w-0">
+                  <div className="font-semibold text-text-heading">{zoneNameById(dashboard?.zones ?? [], schedule.zoneId)}</div>
+                  <div className="text-sm text-text-secondary">
+                    Programm {schedule.program} · Start {normalizeStartTime(schedule.startTime)} · Dauer {schedule.durationMin} min
                   </div>
-                  <div className="text-sm text-text-secondary">Programm {schedule.program} · {weekdayText(schedule.weekdays)}</div>
+                  <div className="text-sm text-text-secondary">Wochentage: {weekdayText(schedule.weekdays)}</div>
                 </div>
-                <Button size="sm" variant="secondary" onClick={() => startEditSchedule(schedule)} disabled={editingScheduleId != null}>
-                  Bearbeiten
-                </Button>
-                <Button size="sm" variant="danger" onClick={() => void deleteSchedule(schedule)} disabled={savingSchedule}>
-                  Löschen
-                </Button>
+                <div className="flex flex-wrap gap-2 md:justify-end">
+                  <Button size="sm" variant="secondary" onClick={() => startEditSchedule(schedule)} disabled={editingScheduleId != null}>
+                    Bearbeiten
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => void deleteSchedule(schedule)} disabled={savingSchedule}>
+                    Löschen
+                  </Button>
+                </div>
               </div>
             ))}
             {dashboard && dashboard.schedules.length === 0 && (
@@ -995,69 +1042,99 @@ export default function IrrigationPage() {
       )}
 
       {activeTab === "manual" && (
-        <section className="grid gap-3 lg:grid-cols-2">
-          {(dashboard?.zones ?? []).map((zone) => {
-            const isOpen = valveStates[zone.valveNumber - 1] ?? false;
-            const zoneCommand = commandByZone.get(zone.valveNumber);
-            const commandKey = `open-${String(zone.valveNumber)}`;
-            const closeKey = `close-${String(zone.valveNumber)}`;
-            return (
-              <Card key={zone.id} className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-display text-lg font-semibold text-text-heading">{zone.name}</h2>
-                      <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              variant="danger"
+              onClick={() => void sendCommand({ command: "close_all", zoneNumber: 0 })}
+              disabled={pendingCommand != null}
+            >
+              Alle stoppen
+            </Button>
+          </div>
+          <section className="grid gap-2 lg:grid-cols-2">
+            {(dashboard?.zones ?? []).map((zone) => {
+              const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+              const zoneCommand = commandByZone.get(zone.valveNumber);
+              const commandKey = `open-${String(zone.valveNumber)}`;
+              const closeKey = `close-${String(zone.valveNumber)}`;
+              const remainingMs = remainingRunMs(
+                zone.valveNumber,
+                [...(dashboard?.events ?? []), ...eventLog],
+                zoneCommand,
+                nowMs,
+              );
+              return (
+                <Card
+                  key={zone.id}
+                  className={`space-y-2 p-3 ${
+                    isOpen ? "border-green-300 bg-green-50" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="truncate font-display text-base font-semibold text-text-heading sm:text-lg">{zone.name}</h2>
+                        <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
+                      </div>
+                      <div className="mt-1 text-xs text-text-secondary">Max {zone.maxDurationMin} min</div>
                     </div>
-                    <div className="mt-1 text-xs text-text-secondary">Max {zone.maxDurationMin} min</div>
+                    <Badge
+                      variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
+                      className={isOpen ? "animate-pulse" : ""}
+                    >
+                      {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
+                    </Badge>
                   </div>
-                  <Badge variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}>
-                    {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
-                  </Badge>
-                </div>
-                {zoneCommand && (
-                  <div className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm font-medium text-status-warning-text">
-                    {commandLabel(zoneCommand)}
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {[15, 30, 60, 90].map((duration) => (
+                  {zoneCommand && (
+                    <div className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm font-medium text-status-warning-text">
+                      {commandLabel(zoneCommand)}
+                    </div>
+                  )}
+                  {isOpen && remainingMs != null && (
+                    <div className="rounded-lg bg-status-success-bg px-3 py-2 text-sm font-semibold text-status-success-text">
+                      Restlaufzeit {formatRemaining(remainingMs)}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {[15, 30, 60, 90].map((duration) => (
+                      <Button
+                        key={duration}
+                        size="sm"
+                        variant="secondary"
+                        disabled={pendingCommand != null || zoneCommand != null}
+                        onClick={() =>
+                          void sendCommand({
+                            command: "open",
+                            zoneId: zone.id,
+                            zoneNumber: zone.valveNumber,
+                            durationMin: duration,
+                          })
+                        }
+                      >
+                        {pendingCommand === commandKey ? "Sendet..." : `${duration} min`}
+                      </Button>
+                    ))}
                     <Button
-                      key={duration}
                       size="sm"
-                      variant="secondary"
+                      variant="danger"
                       disabled={pendingCommand != null || zoneCommand != null}
                       onClick={() =>
                         void sendCommand({
-                          command: "open",
+                          command: "close",
                           zoneId: zone.id,
                           zoneNumber: zone.valveNumber,
-                          durationMin: duration,
                         })
                       }
                     >
-                      {pendingCommand === commandKey ? "Sendet..." : `${duration} min`}
+                      {pendingCommand === closeKey ? "Sendet..." : "Schließen"}
                     </Button>
-                  ))}
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={pendingCommand != null || zoneCommand != null}
-                    onClick={() =>
-                      void sendCommand({
-                        command: "close",
-                        zoneId: zone.id,
-                        zoneNumber: zone.valveNumber,
-                      })
-                    }
-                  >
-                    {pendingCommand === closeKey ? "Sendet..." : "Schließen"}
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </section>
+                  </div>
+                </Card>
+              );
+            })}
+          </section>
+        </div>
       )}
 
       {activeTab === "events" && (
@@ -1090,14 +1167,27 @@ export default function IrrigationPage() {
               </button>
             ))}
           </div>
+          <div className="hidden grid-cols-[110px_90px_minmax(150px,1fr)_100px_80px] gap-3 border-b border-border-default pb-2 text-xs font-semibold text-text-secondary md:grid">
+            <span>Datum Uhrzeit</span>
+            <span>Aktion</span>
+            <span>Zone</span>
+            <span>Trigger</span>
+            <span>Dauer</span>
+          </div>
           <div className="divide-y divide-dashed divide-border-default">
             {filteredEvents.map((event) => (
-              <div key={event.id} className="flex gap-3 py-2 text-sm">
-                <span className="w-24 shrink-0 text-text-secondary">{formatDateTime(event.createdAt)}</span>
-                <Badge variant="default" className="shrink-0">
-                  {eventLabel(event.action)}
-                </Badge>
-                <span className="min-w-0 text-text-primary">{eventText(event)}</span>
+              <div
+                key={event.id}
+                className="grid gap-1 py-2 text-sm md:grid-cols-[110px_90px_minmax(150px,1fr)_100px_80px] md:gap-3"
+              >
+                <span className="text-text-secondary">{formatDateTime(event.createdAt)}</span>
+                <span className="font-semibold text-text-heading">{eventLabel(event.action)}</span>
+                <span className="min-w-0 text-text-primary">{eventZoneText(event, dashboard?.zones ?? [])}</span>
+                <span className="text-text-secondary">{eventTriggerText(event.reason)}</span>
+                <span className="text-text-secondary">{eventDurationText(event)}</span>
+                {event.detail && (
+                  <span className="text-xs text-text-muted md:col-start-3 md:col-span-3">{event.detail}</span>
+                )}
               </div>
             ))}
             {dashboard && filteredEvents.length === 0 && (
