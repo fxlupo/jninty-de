@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import {
   irrigationCommands,
@@ -29,6 +29,11 @@ function intParam(value: string | undefined, fallback: number): number {
 
 function normalizeDeviceStartTime(value: string): string {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function cutoffDateSql(days: number): string {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return cutoff.toISOString().slice(0, 19).replace("T", " ");
 }
 
 async function ensureDefaultZones(userId: string) {
@@ -212,6 +217,34 @@ router.get("/events", requireAuth, async (c) => {
     .orderBy(desc(irrigationEvents.createdAt))
     .limit(limit);
   return c.json(rows);
+});
+
+router.get("/history", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const days = Math.min(365, Math.max(1, intParam(c.req.query("days"), 30)));
+  const since = cutoffDateSql(days);
+
+  const sensors = await db
+    .select()
+    .from(irrigationSensorReadings)
+    .where(and(eq(irrigationSensorReadings.userId, userId), gte(irrigationSensorReadings.createdAt, since)))
+    .orderBy(desc(irrigationSensorReadings.createdAt))
+    .limit(800);
+
+  const runs = await db
+    .select()
+    .from(irrigationEvents)
+    .where(
+      and(
+        eq(irrigationEvents.userId, userId),
+        gte(irrigationEvents.createdAt, since),
+        inArray(irrigationEvents.action, ["open", "close", "skip"]),
+      ),
+    )
+    .orderBy(desc(irrigationEvents.createdAt))
+    .limit(300);
+
+  return c.json({ days, sensors, runs });
 });
 
 router.post("/commands", requireAuth, async (c) => {
