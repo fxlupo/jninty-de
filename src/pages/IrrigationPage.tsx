@@ -100,6 +100,7 @@ type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
+const LOCAL_COMMAND_GRACE_MS = 15000;
 const API_BASE = apiUrl ?? "/api";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
@@ -170,11 +171,24 @@ function isStatusOnline(status: IrrigationStatus | null): boolean {
   return Date.now() - lastSeen < ONLINE_WINDOW_MS;
 }
 
-function isFreshPendingCommand(command: IrrigationCommand): boolean {
-  if (command.status !== "pending") return false;
+function commandTime(command: IrrigationCommand): number {
   const requestedAt = new Date(command.requestedAt).getTime();
-  if (Number.isNaN(requestedAt)) return false;
+  return Number.isNaN(requestedAt) ? 0 : requestedAt;
+}
+
+function isActiveCommand(command: IrrigationCommand): boolean {
+  if (command.status !== "pending" && command.status !== "acked") return false;
+  const requestedAt = commandTime(command);
+  if (requestedAt === 0) return false;
   return Date.now() - requestedAt < FRESH_COMMAND_MS;
+}
+
+function commandLabel(command: IrrigationCommand): string {
+  const prefix = command.status === "acked" ? "ESP übernimmt" : "Befehl wartet";
+  if (command.command === "open") return `${prefix}: ${command.durationMin ?? "?"} min`;
+  if (command.command === "close") return `${prefix}: schließen`;
+  if (command.command === "close_all") return `${prefix}: alle stoppen`;
+  return prefix;
 }
 
 function parseValveStates(value: string | null | undefined): boolean[] {
@@ -248,6 +262,7 @@ export default function IrrigationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
+  const [localCommands, setLocalCommands] = useState<IrrigationCommand[]>([]);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
   const [savingZone, setSavingZone] = useState(false);
@@ -258,7 +273,16 @@ export default function IrrigationPage() {
   const loadDashboard = useCallback(async () => {
     try {
       const data = await irrigationRequest<IrrigationDashboard>("/irrigation/dashboard");
+      const serverCommandIds = new Set(data.commands.map((command) => command.id));
+      const now = Date.now();
       setDashboard(data);
+      setLocalCommands((current) =>
+        current.filter((command) => {
+          if (serverCommandIds.has(command.id)) return false;
+          const requestedAt = commandTime(command);
+          return requestedAt > 0 && now - requestedAt < LOCAL_COMMAND_GRACE_MS;
+        }),
+      );
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bewässerung konnte nicht geladen werden.");
@@ -288,15 +312,33 @@ export default function IrrigationPage() {
     [dashboard?.status?.valveStates],
   );
   const online = isStatusOnline(dashboard?.status ?? null);
-  const pendingCount = dashboard?.commands.filter(isFreshPendingCommand).length ?? 0;
+  const activeCommands = useMemo(() => {
+    const byId = new Map<string, IrrigationCommand>();
+    for (const command of [...(dashboard?.commands ?? []), ...localCommands]) {
+      if (isActiveCommand(command)) byId.set(command.id, command);
+    }
+    return [...byId.values()].sort((a, b) => commandTime(b) - commandTime(a));
+  }, [dashboard?.commands, localCommands]);
+  const pendingCount = activeCommands.length;
+
+  const commandByZone = useMemo(() => {
+    const map = new Map<number, IrrigationCommand>();
+    for (const command of activeCommands) {
+      if (command.zoneNumber > 0 && !map.has(command.zoneNumber)) {
+        map.set(command.zoneNumber, command);
+      }
+    }
+    return map;
+  }, [activeCommands]);
 
   const sendCommand = async (payload: CommandPayload) => {
     setPendingCommand(`${payload.command}-${String(payload.zoneNumber)}`);
     try {
-      await irrigationRequest<IrrigationCommand>("/irrigation/commands", {
+      const command = await irrigationRequest<IrrigationCommand>("/irrigation/commands", {
         method: "POST",
         body: JSON.stringify(payload),
       });
+      setLocalCommands((current) => [command, ...current.filter((item) => item.id !== command.id)]);
       await loadDashboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Befehl konnte nicht gesendet werden.");
@@ -466,6 +508,7 @@ export default function IrrigationPage() {
             {(dashboard?.zones ?? []).map((zone) => {
               const sensor = zone.wh52Channel ? sensorsByChannel.get(zone.wh52Channel) : undefined;
               const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+              const zoneCommand = commandByZone.get(zone.valveNumber);
               const isEditing = editingZoneId === zone.id;
               const draft = isEditing ? zoneDraft : null;
               const next = nextScheduleForZone(dashboard?.schedules ?? [], zone.id);
@@ -491,7 +534,9 @@ export default function IrrigationPage() {
                       >
                         Bearbeiten
                       </Button>
-                      <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
+                      <Badge variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}>
+                        {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
+                      </Badge>
                     </div>
                   </div>
 
@@ -557,7 +602,11 @@ export default function IrrigationPage() {
                     <span className="text-text-secondary">
                       Nächster Lauf: {next ? `${normalizeStartTime(next.startTime)} · ${next.durationMin} min` : "kein Programm"}
                     </span>
-                    <Badge variant={hint.variant}>{hint.text}</Badge>
+                    {zoneCommand ? (
+                      <Badge variant="warning">{commandLabel(zoneCommand)}</Badge>
+                    ) : (
+                      <Badge variant={hint.variant}>{hint.text}</Badge>
+                    )}
                   </div>
                 </Card>
               );
@@ -575,9 +624,13 @@ export default function IrrigationPage() {
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 {[1, 2, 3, 4].map((valve) => {
                   const isOpen = valveStates[valve - 1] ?? false;
+                  const valveCommand = commandByZone.get(valve);
                   return (
-                    <span key={valve} className={isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}>
-                      V{valve} {isOpen ? "On" : "Off"}
+                    <span
+                      key={valve}
+                      className={valveCommand ? "font-semibold text-status-warning-text" : isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}
+                    >
+                      V{valve} {valveCommand ? "wartet" : isOpen ? "On" : "Off"}
                     </span>
                   );
                 })}
@@ -711,6 +764,7 @@ export default function IrrigationPage() {
         <section className="grid gap-3 lg:grid-cols-2">
           {(dashboard?.zones ?? []).map((zone) => {
             const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+            const zoneCommand = commandByZone.get(zone.valveNumber);
             const commandKey = `open-${String(zone.valveNumber)}`;
             const closeKey = `close-${String(zone.valveNumber)}`;
             return (
@@ -723,15 +777,22 @@ export default function IrrigationPage() {
                     </div>
                     <div className="mt-1 text-xs text-text-secondary">Max {zone.maxDurationMin} min</div>
                   </div>
-                  <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
+                  <Badge variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}>
+                    {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
+                  </Badge>
                 </div>
+                {zoneCommand && (
+                  <div className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm font-medium text-status-warning-text">
+                    {commandLabel(zoneCommand)}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {[15, 30, 60, 90].map((duration) => (
                     <Button
                       key={duration}
                       size="sm"
                       variant="secondary"
-                      disabled={pendingCommand != null}
+                      disabled={pendingCommand != null || zoneCommand != null}
                       onClick={() =>
                         void sendCommand({
                           command: "open",
@@ -747,7 +808,7 @@ export default function IrrigationPage() {
                   <Button
                     size="sm"
                     variant="danger"
-                    disabled={pendingCommand != null}
+                    disabled={pendingCommand != null || zoneCommand != null}
                     onClick={() =>
                       void sendCommand({
                         command: "close",
