@@ -56,6 +56,7 @@ interface IrrigationEvent {
   zoneNumber: number | null;
   durationSec?: number | null;
   createdAt: string;
+  raw?: Record<string, unknown> | null;
 }
 
 interface IrrigationCommand {
@@ -285,10 +286,11 @@ function eventLabel(type: string): string {
 }
 
 function eventTriggerText(reason: string | null): string {
-  if (reason === "manual") return "Manuell";
-  if (reason === "scheduler" || reason === "schedule") return "Scheduler";
-  if (reason === "sensor") return "Sensor";
-  if (reason === "system") return "System";
+  const normalized = reason?.toLowerCase() ?? null;
+  if (normalized === "manual") return "Manuell";
+  if (normalized === "scheduler" || normalized === "schedule") return "Scheduler";
+  if (normalized === "sensor") return "Sensor";
+  if (normalized === "system") return "System";
   return reason ?? "-";
 }
 
@@ -301,21 +303,33 @@ function eventDurationText(event: IrrigationEvent): string {
   return match?.[1] ? `${match[1]} min` : "-";
 }
 
+function eventZoneNumber(event: IrrigationEvent): number {
+  if (typeof event.zoneNumber === "number") return event.zoneNumber;
+  const rawZoneNumber = event.raw?.["zoneNumber"] ?? event.raw?.["zone_number"] ?? event.raw?.["zone_id"];
+  if (typeof rawZoneNumber === "number") return rawZoneNumber;
+  if (typeof rawZoneNumber === "string") {
+    const parsed = Number(rawZoneNumber);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 function eventZoneText(event: IrrigationEvent, zones: IrrigationZone[]): string {
-  const zoneNumber = event.zoneNumber ?? 0;
+  const zoneNumber = eventZoneNumber(event);
   if (zoneNumber <= 0) return "Alle";
   const zone = zones.find((item) => item.valveNumber === zoneNumber);
   return `V${zoneNumber} ${zone?.name ?? "Zone"}`;
 }
 
 function matchesEventFilter(event: IrrigationEvent, filter: EventFilter): boolean {
+  const reason = event.reason?.toLowerCase() ?? "";
   if (filter === "all") return true;
   if (filter === "open") return event.action === "open";
   if (filter === "close") return event.action === "close" || event.action === "close_all";
-  if (filter === "skip") return event.action === "skip" || event.reason === "skip";
-  if (filter === "manual") return event.reason === "manual";
-  if (filter === "scheduler") return event.reason === "scheduler";
-  return (event.zoneNumber ?? 0) > 0;
+  if (filter === "skip") return event.action === "skip" || reason === "skip";
+  if (filter === "manual") return reason === "manual";
+  if (filter === "scheduler") return reason === "scheduler" || reason === "schedule";
+  return eventZoneNumber(event) > 0;
 }
 
 function downloadJson(filename: string, payload: unknown): void {
