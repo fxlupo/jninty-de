@@ -13,6 +13,7 @@ interface IrrigationZone {
   active: boolean;
   moistureThreshold: number;
   tempMinimum: number;
+  rainThreshold6h: number;
   maxDurationMin: number;
 }
 
@@ -64,10 +65,22 @@ type CommandPayload =
   | { command: "close"; zoneId: string; zoneNumber: number }
   | { command: "close_all"; zoneNumber: 0 };
 
+interface ZoneDraft {
+  name: string;
+  wh52Channel: number;
+  active: boolean;
+  moistureThreshold: number;
+  tempMinimum: number;
+  rainThreshold6h: number;
+  maxDurationMin: number;
+}
+
 const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
 const API_BASE = apiUrl ?? "/api";
+const INPUT_CLASS =
+  "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
 
 async function irrigationRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -164,6 +177,9 @@ export default function IrrigationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+  const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
+  const [savingZone, setSavingZone] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -212,6 +228,45 @@ export default function IrrigationPage() {
       setError(err instanceof Error ? err.message : "Befehl konnte nicht gesendet werden.");
     } finally {
       setPendingCommand(null);
+    }
+  };
+
+  const startEditZone = (zone: IrrigationZone) => {
+    setEditingZoneId(zone.id);
+    setZoneDraft({
+      name: zone.name,
+      wh52Channel: zone.wh52Channel ?? zone.valveNumber,
+      active: zone.active,
+      moistureThreshold: zone.moistureThreshold,
+      tempMinimum: zone.tempMinimum,
+      rainThreshold6h: zone.rainThreshold6h,
+      maxDurationMin: zone.maxDurationMin,
+    });
+  };
+
+  const cancelEditZone = () => {
+    setEditingZoneId(null);
+    setZoneDraft(null);
+  };
+
+  const updateDraft = <K extends keyof ZoneDraft>(key: K, value: ZoneDraft[K]) => {
+    setZoneDraft((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const saveZone = async (zone: IrrigationZone) => {
+    if (!zoneDraft) return;
+    setSavingZone(true);
+    try {
+      await irrigationRequest<IrrigationZone>(`/irrigation/zones/${zone.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(zoneDraft),
+      });
+      await loadDashboard();
+      cancelEditZone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Zone konnte nicht gespeichert werden.");
+    } finally {
+      setSavingZone(false);
     }
   };
 
@@ -282,6 +337,8 @@ export default function IrrigationPage() {
           const isOpen = valveStates[zone.valveNumber - 1] ?? false;
           const commandKey = `open-${String(zone.valveNumber)}`;
           const closeKey = `close-${String(zone.valveNumber)}`;
+          const isEditing = editingZoneId === zone.id;
+          const draft = isEditing ? zoneDraft : null;
           return (
             <Card key={zone.id} className="space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -294,8 +351,103 @@ export default function IrrigationPage() {
                     WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
                   </div>
                 </div>
-                <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => startEditZone(zone)}
+                    disabled={editingZoneId != null && editingZoneId !== zone.id}
+                  >
+                    Bearbeiten
+                  </Button>
+                  <Badge variant={isOpen ? "success" : "default"}>{isOpen ? "offen" : "zu"}</Badge>
+                </div>
               </div>
+
+              {draft && (
+                <div className="rounded-lg border border-border-default bg-surface-muted p-3">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <label className="md:col-span-2">
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">Name</span>
+                      <input
+                        className={INPUT_CLASS}
+                        value={draft.name}
+                        onChange={(event) => updateDraft("name", event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">WH52 Ch</span>
+                      <input
+                        className={INPUT_CLASS}
+                        type="number"
+                        min={1}
+                        max={8}
+                        value={draft.wh52Channel}
+                        onChange={(event) => updateDraft("wh52Channel", Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">Feuchte Limit</span>
+                      <input
+                        className={INPUT_CLASS}
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={draft.moistureThreshold}
+                        onChange={(event) => updateDraft("moistureThreshold", Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">Temp Minimum</span>
+                      <input
+                        className={INPUT_CLASS}
+                        type="number"
+                        step={0.5}
+                        value={draft.tempMinimum}
+                        onChange={(event) => updateDraft("tempMinimum", Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">Regen 6h Limit</span>
+                      <input
+                        className={INPUT_CLASS}
+                        type="number"
+                        step={0.5}
+                        min={0}
+                        value={draft.rainThreshold6h}
+                        onChange={(event) => updateDraft("rainThreshold6h", Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-medium text-text-secondary">Max-Dauer</span>
+                      <input
+                        className={INPUT_CLASS}
+                        type="number"
+                        min={1}
+                        max={180}
+                        value={draft.maxDurationMin}
+                        onChange={(event) => updateDraft("maxDurationMin", Number(event.target.value))}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 pt-6 text-sm font-medium text-text-heading">
+                      <input
+                        type="checkbox"
+                        checked={draft.active}
+                        onChange={(event) => updateDraft("active", event.target.checked)}
+                      />
+                      Zone aktiv
+                    </label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => void saveZone(zone)} disabled={savingZone}>
+                      {savingZone ? "Speichert..." : "Speichern"}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={cancelEditZone} disabled={savingZone}>
+                      Abbrechen
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-2 rounded-lg bg-surface-muted p-3 text-sm">
                 <div>
