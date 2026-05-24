@@ -87,9 +87,6 @@ export default function SettingsPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCsvDialog, setShowCsvDialog] = useState(false);
-  const [demoBusy, setDemoBusy] = useState(false);
-  const [demoError, setDemoError] = useState<string | null>(null);
-  const [clearDemoBusy, setClearDemoBusy] = useState(false);
 
   // Location search state
   const [locationQuery, setLocationQuery] = useState("");
@@ -197,37 +194,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLoadDemo = async () => {
-    setDemoBusy(true);
-    setDemoError(null);
-    try {
-      const { loadDemoData } = await import("../services/demoSeeder.ts");
-      await loadDemoData();
-      toast("Demodaten geladen", "success");
-      // Reload page so all queries refetch
-      window.location.reload();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Demodaten konnten nicht geladen werden";
-      setDemoError(msg);
-      toast("Demodaten konnten nicht geladen werden", "error");
-    } finally {
-      setDemoBusy(false);
-    }
-  };
-
-  const handleClearDemo = async () => {
-    setClearDemoBusy(true);
-    try {
-      const { clearDemoData } = await import("../services/demoSeeder.ts");
-      await clearDemoData();
-      toast("Alle Daten entfernt", "success");
-      window.location.reload();
-    } catch {
-      toast("Daten konnten nicht entfernt werden", "error");
-    } finally {
-      setClearDemoBusy(false);
-    }
-  };
 
   // ─── Seasons ───
 
@@ -1149,33 +1115,6 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* Demo data */}
-          <div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => void handleLoadDemo()}
-                disabled={demoBusy || clearDemoBusy}
-              >
-                {demoBusy ? "Laedt..." : "Demodaten laden"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => void handleClearDemo()}
-                disabled={demoBusy || clearDemoBusy}
-                className="text-red-600 hover:text-red-700"
-              >
-                {clearDemoBusy ? "Entfernt..." : "Alle Daten entfernen"}
-              </Button>
-            </div>
-            {demoError && (
-              <p className="mt-1 text-sm text-red-600">{demoError}</p>
-            )}
-            <p className="mt-1 text-xs text-text-muted">
-              Laedt eine Beispiel-Saison mit Pflanzen, Beeten, Bepflanzungen, Journaleintraegen, Aufgaben, Saatgut und Ausgaben.
-              Das Entfernen loescht alle App-Daten unwiderruflich.
-            </p>
-          </div>
 
         </div>
       </Card>
