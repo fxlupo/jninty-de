@@ -27,6 +27,7 @@ import knowledgeRouter from "./routes/knowledge.ts";
 import photosRouter from "./routes/photos.ts";
 import gardenMapPinsRouter from "./routes/gardenMapPins.ts";
 import irrigationRouter from "./routes/irrigation.ts";
+import calendarEventsRouter from "./routes/calendarEvents.ts";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 const FRONTEND_ORIGIN = process.env["FRONTEND_ORIGIN"] ?? "http://localhost:5173";
@@ -103,6 +104,7 @@ app.route("/api/knowledge", knowledgeRouter);
 app.route("/api/photos", photosRouter);
 app.route("/api/garden-map-pins", gardenMapPinsRouter);
 app.route("/api/irrigation", irrigationRouter);
+app.route("/api/calendar-events", calendarEventsRouter);
 
 // ─── Serve uploaded photos as static files ────────────────────────────────────
 // Files are stored at data/uploads/{photoId}/*.jpg on the filesystem.

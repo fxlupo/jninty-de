@@ -1,491 +1,177 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { startOfMonth, differenceInCalendarMonths, differenceInCalendarDays, parseISO, format } from "date-fns";
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragStartEvent,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import TimelineToolbar, { type MonthRange } from "./TimelineToolbar.tsx";
-import TimelineRow from "./TimelineRow.tsx";
-import { TASK_TYPE_COLORS, TASK_TYPE_LABELS } from "./taskTypeColors.ts";
-import HarvestDragModal from "./HarvestDragModal.tsx";
-import { useTimelineData } from "../../hooks/useTimelineData.ts";
-import { useTaskFilter } from "../../hooks/useTaskFilter.ts";
-import { useScheduling } from "../../hooks/useScheduling.ts";
-import { useRescheduling } from "../../hooks/useRescheduling.ts";
-import { useToast } from "../ui/Toast.tsx";
-import { useModalA11y } from "../../hooks/useModalA11y.ts";
-import CropPicker, { type CropSelection } from "../scheduling/CropPicker.tsx";
-import DirectionPicker from "../scheduling/DirectionPicker.tsx";
+import { useState, useMemo } from "react";
+import { format, addMonths } from "date-fns";
+import { de } from "date-fns/locale";
+import { usePouchQuery } from "../../hooks/usePouchQuery.ts";
+import { calendarEventRepository } from "../../db/index.ts";
+import type { CalendarEvent } from "../../db/pouchdb/repositories/calendarEventRepository.ts";
+import EventModal from "./EventModal.tsx";
 import Skeleton from "../ui/Skeleton.tsx";
-import type { ScheduleDirection } from "../../validation/plantingSchedule.schema.ts";
-import StartingFlowWizard from "../startingFlow/StartingFlowWizard.tsx";
-import { useSettings } from "../../hooks/useSettings.tsx";
-import { useActiveSeason } from "../../hooks/useActiveSeason.ts";
-import { scheduleTaskRepository } from "../../db/index.ts";
-import type { ScheduleTask } from "../../validation/scheduleTask.schema.ts";
-import type { TimelineBar } from "../../hooks/useTimelineData.ts";
 
-interface PlacementState {
-  selection: CropSelection;
-}
+const TYPE_LABELS: Record<CalendarEvent["type"], string> = {
+  general: "Allgemein",
+  task: "Aufgabe",
+  reminder: "Erinnerung",
+};
 
-interface DirectionState {
-  selection: CropSelection;
-  date: string;
-}
+const RECURRENCE_LABELS: Record<CalendarEvent["recurrence"], string> = {
+  once: "",
+  yearly: "Jährlich",
+  every_2y: "Alle 2 Jahre",
+  every_3y: "Alle 3 Jahre",
+  every_4y: "Alle 4 Jahre",
+};
 
-interface HarvestDragState {
-  task: ScheduleTask;
-  targetDate: string;
-  daysDelta: number;
-}
+const TYPE_BADGE_CLASSES: Record<CalendarEvent["type"], string> = {
+  general: "bg-green-100 text-green-800",
+  task: "bg-terracotta-100 text-terracotta-700",
+  reminder: "bg-brown-100 text-brown-700",
+};
 
-/** Slide-in panel wrapper with proper modal a11y */
-function CropPickerPanel({
-  onSelect,
-  onClose,
-}: {
-  onSelect: (selection: CropSelection) => void;
-  onClose: () => void;
-}) {
-  useModalA11y(onClose);
-
-  return (
-    <div className="fixed inset-0 z-40 flex">
-      {/* Backdrop */}
-      <div
-        className="flex-1 bg-black/30"
-        onClick={onClose}
-        role="presentation"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Select crop"
-        className="h-full w-80 max-w-[85vw] bg-surface-elevated shadow-xl"
-      >
-        <CropPicker onSelect={onSelect} onClose={onClose} />
-      </div>
-    </div>
-  );
+function formatMonthHeading(dateStr: string): string {
+  const [year, month] = dateStr.split("-").map(Number);
+  return format(new Date(year ?? 0, (month ?? 1) - 1, 1), "MMMM yyyy", { locale: de });
 }
 
 export default function TimelineView() {
-  const [monthRange, setMonthRange] = useState<MonthRange>("season");
-  const filter = useTaskFilter();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { createSchedule } = useScheduling();
-  const { rescheduleGroup, rescheduleSingleTask } = useRescheduling();
-  const { toast } = useToast();
-  const { settings } = useSettings();
-  const activeSeason = useActiveSeason();
+  const today = new Date();
+  const from = format(today, "yyyy-MM-dd");
+  const to = format(addMonths(today, 3), "yyyy-MM-dd");
 
-  // Compute effective start date and month count for season vs fixed range
-  const { startDate, monthCount } = useMemo(() => {
-    if (monthRange === "season" && activeSeason) {
-      const seasonStart = startOfMonth(parseISO(activeSeason.startDate));
-      const seasonEnd = parseISO(activeSeason.endDate);
-      const months = differenceInCalendarMonths(seasonEnd, seasonStart) + 1;
-      return { startDate: seasonStart, monthCount: Math.max(months, 1) };
-    }
-    if (monthRange === "season") {
-      // Fallback to frost dates if no active season
-      const lastFrost = parseISO(settings.lastFrostDate);
-      const firstFrost = parseISO(settings.firstFrostDate);
-      const seasonStart = startOfMonth(lastFrost);
-      const months = differenceInCalendarMonths(firstFrost, lastFrost) + 1;
-      return { startDate: seasonStart, monthCount: Math.max(months, 1) };
-    }
-    return { startDate: startOfMonth(new Date()), monthCount: monthRange };
-  }, [monthRange, activeSeason, settings.lastFrostDate, settings.firstFrostDate]);
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
-  // Crop picker state
-  const [showPicker, setShowPicker] = useState(false);
-  const [placement, setPlacement] = useState<PlacementState | null>(null);
-  const [directionState, setDirectionState] = useState<DirectionState | null>(
-    null,
+  const events = usePouchQuery(
+    () => calendarEventRepository.getRange(from, to),
+    [from, to],
   );
 
-  // Wizard state
-  const [showWizard, setShowWizard] = useState(false);
-
-  // Drag state
-  const [activeDrag, setActiveDrag] = useState<{
-    task: ScheduleTask;
-    bar: TimelineBar;
-  } | null>(null);
-  const [harvestDrag, setHarvestDrag] = useState<HarvestDragState | null>(null);
-
-  const { monthRows, loading } = useTimelineData(startDate, monthCount);
-
-  // Sensors: PointerSensor with 8px distance, TouchSensor with 250ms delay, KeyboardSensor for a11y
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 8 },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 250, tolerance: 5 },
-  });
-  const keyboardSensor = useSensor(KeyboardSensor);
-  const sensors = useSensors(pointerSensor, touchSensor, keyboardSensor);
-
-  // Scroll to today column on mount and when startDate changes
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const todayIndicator = container.querySelector("[data-today]");
-    if (todayIndicator) {
-      todayIndicator.scrollIntoView({ inline: "center", block: "nearest" });
+  const groupedEvents = useMemo(() => {
+    if (!events) return [];
+    const groups = new Map<string, CalendarEvent[]>();
+    for (const event of events) {
+      const monthKey = event.date.slice(0, 7);
+      const existing = groups.get(monthKey);
+      if (existing) existing.push(event);
+      else groups.set(monthKey, [event]);
     }
-  }, [monthRows]);
+    return Array.from(groups.entries()).map(([monthKey, evts]) => ({
+      monthKey,
+      events: evts,
+    }));
+  }, [events]);
 
-  // --- Drag handlers ---
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const data = event.active.data.current as
-      | { task: ScheduleTask; bar: TimelineBar }
-      | undefined;
-    if (data) {
-      setActiveDrag({ task: data.task, bar: data.bar });
-    }
-  }, []);
-
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveDrag(null);
-
-      if (!over) return;
-
-      const dragData = active.data.current as
-        | { task: ScheduleTask; bar: TimelineBar }
-        | undefined;
-      const dropData = over.data.current as { date: string } | undefined;
-
-      if (!dragData || !dropData) return;
-
-      const task = dragData.task;
-      const targetDate = dropData.date;
-      const daysDelta = differenceInCalendarDays(
-        parseISO(targetDate),
-        parseISO(task.scheduledDate),
-      );
-
-      if (daysDelta === 0) return;
-
-      // If it's a harvest bar, show the harvest-only modal
-      if (task.taskType === "harvest") {
-        setHarvestDrag({ task, targetDate, daysDelta });
-        return;
-      }
-
-      // Otherwise, shift the entire schedule
-      try {
-        const result = await rescheduleGroup(
-          task.plantingScheduleId,
-          daysDelta,
-        );
-        toast(
-          `${task.cropName} schedule shifted by ${result.daysDelta > 0 ? "+" : ""}${result.daysDelta} day${Math.abs(result.daysDelta) === 1 ? "" : "s"}`,
-          "success",
-        );
-      } catch {
-        toast("Umplanen fehlgeschlagen", "error");
-      }
-    },
-    [rescheduleGroup, toast],
-  );
-
-  // Harvest drag modal handlers
-  const handleHarvestShiftAll = useCallback(async () => {
-    if (!harvestDrag) return;
-    try {
-      const result = await rescheduleGroup(
-        harvestDrag.task.plantingScheduleId,
-        harvestDrag.daysDelta,
-      );
-      toast(
-        `${harvestDrag.task.cropName} schedule shifted by ${result.daysDelta > 0 ? "+" : ""}${result.daysDelta} day${Math.abs(result.daysDelta) === 1 ? "" : "s"}`,
-        "success",
-      );
-    } catch {
-      toast("Failed to reschedule", "error");
-    }
-    setHarvestDrag(null);
-  }, [harvestDrag, rescheduleGroup, toast]);
-
-  const handleHarvestOnly = useCallback(async () => {
-    if (!harvestDrag) return;
-    try {
-      await rescheduleSingleTask(harvestDrag.task.id, harvestDrag.targetDate);
-      toast(
-        `Harvest date moved to ${harvestDrag.targetDate}`,
-        "success",
-      );
-    } catch {
-      toast("Erntedatum konnte nicht verschoben werden", "error");
-    }
-    setHarvestDrag(null);
-  }, [harvestDrag, rescheduleSingleTask, toast]);
-
-  const handleHarvestCancel = useCallback(() => {
-    setHarvestDrag(null);
-  }, []);
-
-  // --- Task completion toggle ---
-  const handleToggleComplete = useCallback(
-    async (taskId: string) => {
-      try {
-        const task = await scheduleTaskRepository.getById(taskId);
-        if (!task) return;
-        const changes: Parameters<typeof scheduleTaskRepository.update>[1] = task.isCompleted
-          ? { isCompleted: false }
-          : {
-              isCompleted: true,
-              completedDate: format(new Date(), "yyyy-MM-dd"),
-              completedAt: new Date().toISOString(),
-            };
-        await scheduleTaskRepository.update(taskId, changes);
-        toast(
-          task.isCompleted ? "Task marked incomplete" : "Task completed!",
-          "success",
-        );
-      } catch {
-        toast("Aufgabe konnte nicht aktualisiert werden", "error");
-      }
-    },
-    [toast],
-  );
-
-  // --- Crop picker handlers ---
-  const handleCropSelect = useCallback((selection: CropSelection) => {
-    setShowPicker(false);
-    setPlacement({ selection });
-  }, []);
-
-  const handleDayClick = useCallback(
-    (date: string) => {
-      if (!placement) return;
-      setDirectionState({ selection: placement.selection, date });
-    },
-    [placement],
-  );
-
-  const handleDirectionConfirm = useCallback(
-    async (direction: ScheduleDirection) => {
-      if (!directionState) return;
-      const { selection, date } = directionState;
-
-      try {
-        await createSchedule({
-          cropId: selection.cropId,
-          varietyId: selection.varietyId,
-          cropSource: selection.cropSource,
-          cropName: selection.cropName,
-          varietyName: selection.varietyName,
-          anchorDate: date,
-          direction,
-        });
-
-        toast(
-          `${selection.cropName} (${selection.varietyName}) scheduled!`,
-          "success",
-        );
-      } catch (err) {
-        toast(
-          `Zeitplan konnte nicht erstellt werden: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
-          "error",
-        );
-      }
-
-      setDirectionState(null);
-      setPlacement(null);
-    },
-    [directionState, createSchedule, toast],
-  );
-
-  const handleDirectionCancel = useCallback(() => {
-    setDirectionState(null);
-  }, []);
-
-  const handlePickerClose = useCallback(() => {
-    setShowPicker(false);
-  }, []);
-
-  const cancelPlacement = useCallback(() => {
-    setPlacement(null);
-  }, []);
-
-  // Empty state content
-  const emptyContent = useMemo(() => {
-    if (loading) return null;
-    const totalBars = monthRows.reduce((sum, row) => sum + row.bars.length, 0);
-    if (totalBars === 0 && !placement) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-text-secondary">
-            Keine geplanten Aufgaben in diesem Zeitraum.
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            Klicke auf &ldquo;Anbau hinzufügen&rdquo;, um deinen ersten Pflanzplan zu erstellen.
-          </p>
-        </div>
-      );
-    }
-    return null;
-  }, [loading, monthRows, placement]);
+  if (events === undefined) {
+    return (
+      <div className="space-y-4 p-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="relative flex flex-col">
-      <TimelineToolbar
-        monthRange={monthRange}
-        onMonthRangeChange={setMonthRange}
-        filter={filter}
-      />
-
-      {/* Placement mode banner */}
-      {placement && (
-        <div className="flex items-center justify-between bg-green-50 px-3 py-2 mb-3 text-sm">
-          <span className="text-green-800">
-            Click a day to place{" "}
-            <strong>
-              {placement.selection.cropName} — {placement.selection.varietyName}
-            </strong>
-          </span>
-          <button
-            type="button"
-            onClick={cancelPlacement}
-            className="rounded px-2 py-0.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-100"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Add crop buttons */}
-      {!placement && (
-        <div className="flex justify-end gap-2 px-3 py-1">
-          <button
-            type="button"
-            onClick={() => setShowWizard(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-green-50"
-          >
-            Wizard
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowPicker(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-text-on-primary transition-colors hover:bg-primary-hover"
-          >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Quick Add
-          </button>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="space-y-2 p-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : emptyContent ? (
-        emptyContent
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+    <div className="p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-text-muted">Nächste 3 Monate</p>
+        <button
+          type="button"
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-text-on-primary transition-colors hover:bg-primary-hover"
         >
-          <div
-            ref={scrollRef}
-            className="mx-3 mb-3 overflow-x-auto overflow-y-hidden rounded-xl border border-border-default bg-surface-elevated shadow-sm"
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Neuer Eintrag
+        </button>
+      </div>
+
+      {groupedEvents.length === 0 ? (
+        <div className="rounded-xl border border-border-default bg-surface-elevated px-6 py-10 text-center">
+          <p className="text-sm text-text-muted">Keine Einträge in den nächsten 3 Monaten</p>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="mt-3 text-sm font-medium text-primary hover:underline"
           >
-            {monthRows.map((row) => (
-              <TimelineRow
-                key={row.label}
-                row={row}
-                filter={filter}
-                placementMode={placement !== null}
-                onDayClick={handleDayClick}
-                lastFrostDate={settings.lastFrostDate}
-                firstFrostDate={settings.firstFrostDate}
-                onToggleComplete={handleToggleComplete}
-              />
-            ))}
-          </div>
-
-          {/* Drag overlay — ghost bar follows cursor */}
-          <DragOverlay dropAnimation={null}>
-            {activeDrag ? (
-              <div
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white opacity-80 shadow-lg"
-                style={{
-                  backgroundColor:
-                    TASK_TYPE_COLORS[activeDrag.task.taskType],
-                  width: `${(activeDrag.bar.endDay - activeDrag.bar.startDay + 1) * 28}px`,
-                }}
-              >
-                <span className="shrink-0 opacity-80">
-                  {TASK_TYPE_LABELS[activeDrag.task.taskType]}
-                </span>
-                <span className="truncate">{activeDrag.task.cropName}</span>
+            Ersten Eintrag erstellen
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedEvents.map(({ monthKey, events: monthEvents }) => (
+            <div key={monthKey}>
+              <h3 className="mb-2 text-sm font-semibold text-text-heading capitalize">
+                {formatMonthHeading(monthKey + "-01")}
+              </h3>
+              <div className="space-y-2">
+                {monthEvents.map((event) => (
+                  <button
+                    key={`${event.id}-${event.date}`}
+                    type="button"
+                    onClick={() => setEditEvent(event)}
+                    className="flex w-full items-start gap-3 rounded-xl border border-border-default bg-surface-elevated p-3 text-left transition-colors hover:bg-surface-muted"
+                  >
+                    <div className="mt-0.5 flex-shrink-0 text-center">
+                      <div className="text-xl font-bold leading-none text-text-heading">
+                        {event.date.slice(8)}
+                      </div>
+                      <div className="text-[10px] text-text-muted">
+                        {format(
+                          new Date(
+                            parseInt(event.date.slice(0, 4)),
+                            parseInt(event.date.slice(5, 7)) - 1,
+                            parseInt(event.date.slice(8, 10)),
+                          ),
+                          "EEE",
+                          { locale: de },
+                        )}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-text-primary">
+                        {event.title}
+                      </p>
+                      {event.notes && (
+                        <p className="mt-0.5 truncate text-xs text-text-muted">
+                          {event.notes}
+                        </p>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${TYPE_BADGE_CLASSES[event.type]}`}>
+                          {TYPE_LABELS[event.type]}
+                        </span>
+                        {event.recurrence !== "once" && (
+                          <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] text-text-muted">
+                            {RECURRENCE_LABELS[event.recurrence]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* CropPicker slide-in panel */}
-      {showPicker && (
-        <CropPickerPanel
-          onSelect={handleCropSelect}
-          onClose={handlePickerClose}
+      {showCreate && (
+        <EventModal
+          onClose={() => setShowCreate(false)}
+          onSaved={() => setShowCreate(false)}
         />
       )}
-
-      {/* Direction picker modal */}
-      {directionState && (
-        <DirectionPicker
-          date={directionState.date}
-          cropName={directionState.selection.cropName}
-          varietyName={directionState.selection.varietyName}
-          onConfirm={handleDirectionConfirm}
-          onCancel={handleDirectionCancel}
+      {editEvent && (
+        <EventModal
+          event={editEvent}
+          onClose={() => setEditEvent(null)}
+          onSaved={() => setEditEvent(null)}
         />
-      )}
-
-      {/* Harvest drag modal */}
-      {harvestDrag && (
-        <HarvestDragModal
-          cropName={harvestDrag.task.cropName}
-          onShiftAll={handleHarvestShiftAll}
-          onHarvestOnly={handleHarvestOnly}
-          onCancel={handleHarvestCancel}
-        />
-      )}
-
-      {/* Starting flow wizard */}
-      {showWizard && (
-        <StartingFlowWizard onClose={() => setShowWizard(false)} />
       )}
     </div>
   );

@@ -544,6 +544,24 @@ export const irrigationStatus = sqliteTable("irrigation_status", {
   raw: text("raw", { mode: "json" }).$type<Record<string, unknown> | null>(),
 });
 
+// ─── Calendar events ─────────────────────────────────────────────────────────
+
+export const calendarEvents = sqliteTable("calendar_event", {
+  id: text("id").primaryKey(),
+  version: integer("version").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+  userId: text("user_id").notNull(),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  date: text("date").notNull(),
+  type: text("type").notNull().default("general"),
+  recurrence: text("recurrence").notNull().default("once"),
+  relatedPlantId: text("related_plant_id"),
+  relatedBedId: text("related_bed_id"),
+});
+
 // ─── Settings (per-user singleton, no baseEntity base) ───────────────────────
 
 export const settings = sqliteTable("settings", {
