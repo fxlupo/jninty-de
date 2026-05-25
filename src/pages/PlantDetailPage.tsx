@@ -304,9 +304,7 @@ export default function PlantDetailPage() {
       if (processed.takenAt != null) input.takenAt = processed.takenAt;
       const saved = await photoRepository.createWithFiles(input);
       const existing = plant.photoIds ?? [];
-      // Prepend so new photo becomes cover (index 0) on mobile; append on desktop
-      const updated = isTouchDevice ? [saved.id, ...existing] : [...existing, saved.id];
-      await plantRepository.update(plant.id, { photoIds: updated });
+      await plantRepository.update(plant.id, { photoIds: [...existing, saved.id] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Foto konnte nicht hochgeladen werden.");
     }

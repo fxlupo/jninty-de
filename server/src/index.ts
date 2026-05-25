@@ -7,7 +7,9 @@ import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import type { AppVariables } from "./types.ts";
 import { auth } from "./auth.ts";
-import { runMigrations } from "./db/client.ts";
+import { runMigrations, db } from "./db/client.ts";
+import { inArray } from "drizzle-orm";
+import { irrigationCommands } from "./db/schema.ts";
 import usersRouter from "./routes/users.ts";
 import plantsRouter from "./routes/plants.ts";
 import tasksRouter from "./routes/tasks.ts";
@@ -52,6 +54,15 @@ const SERVER_COMMIT = resolveCommit();
 
 runMigrations();
 console.log("✓ Datenbankmigrationen ausgeführt");
+
+// Offene Bewässerungs-Commands beim Start abbrechen — der ESP soll nach einem
+// Neustart nie automatisch Ventile öffnen, sondern seinen aktuellen Zustand halten.
+const cancelled = db
+  .update(irrigationCommands)
+  .set({ status: "failed", result: "server_restart", updatedAt: new Date().toISOString() })
+  .where(inArray(irrigationCommands.status, ["pending", "acked"]))
+  .run();
+console.log(`✓ ${cancelled.changes} offene Bewässerungs-Commands abgebrochen`);
 
 // ─── Hono app ─────────────────────────────────────────────────────────────────
 
