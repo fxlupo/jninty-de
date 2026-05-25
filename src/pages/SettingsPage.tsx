@@ -29,6 +29,7 @@ import { useIsAuthenticated } from "../store/authStore";
 import { formatBrowserDate } from "../lib/locale";
 import CloudSyncSettings from "../components/cloud/CloudSyncSettings";
 import VersionInfo from "../components/VersionInfo";
+import { DEFAULT_PLANT_SOURCES } from "../constants/plantLabels";
 
 // ─── Growing zones (USDA 1a–13b) ───
 
@@ -87,6 +88,32 @@ export default function SettingsPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCsvDialog, setShowCsvDialog] = useState(false);
+
+  // Plant sources state
+  const [newSource, setNewSource] = useState("");
+  const [editingSource, setEditingSource] = useState<{ index: number; value: string } | null>(null);
+
+  const plantSources = settings.plantSources ?? DEFAULT_PLANT_SOURCES;
+
+  const handleAddSource = async () => {
+    const trimmed = newSource.trim();
+    if (!trimmed || plantSources.includes(trimmed)) return;
+    await updateSettings({ plantSources: [...plantSources, trimmed] });
+    setNewSource("");
+  };
+
+  const handleDeleteSource = async (index: number) => {
+    await updateSettings({ plantSources: plantSources.filter((_, i) => i !== index) });
+  };
+
+  const handleSaveSource = async () => {
+    if (!editingSource) return;
+    const trimmed = editingSource.value.trim();
+    if (!trimmed) return;
+    const updated = plantSources.map((s, i) => (i === editingSource.index ? trimmed : s));
+    await updateSettings({ plantSources: updated });
+    setEditingSource(null);
+  };
 
   // Location search state
   const [locationQuery, setLocationQuery] = useState("");
@@ -440,6 +467,49 @@ export default function SettingsPage() {
               onBlur={handleGardenNameBlur}
             />
           </div>
+        </div>
+      </Card>
+
+      {/* ── Pflanzquellen ── */}
+      <Card>
+        <h2 className="font-display text-lg font-semibold text-text-heading">Pflanzquellen</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Quellen die beim Anlegen einer Pflanze zur Auswahl stehen.
+        </p>
+        <div className="mt-4 space-y-2">
+          {plantSources.map((src, i) => (
+            <div key={i} className="flex items-center gap-2">
+              {editingSource?.index === i ? (
+                <>
+                  <Input
+                    value={editingSource.value}
+                    onChange={(e) => setEditingSource({ index: i, value: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") void handleSaveSource(); if (e.key === "Escape") setEditingSource(null); }}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button size="sm" onClick={() => void handleSaveSource()}>Speichern</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingSource(null)}>Abbrechen</Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm">{src}</span>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingSource({ index: i, value: src })}>Bearbeiten</Button>
+                  <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => void handleDeleteSource(i)}>Entfernen</Button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Input
+            placeholder="Neue Quelle…"
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void handleAddSource(); }}
+            className="flex-1"
+          />
+          <Button variant="secondary" onClick={() => void handleAddSource()}>Hinzufügen</Button>
         </div>
       </Card>
 

@@ -304,7 +304,9 @@ export default function PlantDetailPage() {
       if (processed.takenAt != null) input.takenAt = processed.takenAt;
       const saved = await photoRepository.createWithFiles(input);
       const existing = plant.photoIds ?? [];
-      await plantRepository.update(plant.id, { photoIds: [...existing, saved.id] });
+      // Prepend so new photo becomes cover (index 0) on mobile; append on desktop
+      const updated = isTouchDevice ? [saved.id, ...existing] : [...existing, saved.id];
+      await plantRepository.update(plant.id, { photoIds: updated });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Foto konnte nicht hochgeladen werden.");
     }
@@ -542,7 +544,7 @@ export default function PlantDetailPage() {
             <div className="flex justify-between">
               <dt className="text-sm text-text-secondary">Quelle</dt>
               <dd className="text-sm font-medium text-text-primary">
-                {SOURCE_LABELS[plant.source]}
+                {SOURCE_LABELS[plant.source] ?? plant.source}
               </dd>
             </div>
             {plant.dateAcquired && (

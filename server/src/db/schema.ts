@@ -575,4 +575,5 @@ export const settings = sqliteTable("settings", {
   mapBgY: real("map_bg_y"),
   mapBgScaleX: real("map_bg_scale_x"),
   mapBgScaleY: real("map_bg_scale_y"),
+  plantSources: text("plant_sources", { mode: "json" }).$type<string[]>(),
 });

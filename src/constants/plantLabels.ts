@@ -1,6 +1,5 @@
 import type {
   PlantType,
-  PlantSource,
   PlantStatus,
 } from "../types/index.ts";
 import type {
@@ -34,7 +33,7 @@ export const STATUS_LABELS: Record<PlantStatus, string> = {
   dead: "Abgestorben",
 };
 
-export const SOURCE_LABELS: Record<PlantSource, string> = {
+export const SOURCE_LABELS: Record<string, string> = {
   seed: "Saatgut",
   nursery: "Gaertnerei",
   cutting: "Steckling",
@@ -89,12 +88,12 @@ export const ALL_STATUSES: PlantStatus[] = [
 export const TYPE_OPTIONS: { value: PlantType; label: string }[] =
   ALL_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }));
 
-export const SOURCE_OPTIONS: { value: PlantSource; label: string }[] = [
-  { value: "seed", label: "Saatgut" },
-  { value: "nursery", label: "Gaertnerei" },
-  { value: "cutting", label: "Steckling" },
-  { value: "gift", label: "Geschenk" },
-  { value: "unknown", label: "Unbekannt" },
+export const DEFAULT_PLANT_SOURCES: string[] = [
+  "Saatgut",
+  "Gärtnerei",
+  "Steckling",
+  "Geschenk",
+  "Unbekannt",
 ];
 
 export const STATUS_OPTIONS: { value: PlantStatus; label: string }[] =

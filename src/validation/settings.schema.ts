@@ -22,6 +22,7 @@ export const settingsSchema = z
     mapBgY: z.number().optional(),
     mapBgScaleX: z.number().optional(),
     mapBgScaleY: z.number().optional(),
+    plantSources: z.array(z.string().min(1)).nullable().optional(),
   })
   .strict();
 

@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `plant_sources` text;

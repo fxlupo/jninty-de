@@ -10,7 +10,7 @@ import { usePlantPhotoManager } from "../hooks/usePlantPhotoManager";
 import type { PlantType, PlantSource, PlantStatus } from "../types";
 import {
   TYPE_OPTIONS,
-  SOURCE_OPTIONS,
+  DEFAULT_PLANT_SOURCES,
   STATUS_OPTIONS,
 } from "../constants/plantLabels";
 import Card from "../components/ui/Card";
@@ -69,6 +69,7 @@ export default function PlantFormPage() {
   const knowledgeDropRef = useRef<HTMLDivElement>(null);
 
   const { settings } = useSettings();
+  const plantSources = settings.plantSources ?? DEFAULT_PLANT_SOURCES;
   const { capturePhoto, selectPhoto, isProcessing, error: photoError } =
     usePhotoCapture({ keepOriginals: settings.keepOriginalPhotos });
   const photoManager = usePlantPhotoManager();
@@ -437,9 +438,9 @@ export default function PlantFormPage() {
                 onChange={(e) => setSource(e.target.value as PlantSource)}
                 className={selectClass}
               >
-                {SOURCE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                {plantSources.map((src) => (
+                  <option key={src} value={src}>
+                    {src}
                   </option>
                 ))}
               </select>

@@ -13,13 +13,7 @@ export const plantTypeSchema = z.enum([
   "other",
 ]);
 
-export const plantSourceSchema = z.enum([
-  "seed",
-  "nursery",
-  "cutting",
-  "gift",
-  "unknown",
-]);
+export const plantSourceSchema = z.string().min(1);
 
 export const plantStatusSchema = z.enum([
   "active",
