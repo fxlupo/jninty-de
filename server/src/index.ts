@@ -5,11 +5,13 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import cron from "node-cron";
 import type { AppVariables } from "./types.ts";
 import { auth } from "./auth.ts";
 import { runMigrations, db } from "./db/client.ts";
-import { inArray } from "drizzle-orm";
-import { irrigationCommands } from "./db/schema.ts";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { irrigationCommands, plantReminders, tasks } from "./db/schema.ts";
+import { isOccurrenceToday, createTaskForReminder } from "./routes/plantReminders.ts";
 import usersRouter from "./routes/users.ts";
 import plantsRouter from "./routes/plants.ts";
 import tasksRouter from "./routes/tasks.ts";
@@ -28,6 +30,7 @@ import photosRouter from "./routes/photos.ts";
 import gardenMapPinsRouter from "./routes/gardenMapPins.ts";
 import irrigationRouter from "./routes/irrigation.ts";
 import calendarEventsRouter from "./routes/calendarEvents.ts";
+import plantRemindersRouter from "./routes/plantReminders.ts";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 const FRONTEND_ORIGIN = process.env["FRONTEND_ORIGIN"] ?? "http://localhost:5173";
@@ -55,6 +58,62 @@ const SERVER_COMMIT = resolveCommit();
 
 runMigrations();
 console.log("✓ Datenbankmigrationen ausgeführt");
+
+// ─── Daily reminder cron (06:00) ─────────────────────────────────────────────
+
+async function runReminderCron() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const activeReminders = await db
+      .select()
+      .from(plantReminders)
+      .where(and(eq(plantReminders.status, "active"), isNull(plantReminders.deletedAt)));
+
+    let created = 0;
+    for (const reminder of activeReminders) {
+      if (!isOccurrenceToday(reminder.startDate, reminder.recurrence, reminder.lastRunAt)) continue;
+
+      // Delete open auto-tasks for this reminder before creating a new one
+      const openTasks = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.userId, reminder.userId),
+            eq(tasks.ruleId, reminder.id),
+            eq(tasks.isCompleted, false),
+            isNull(tasks.deletedAt),
+          ),
+        );
+      if (openTasks.length > 0) {
+        const ts = new Date().toISOString();
+        await db
+          .update(tasks)
+          .set({ deletedAt: ts, updatedAt: ts, version: sql`${tasks.version} + 1` })
+          .where(
+            and(
+              eq(tasks.userId, reminder.userId),
+              inArray(tasks.id, openTasks.map((t) => t.id)),
+            ),
+          );
+      }
+
+      await createTaskForReminder(reminder);
+      created++;
+    }
+
+    if (created > 0) {
+      console.log(`✓ Reminder-Cron: ${created} Aufgabe(n) erstellt (${today})`);
+    }
+  } catch (err) {
+    console.error("Fehler im Reminder-Cron:", err);
+  }
+}
+
+cron.schedule("0 6 * * *", () => {
+  void runReminderCron();
+});
+console.log("✓ Reminder-Cron eingerichtet (täglich 06:00)");
 
 // Offene Bewässerungs-Commands beim Start abbrechen — der ESP soll nach einem
 // Neustart nie automatisch Ventile öffnen, sondern seinen aktuellen Zustand halten.
@@ -105,6 +164,7 @@ app.route("/api/photos", photosRouter);
 app.route("/api/garden-map-pins", gardenMapPinsRouter);
 app.route("/api/irrigation", irrigationRouter);
 app.route("/api/calendar-events", calendarEventsRouter);
+app.route("/api/plant-reminders", plantRemindersRouter);
 
 // ─── Serve uploaded photos as static files ────────────────────────────────────
 // Files are stored at data/uploads/{photoId}/*.jpg on the filesystem.

@@ -18,5 +18,6 @@ export * as gardenMapPinRepository from "./pouchdb/repositories/gardenMapPinRepo
 export * as plantingScheduleRepository from "./pouchdb/repositories/plantingScheduleRepository.ts";
 export * as scheduleTaskRepository from "./pouchdb/repositories/scheduleTaskRepository.ts";
 export * as calendarEventRepository from "./pouchdb/repositories/calendarEventRepository.ts";
+export * as plantReminderRepository from "./pouchdb/repositories/plantReminderRepository.ts";
 // ─── Search ───
 export * as search from "./pouchdb/search.ts";

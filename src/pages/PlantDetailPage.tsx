@@ -23,6 +23,7 @@ import Badge from "../components/ui/Badge";
 import PhotoThumbnail from "../components/PhotoThumbnail";
 import PhotoLightbox from "../components/PhotoLightbox";
 import PhotoTimelineTab from "../components/plant/PhotoTimelineTab";
+import PlantReminderCard from "../components/plant/PlantReminderCard";
 import type { PhotoWithContext } from "../components/plant/PhotoTimelineGrid";
 import {
   PlantPlaceholderIcon,
@@ -563,6 +564,9 @@ export default function PlantDetailPage() {
             </div>
           )}
         </Card>
+
+        {/* Pflegeerinnerungen */}
+        <PlantReminderCard plantId={plant.id} />
 
         {/* Photo gallery */}
         {allPhotoIds.length > 0 && (

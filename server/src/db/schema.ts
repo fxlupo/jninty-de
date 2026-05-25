@@ -562,6 +562,25 @@ export const calendarEvents = sqliteTable("calendar_event", {
   relatedBedId: text("related_bed_id"),
 });
 
+// ─── Plant reminders ─────────────────────────────────────────────────────────
+
+export const plantReminders = sqliteTable("plant_reminder", {
+  id: text("id").primaryKey(),
+  version: integer("version").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+  userId: text("user_id").notNull(),
+  plantId: text("plant_id").notNull(),
+  category: text("category").notNull(), // "pruning" | "fertilizing" | "other"
+  title: text("title").notNull(),
+  notes: text("notes"),
+  startDate: text("start_date").notNull(), // YYYY-MM-DD, always 1st or 15th
+  recurrence: text("recurrence").notNull().default("once"),
+  status: text("status").notNull().default("active"), // "active" | "expired"
+  lastRunAt: text("last_run_at"), // YYYY-MM-DD, when last task was created
+});
+
 // ─── Settings (per-user singleton, no baseEntity base) ───────────────────────
 
 export const settings = sqliteTable("settings", {
