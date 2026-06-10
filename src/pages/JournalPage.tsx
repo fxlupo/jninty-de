@@ -4,7 +4,7 @@ import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { formatDistanceToNow, startOfWeek, startOfMonth } from "date-fns";
 import { de } from "date-fns/locale";
-import { journalRepository, plantRepository, photoRepository, seasonRepository } from "../db/index.ts";
+import { journalRepository, plantRepository, seasonRepository } from "../db/index.ts";
 import { removeFromIndex, serializeIndex } from "../db/search";
 import {
   search as searchIndex,
@@ -21,13 +21,11 @@ import { useSettings } from "../hooks/useSettings";
 import { useToast } from "../components/ui/Toast";
 import { formatTemp } from "../services/weather";
 import Badge from "../components/ui/Badge";
-import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-import Card from "../components/ui/Card";
 import PhotoThumbnail from "../components/PhotoThumbnail";
-import { PlusIcon, CloseIcon, ClipboardCheckIcon } from "../components/icons";
+import { PlusIcon, ClipboardCheckIcon } from "../components/icons";
 import Skeleton from "../components/ui/Skeleton";
-import { useFocusTrap } from "../hooks/useFocusTrap";
+import EntryDetail from "../components/journal/EntryDetail";
 
 // ─── Constants ───
 
@@ -112,203 +110,6 @@ function EntryRow({ index, style, data }: ListChildComponentProps<RowData>) {
           </p>
         </div>
       </button>
-    </div>
-  );
-}
-
-// ─── Entry detail overlay ───
-
-function EntryDetail({
-  entry,
-  plantName,
-  temperatureUnit,
-  onClose,
-  onEdit,
-  onDelete,
-}: {
-  entry: JournalEntry;
-  plantName: string | undefined;
-  temperatureUnit: "fahrenheit" | "celsius";
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(modalRef);
-
-  useEffect(() => {
-    const firstPhotoId = entry.photoIds[0];
-    if (!firstPhotoId) return;
-
-    let cancelled = false;
-
-    void photoRepository.getDisplayUrl(firstPhotoId).then((url) => {
-      if (cancelled) return;
-      if (url) setDisplayUrl(url);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [entry.photoIds]);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  // Prevent body scroll while overlay is open
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  const timeAgo = formatDistanceToNow(new Date(entry.createdAt), {
-    addSuffix: true,
-    locale: de,
-  });
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Journaleintrag Details"
-    >
-      <div
-        ref={modalRef}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close button */}
-        <div className="flex items-center justify-between px-4 pt-4">
-          <Badge>{ACTIVITY_LABELS[entry.activityType]}</Badge>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
-            aria-label="Schliessen"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Photo */}
-        {displayUrl && (
-          <img
-            src={displayUrl}
-            alt="Entry photo"
-            className="mt-3 w-full object-cover"
-          />
-        )}
-
-        {/* Content */}
-        <div className="p-4">
-          {entry.title && (
-            <h2 className="font-display text-lg font-semibold text-text-primary">
-              {entry.title}
-            </h2>
-          )}
-
-          <p className="mt-2 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
-            {entry.body}
-          </p>
-
-          {/* Metadata */}
-          <div className="mt-4 space-y-1 text-xs text-text-secondary">
-            <p>{timeAgo}</p>
-            {plantName && (
-              <p>
-                Plant:{" "}
-                <Link
-                  to={`/plants/${entry.plantInstanceId}`}
-                  className="font-medium text-text-heading hover:underline"
-                >
-                  {plantName}
-                </Link>
-              </p>
-            )}
-            {entry.weatherSnapshot?.tempC != null && (
-              <p>
-                Weather:{" "}
-                <span className="font-medium text-text-secondary">
-                  {formatTemp(entry.weatherSnapshot.tempC, temperatureUnit)}
-                  {entry.weatherSnapshot.conditions
-                    ? `, ${entry.weatherSnapshot.conditions}`
-                    : ""}
-                  {entry.weatherSnapshot.humidity != null
-                    ? ` (${String(entry.weatherSnapshot.humidity)}% humidity)`
-                    : ""}
-                </span>
-              </p>
-            )}
-            {entry.isMilestone && entry.milestoneType && (
-              <p>
-                Milestone:{" "}
-                <span className="font-medium text-text-secondary">
-                  {entry.milestoneType.replace(/_/g, " ")}
-                </span>
-              </p>
-            )}
-            {entry.activityType === "harvest" &&
-              entry.harvestWeight != null && (
-                <p>
-                  Harvest:{" "}
-                  <span className="font-medium text-text-secondary">
-                    {entry.harvestWeight}g
-                  </span>
-                </p>
-              )}
-          </div>
-
-          {/* Edit / Delete actions */}
-          <div className="mt-4 flex gap-2 border-t border-border-default pt-4">
-            <Button variant="secondary" onClick={onEdit}>
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-red-600 hover:text-red-700"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Delete
-            </Button>
-          </div>
-
-          {/* Delete confirmation */}
-          {showDeleteConfirm && (
-            <Card className="mt-3 border-terracotta-400/30 bg-terracotta-400/5">
-              <p className="text-sm text-text-secondary">
-                Delete this journal entry? This cannot be undone.
-              </p>
-              <div className="mt-3 flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  className="bg-accent hover:bg-accent-hover"
-                  onClick={onDelete}
-                >
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

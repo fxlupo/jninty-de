@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import {
   parseISO,
@@ -9,6 +9,11 @@ import {
 } from "date-fns";
 import { de } from "date-fns/locale";
 import { taskRepository, plantRepository, journalRepository, seedRepository } from "../db/index.ts";
+import { removeFromIndex, serializeIndex } from "../db/search";
+import type { JournalEntry } from "../types";
+import type { Task } from "../types";
+import EntryDetail from "../components/journal/EntryDetail";
+import TaskDetailModal from "../components/tasks/TaskDetailModal";
 import { PRIORITY_VARIANT, PRIORITY_LABELS } from "../constants/taskLabels";
 import { ACTIVITY_LABELS } from "../constants/plantLabels";
 import Card from "../components/ui/Card";
@@ -41,6 +46,9 @@ function todayDate(): string {
 export default function DashboardPage() {
   const { settings } = useSettings();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const upcomingTasks = usePouchQuery(() => taskRepository.getUpcoming(7));
   const overdueTasks = usePouchQuery(() => taskRepository.getOverdue());
   const allPlants = usePouchQuery(() => plantRepository.getAll());
@@ -84,10 +92,23 @@ export default function DashboardPage() {
   async function handleCompleteTask(taskId: string) {
     try {
       await taskRepository.complete(taskId);
+      setSelectedTask(null);
     } catch {
       toast("Aufgabe konnte nicht abgeschlossen werden", "error");
     }
   }
+
+  const handleDeleteEntry = useCallback(async (entry: JournalEntry) => {
+    try {
+      await journalRepository.softDelete(entry.id);
+      removeFromIndex(entry.id);
+      void serializeIndex();
+      setSelectedEntry(null);
+      toast("Journaleintrag gelöscht", "success");
+    } catch {
+      toast("Eintrag konnte nicht gelöscht werden", "error");
+    }
+  }, [toast]);
 
   // Loading state
   if (
@@ -297,7 +318,11 @@ export default function DashboardPage() {
                         <CheckIcon className="h-3 w-3" />
                       </span>
                     </button>
-                    <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setSelectedTask(task)}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium text-text-primary">
                           {task.title}
@@ -314,7 +339,7 @@ export default function DashboardPage() {
                               : "text-text-secondary"
                           }`}
                         >
-                          {isOverdue ? "Ueberfaellig - " : ""}
+                          {isOverdue ? "Überfällig – " : ""}
                           {formatDate(parseISO(task.dueDate), "d. MMM")}
                         </span>
                         {task.plantInstanceId &&
@@ -325,7 +350,7 @@ export default function DashboardPage() {
                             </span>
                           )}
                       </div>
-                    </div>
+                    </button>
                   </div>
                 </Card>
               );
@@ -362,45 +387,52 @@ export default function DashboardPage() {
                 ? plantNames.get(entry.plantInstanceId)
                 : undefined;
               return (
-                <Card key={entry.id}>
-                  <div className="flex items-center gap-3">
-                    {firstPhotoId ? (
-                      <PhotoThumbnail
-                        photoId={firstPhotoId}
-                        className="h-12 w-12 shrink-0"
-                        alt="Journalfoto"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-text-muted">
-                        <PlantPlaceholderIcon className="h-6 w-6" />
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => setSelectedEntry(entry)}
+                >
+                  <Card className="transition-shadow hover:shadow-md">
+                    <div className="flex items-center gap-3">
+                      {firstPhotoId ? (
+                        <PhotoThumbnail
+                          photoId={firstPhotoId}
+                          className="h-12 w-12 shrink-0"
+                          alt="Journalfoto"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-text-muted">
+                          <PlantPlaceholderIcon className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge>{ACTIVITY_LABELS[entry.activityType]}</Badge>
+                          {entry.weatherSnapshot?.tempC != null && (
+                            <span className="text-xs text-text-muted">
+                              {formatTemp(entry.weatherSnapshot.tempC, settings.temperatureUnit)}
+                            </span>
+                          )}
+                          {plantName && (
+                            <span className="truncate text-sm font-medium text-text-secondary">
+                              {plantName}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-text-secondary">
+                          {entry.body}
+                        </p>
+                        <span className="text-xs text-text-muted">
+                          {formatDistanceToNow(parseISO(entry.createdAt), {
+                            addSuffix: true,
+                            locale: de,
+                          })}
+                        </span>
                       </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge>{ACTIVITY_LABELS[entry.activityType]}</Badge>
-                        {entry.weatherSnapshot?.tempC != null && (
-                          <span className="text-xs text-text-muted">
-                            {formatTemp(entry.weatherSnapshot.tempC, settings.temperatureUnit)}
-                          </span>
-                        )}
-                        {plantName && (
-                          <span className="truncate text-sm font-medium text-text-secondary">
-                            {plantName}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-text-secondary">
-                        {entry.body}
-                      </p>
-                      <span className="text-xs text-text-muted">
-                        {formatDistanceToNow(parseISO(entry.createdAt), {
-                          addSuffix: true,
-                          locale: de,
-                        })}
-                      </span>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </button>
               );
             })}
           </div>
@@ -445,6 +477,40 @@ export default function DashboardPage() {
           </Link>
         </div>
       </section>
+
+      {/* Journal entry detail overlay */}
+      {selectedEntry && (
+        <EntryDetail
+          entry={selectedEntry}
+          plantName={
+            selectedEntry.plantInstanceId
+              ? plantNames.get(selectedEntry.plantInstanceId)
+              : undefined
+          }
+          temperatureUnit={settings.temperatureUnit}
+          onClose={() => setSelectedEntry(null)}
+          onEdit={() => {
+            const id = selectedEntry.id;
+            setSelectedEntry(null);
+            void navigate(`/journal/${id}/edit`);
+          }}
+          onDelete={() => void handleDeleteEntry(selectedEntry)}
+        />
+      )}
+
+      {/* Task detail modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          plantName={
+            selectedTask.plantInstanceId
+              ? plantNames.get(selectedTask.plantInstanceId)
+              : undefined
+          }
+          onClose={() => setSelectedTask(null)}
+          onComplete={() => void handleCompleteTask(selectedTask.id)}
+        />
+      )}
     </div>
   );
 }
