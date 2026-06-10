@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { usePouchQuery } from "../hooks/usePouchQuery.ts";
 import { ZodError } from "zod";
 import { plantRepository, photoRepository, journalRepository, gardenBedRepository } from "../db/index.ts";
@@ -52,13 +52,14 @@ const FIELD_LABELS: Record<string, string> = {
 export default function JournalEntryFormPage() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { settings } = useSettings();
   const isEdit = Boolean(editId);
 
-  // Form state
+  // Form state — pre-fill plantId/bedId from query params when creating
   const [activityType, setActivityType] = useState<ActivityType | "">("");
-  const [plantId, setPlantId] = useState("");
-  const [bedId, setBedId] = useState("");
+  const [plantId, setPlantId] = useState(editId ? "" : (searchParams.get("plantId") ?? ""));
+  const [bedId, setBedId] = useState(editId ? "" : (searchParams.get("bedId") ?? ""));
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isMilestone, setIsMilestone] = useState(false);

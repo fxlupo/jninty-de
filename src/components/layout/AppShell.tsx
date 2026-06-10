@@ -486,13 +486,13 @@ export default function AppShell() {
             <SidebarLink key={item.to} item={item} />
           ))}
 
-          {/* Quick Log — sidebar variant */}
+          {/* New journal entry */}
           <button
-            onClick={() => navigate("/quick-log")}
+            onClick={() => navigate("/journal/new")}
             className="mt-2 flex items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             <PlusIcon className="h-5 w-5" />
-            <span>Schnellnotiz</span>
+            <span>Journaleintrag</span>
           </button>
 
           {/* Divider */}
@@ -629,17 +629,17 @@ export default function AppShell() {
         <TabBarLink item={getBottomNav(overdueCount)[0]!} />
         <TabBarLink item={getBottomNav(overdueCount)[1]!} />
 
-        {/* Quick Log — center prominent button */}
+        {/* Journal — center prominent button */}
         <button
-          onClick={() => navigate("/quick-log")}
-          aria-label="Schnellnotiz"
+          onClick={() => navigate("/journal")}
+          aria-label="Journal"
           className="-mt-4 flex flex-col items-center"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-terracotta-500 shadow-lg transition-transform active:scale-95">
-            <PlusIcon className="h-7 w-7 text-white" />
+            <JournalIcon className="h-7 w-7 text-white" />
           </span>
           <span className="mt-0.5 text-[10px] leading-tight text-text-on-nav">
-            Neu
+            Journal
           </span>
         </button>
 

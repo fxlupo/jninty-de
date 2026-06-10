@@ -12,7 +12,6 @@ const NAV_MAP: Record<string, string> = {
 };
 
 const NEW_MAP: Record<string, string> = {
-  l: "/quick-log",
   p: "/plants/new",
   j: "/journal/new",
 };

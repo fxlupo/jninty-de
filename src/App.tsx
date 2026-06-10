@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { SettingsProvider, useSettings } from "./hooks/useSettings";
 import { SyncProvider } from "./hooks/useSync";
@@ -17,7 +17,6 @@ import SettingsPage from "./pages/SettingsPage";
 import SeedBankPage from "./pages/SeedBankPage";
 import SeedDetailPage from "./pages/SeedDetailPage";
 import SeedFormPage from "./pages/SeedFormPage";
-import QuickLogPage from "./pages/QuickLogPage";
 import CalendarPage from "./pages/CalendarPage";
 import SeasonComparisonPage from "./pages/SeasonComparisonPage";
 import ExpensesPage from "./pages/ExpensesPage";
@@ -179,7 +178,7 @@ export default function App() {
               <Route path="irrigation" element={<IrrigationPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="quick-log" element={<QuickLogPage />} />
+              <Route path="quick-log" element={<Navigate to="/journal/new" replace />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>

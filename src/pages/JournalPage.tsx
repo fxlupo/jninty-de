@@ -313,51 +313,18 @@ function EntryDetail({
   );
 }
 
-// ─── FAB speed dial ───
+// ─── FAB ───
 
 function AddEntryFab() {
-  const [open, setOpen] = useState(false);
-
   return (
     <div className="fixed bottom-24 right-4 z-40 md:bottom-6">
-      {/* Speed dial options */}
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-30"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute bottom-16 right-0 z-40 flex flex-col gap-2">
-            <Link
-              to="/quick-log"
-              className="flex items-center gap-2 whitespace-nowrap rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-transform hover:bg-accent-hover active:scale-95"
-              onClick={() => setOpen(false)}
-            >
-              Quick Log
-            </Link>
-            <Link
-              to="/journal/new"
-              className="flex items-center gap-2 whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95"
-              onClick={() => setOpen(false)}
-            >
-              New Entry
-            </Link>
-          </div>
-        </>
-      )}
-
-      {/* Main FAB */}
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-label="Add journal entry"
-        className={`flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95 ${
-          open ? "rotate-45" : ""
-        }`}
+      <Link
+        to="/journal/new"
+        aria-label="Neuer Journaleintrag"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-text-on-primary shadow-lg transition-transform hover:bg-primary-hover active:scale-95"
       >
         <PlusIcon className="h-7 w-7" />
-      </button>
+      </Link>
     </div>
   );
 }

@@ -153,7 +153,7 @@ export default function DashboardPage() {
       )}
 
       {/* "Today in your garden" prompt card */}
-      <Link to="/quick-log" className="block">
+      <Link to="/journal/new" className="block">
         <Card className="border-green-200 bg-green-50/50 transition-shadow hover:shadow-md">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100">
@@ -411,7 +411,7 @@ export default function DashboardPage() {
       <section className="mt-6 pb-2">
         <div className="grid grid-cols-3 gap-3">
           <Link
-            to="/quick-log"
+            to="/journal/new"
             className="flex flex-col items-center gap-2 rounded-xl border border-border-default bg-surface-elevated p-4 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-terracotta-400/15">

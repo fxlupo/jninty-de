@@ -483,7 +483,7 @@ export default function PlantDetailPage() {
             {isUploadingPhoto ? "Lädt…" : "Neues Foto"}
           </button>
           <Link
-            to={`/quick-log?plantId=${plant.id}`}
+            to={`/journal/new?plantId=${plant.id}`}
             className="flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             <PlusIcon className="h-5 w-5" />

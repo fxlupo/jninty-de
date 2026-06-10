@@ -2283,7 +2283,7 @@ export default function GardenMapPage() {
             onClose={() => setSelectedBedId(null)}
             onDelete={() => void handleDeleteBed()}
             onQuickLog={() =>
-              navigate(`/quick-log?bedId=${selectedBed.id}`)
+              navigate(`/journal/new?bedId=${selectedBed.id}`)
             }
             onAssignPlant={() => setShowAssignPlant(true)}
             onRemovePlant={(id) => void handleRemovePlant(id)}
