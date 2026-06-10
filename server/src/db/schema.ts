@@ -537,6 +537,8 @@ export const irrigationStatus = sqliteTable("irrigation_status", {
   lastSeen: text("last_seen").notNull(),
   wifiRssi: integer("wifi_rssi"),
   ecowittOk: integer("ecowitt_ok", { mode: "boolean" }),
+  outTempC: real("out_temp_c"),
+  outHumidity: real("out_humidity"),
   valveStates: text("valve_states").notNull().default("0000"),
   firmwareVersion: text("firmware_version"),
   ipAddress: text("ip_address"),

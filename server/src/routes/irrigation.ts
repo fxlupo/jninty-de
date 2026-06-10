@@ -183,6 +183,29 @@ router.get("/dashboard", requireAuth, async (c) => {
   return c.json(await irrigationDashboard(c.get("userId")));
 });
 
+router.get("/weather-snapshot", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const [statusRows, sensors, zones] = await Promise.all([
+    db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)),
+    latestSensors(userId),
+    ensureDefaultZones(userId),
+  ]);
+  const status = statusRows[0] ?? null;
+  return c.json({
+    ecowittOk: status?.ecowittOk ?? false,
+    outTempC: status?.outTempC ?? null,
+    outHumidity: status?.outHumidity ?? null,
+    updatedAt: status?.updatedAt ?? null,
+    soilSensors: sensors.map((s) => ({
+      channel: s.channel,
+      soilMoisture: s.soilMoisture,
+      soilTemp: s.soilTemp,
+      createdAt: s.createdAt,
+      zoneName: zones.find((z) => z.wh52Channel === s.channel)?.name ?? `Kanal ${String(s.channel)}`,
+    })),
+  });
+});
+
 router.get("/zones", requireAuth, async (c) => {
   return c.json(await ensureDefaultZones(c.get("userId")));
 });
@@ -419,6 +442,8 @@ deviceRouter.post("/status", async (c) => {
     lastSeen: ts,
     wifiRssi: typeof body["wifiRssi"] === "number" ? body["wifiRssi"] : null,
     ecowittOk: typeof body["ecowittOk"] === "boolean" ? body["ecowittOk"] : null,
+    outTempC: typeof body["outTempC"] === "number" ? body["outTempC"] : null,
+    outHumidity: typeof body["outHumidity"] === "number" ? body["outHumidity"] : null,
     valveStates: typeof body["valveStates"] === "string" ? body["valveStates"] : "0000",
     firmwareVersion: typeof body["firmwareVersion"] === "string" ? body["firmwareVersion"] : null,
     ipAddress: typeof body["ipAddress"] === "string" ? body["ipAddress"] : null,
