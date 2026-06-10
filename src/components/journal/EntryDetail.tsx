@@ -63,7 +63,7 @@ export default function EntryDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-16 md:items-center md:pb-0"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

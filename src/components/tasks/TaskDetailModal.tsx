@@ -46,7 +46,7 @@ export default function TaskDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-16 md:items-center md:pb-0"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -54,7 +54,7 @@ export default function TaskDetailModal({
     >
       <div
         ref={modalRef}
-        className="w-full max-w-lg rounded-t-2xl bg-surface-elevated md:rounded-2xl"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface-elevated md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
