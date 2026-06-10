@@ -218,7 +218,7 @@ function ReminderSection({ plantId, category, existing, onChanged }: ReminderSec
             </label>
             <textarea
               className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25"
-              rows={2}
+              rows={6}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Hinweise für die Aufgabe…"
