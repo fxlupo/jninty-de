@@ -70,8 +70,11 @@ function ReminderSection({ plantId, category, existing, onChanged }: ReminderSec
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const needsTitle = category === "other";
   const todayStr = new Date().toISOString().slice(0, 10);
-  const [title, setTitle] = useState(existing?.title ?? "");
+  const [title, setTitle] = useState(
+    existing?.title ?? (needsTitle ? "" : config.label),
+  );
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [startDate, setStartDate] = useState(existing?.startDate ?? todayStr);
   const [recurrence, setRecurrence] = useState<ReminderRecurrence>(existing?.recurrence ?? "yearly");
@@ -87,7 +90,7 @@ function ReminderSection({ plantId, category, existing, onChanged }: ReminderSec
   }, [existing]);
 
   async function handleSave() {
-    if (!title.trim()) {
+    if (needsTitle && !title.trim()) {
       toast("Titel darf nicht leer sein", "error");
       return;
     }
@@ -96,7 +99,7 @@ function ReminderSection({ plantId, category, existing, onChanged }: ReminderSec
       await plantReminderRepository.upsert({
         plantId,
         category,
-        title: title.trim(),
+        title: needsTitle ? title.trim() : config.label,
         notes: notes.trim() || null,
         startDate,
         recurrence,
@@ -166,16 +169,18 @@ function ReminderSection({ plantId, category, existing, onChanged }: ReminderSec
       {/* Expanded form */}
       {open && (
         <div className="space-y-3 pb-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-text-secondary">
-              Titel
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={`z.B. ${config.label} ${new Date().getFullYear()}`}
-            />
-          </div>
+          {needsTitle && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">
+                Titel
+              </label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="z.B. Hecke zurückschneiden"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
