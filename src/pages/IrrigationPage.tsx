@@ -139,6 +139,8 @@ const AUTO_REFRESH_MS = 10000;
 const ONLINE_WINDOW_MS = 120000;
 const FRESH_COMMAND_MS = 120000;
 const LOCAL_COMMAND_GRACE_MS = 15000;
+const IRRIGATION_ZONE_COUNT = 6;
+const IRRIGATION_ZONE_NUMBERS = Array.from({ length: IRRIGATION_ZONE_COUNT }, (_, index) => index + 1);
 const API_BASE = apiUrl ?? "/api";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
@@ -257,13 +259,13 @@ function commandLabel(command: IrrigationCommand): string {
 }
 
 // #5: compile once at module load instead of creating new RegExp objects on every call
-const VALVE_PATTERNS = [1, 2, 3, 4].map((v) => new RegExp(`V${v}\\s+(On|Off)`, "i"));
+const VALVE_PATTERNS = IRRIGATION_ZONE_NUMBERS.map((v) => new RegExp(`V${v}\\s+(On|Off)`, "i"));
 
 function parseValveStates(value: string | null | undefined): boolean[] {
-  if (!value) return [false, false, false, false];
+  if (!value) return IRRIGATION_ZONE_NUMBERS.map(() => false);
   const compact = value.trim();
-  if (/^[01]{4}$/.test(compact)) {
-    return compact.split("").map((state) => state === "1");
+  if (new RegExp(`^[01]{1,${IRRIGATION_ZONE_COUNT}}$`).test(compact)) {
+    return IRRIGATION_ZONE_NUMBERS.map((_, index) => compact[index] === "1");
   }
   return VALVE_PATTERNS.map((pattern) => {
     const match = compact.match(pattern);
@@ -472,7 +474,7 @@ function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): {
 }
 
 function sensorColor(channel: number): string {
-  const colors = ["#4ade80", "#a78bfa", "#fbbf24", "#f472b6"];
+  const colors = ["#4ade80", "#a78bfa", "#fbbf24", "#f472b6", "#38bdf8", "#fb7185"];
   return colors[(channel - 1) % colors.length] ?? "#60a5fa";
 }
 
@@ -526,7 +528,7 @@ function SensorLineChart({
   const x = (ms: number) => pad.left + ((ms - xMin) / Math.max(1, xMax - xMin)) * innerW;
   const y = (value: number) => pad.top + (1 - (value - min) / (max - min)) * innerH;
 
-  const channelLines = [1, 2, 3, 4].map((channel) => {
+  const channelLines = IRRIGATION_ZONE_NUMBERS.map((channel) => {
     const points = (byChannel.get(channel) ?? [])
       .slice()
       .sort((a, b) => parseDateMs(a.createdAt) - parseDateMs(b.createdAt))
@@ -586,7 +588,7 @@ function SensorLineChart({
         </svg>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
-        {[1, 2, 3, 4].map((channel) => (
+        {IRRIGATION_ZONE_NUMBERS.map((channel) => (
           <div key={channel} className="flex items-center gap-2 text-text-secondary">
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: sensorColor(channel) }} />
             <span className="truncate">{zoneName(channel)}</span>
@@ -1071,7 +1073,7 @@ export default function IrrigationPage() {
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                {[1, 2, 3, 4].map((valve) => {
+                {IRRIGATION_ZONE_NUMBERS.map((valve) => {
                   const isOpen = valveStates[valve - 1] ?? false;
                   const valveCommand = commandByZone.get(valve);
                   return (

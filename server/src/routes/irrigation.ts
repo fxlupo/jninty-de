@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
-import { and, desc, eq, getTableColumns, gte, inArray, isNull, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNull, max, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import {
   irrigationCommands,
@@ -31,6 +31,7 @@ const LIMIT_DASHBOARD_EVENTS  = 40;   // recent events shown on the dashboard
 const LIMIT_DEVICE_EVENTS      = 12;   // events returned to the ESP per poll
 const LIMIT_HISTORY_SENSORS    = 800;  // sensor rows for history graphs (≈ 1 per 10 min over 90 days)
 const COMMAND_FRESH_WINDOW_MS  = 2 * 60 * 1000; // commands older than 2 min are considered stale
+const IRRIGATION_ZONE_COUNT    = 6;
 
 function now(): string {
   return new Date().toISOString();
@@ -58,12 +59,17 @@ async function ensureDefaultZones(userId: string) {
   const rows = await db
     .select()
     .from(irrigationZones)
-    .where(and(eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)));
+    .where(and(eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+    .orderBy(asc(irrigationZones.valveNumber));
 
-  if (rows.length > 0) return rows;
+  const existingValveNumbers = new Set(rows.map((row) => row.valveNumber));
+  const missingValveNumbers = Array.from({ length: IRRIGATION_ZONE_COUNT }, (_, index) => index + 1)
+    .filter((valveNumber) => !existingValveNumbers.has(valveNumber));
+
+  if (missingValveNumbers.length === 0) return rows;
 
   const ts = now();
-  const defaults = [1, 2, 3, 4].map((valveNumber) => ({
+  const defaults = missingValveNumbers.map((valveNumber) => ({
     id: crypto.randomUUID(),
     userId,
     version: 1,
@@ -85,7 +91,8 @@ async function ensureDefaultZones(userId: string) {
   return db
     .select()
     .from(irrigationZones)
-    .where(and(eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)));
+    .where(and(eq(irrigationZones.userId, userId), isNull(irrigationZones.deletedAt)))
+    .orderBy(asc(irrigationZones.valveNumber));
 }
 
 async function latestSensors(userId: string) {
@@ -444,7 +451,7 @@ deviceRouter.post("/status", async (c) => {
     ecowittOk: typeof body["ecowittOk"] === "boolean" ? body["ecowittOk"] : null,
     outTempC: typeof body["outTempC"] === "number" ? body["outTempC"] : null,
     outHumidity: typeof body["outHumidity"] === "number" ? body["outHumidity"] : null,
-    valveStates: typeof body["valveStates"] === "string" ? body["valveStates"] : "0000",
+    valveStates: typeof body["valveStates"] === "string" ? body["valveStates"] : "0".repeat(IRRIGATION_ZONE_COUNT),
     firmwareVersion: typeof body["firmwareVersion"] === "string" ? body["firmwareVersion"] : null,
     ipAddress: typeof body["ipAddress"] === "string" ? body["ipAddress"] : null,
     uptimeSec: typeof body["uptimeSec"] === "number" ? body["uptimeSec"] : null,

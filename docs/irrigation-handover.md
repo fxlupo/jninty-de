@@ -1,6 +1,6 @@
 # Bewässerung Handover
 
-Stand: 2026-05-06
+Stand: 2026-06-30
 Version: 1.3.7
 Branch der Umsetzung: `main`
 
@@ -10,7 +10,7 @@ Das bisherige Bewässerungs-Backend wurde als natives Jninty-Modul in den besteh
 
 Die Lösung ist produktiv nutzbar für:
 
-- vier Bewässerungszonen/Ventile,
+- sechs Bewässerungszonen/Ventile,
 - manuelle Ventilsteuerung,
 - automatische Zeitpläne,
 - GW1200/WH52 Sensorwerte,
@@ -61,7 +61,7 @@ Tabs:
 - `Eventlog`: filterbare Events mit Datum, Aktion, Zone, Trigger und Dauer
 - `History`: Sensorgraphen für Bodenfeuchte und Bodentemperatur
 
-Mobile Layouts wurden verdichtet, damit die vier Zonen auf kleinen Bildschirmen möglichst ohne Scrollen sichtbar sind.
+Mobile Layouts wurden verdichtet, damit die sechs Zonen auf kleinen Bildschirmen gut bedienbar bleiben.
 
 ## Backend-Endpunkte
 
@@ -100,7 +100,9 @@ Tabellen:
 - `irrigation_command`: Backend-Kommandos für den ESP
 - `irrigation_status`: Heartbeat, RSSI, GW1200-Status, Ventilzustände, Firmware
 
-Beim ersten Dashboard-Aufruf werden Default-Zonen für den Benutzer angelegt, falls noch keine existieren.
+Beim Dashboard-Aufruf werden Default-Zonen 1-6 für den Benutzer angelegt, falls
+sie noch fehlen. Bestehende Installationen mit vier Zonen werden dabei um Zone
+5 und 6 ergänzt, ohne Zone 1-4 zu verändern.
 Das Anlegen ist konfliktfest: parallele Erstaufrufe verwenden `onConflictDoNothing` und lesen die Zonen danach erneut.
 
 Migration `0010` härtet das Bewässerungsmodul nach:
