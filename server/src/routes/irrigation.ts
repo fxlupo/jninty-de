@@ -84,9 +84,7 @@ async function ensureDefaultZones(userId: string) {
   await db
     .insert(irrigationZones)
     .values(defaults)
-    .onConflictDoNothing({
-      target: [irrigationZones.userId, irrigationZones.valveNumber],
-    });
+    .onConflictDoNothing();
 
   return db
     .select()
