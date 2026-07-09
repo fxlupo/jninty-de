@@ -29,7 +29,7 @@ const VALID_ACTIONS = ["open", "close", "close_all", "skip", "system", "error"] 
 // Query limits — named so magic numbers don't spread through the codebase
 const LIMIT_DASHBOARD_EVENTS  = 40;   // recent events shown on the dashboard
 const LIMIT_DEVICE_EVENTS      = 12;   // events returned to the ESP per poll
-const LIMIT_HISTORY_SENSORS    = 800;  // sensor rows for history graphs (≈ 1 per 10 min over 90 days)
+const LIMIT_HISTORY_SENSORS    = 60000; // enough for ≈ 30 days at 5 sensors / 5 min
 const COMMAND_FRESH_WINDOW_MS  = 2 * 60 * 1000; // commands older than 2 min are considered stale
 const IRRIGATION_ZONE_COUNT    = 6;
 
