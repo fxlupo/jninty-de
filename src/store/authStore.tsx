@@ -13,10 +13,8 @@ import type { AuthState, AuthAction } from "../types/auth";
 import {
   normalizeUser,
   logoutFromServer,
-  clearLegacyToken,
   clearLoggedInCookie,
   hasLoggedInCookie,
-  getLegacyToken,
 } from "../lib/apiClient";
 
 const initialState: AuthState = {
@@ -81,7 +79,6 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
    */
   const performLogout = useCallback(() => {
     clearLoggedInCookie();
-    clearLegacyToken();
     void logoutFromServer();
     dispatch({ type: "LOGOUT" });
   }, []);
@@ -93,18 +90,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
    */
   const silentLogout = useCallback(() => {
     clearLoggedInCookie();
-    clearLegacyToken();
     dispatch({ type: "LOGOUT" });
   }, []);
 
   const fetchingRef = useRef(false);
   useEffect(() => {
-    // Primary: check for the non-HttpOnly companion cookie
     const hasCookie = hasLoggedInCookie();
-    // Migration fallback: check localStorage for a legacy token
-    const legacyToken = getLegacyToken();
 
-    if ((!hasCookie && !legacyToken) || !apiUrl) {
+    if (!hasCookie || !apiUrl) {
       dispatch({ type: "SET_LOADING", payload: false });
       return;
     }
@@ -112,29 +105,16 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
-    const headers: Record<string, string> = {};
-    // Migration: if we have a legacy token but no cookie yet, send it as Bearer
-    if (!hasCookie && legacyToken) {
-      headers["Authorization"] = `Bearer ${legacyToken}`;
-    }
-
     fetch(`${apiUrl}/auth/me`, {
-      headers,
-      credentials: "include", // send HttpOnly cookie
+      credentials: "include",
     })
       .then((res) => {
         if (!res.ok) throw new Error("unauthorized");
         return res.json();
       })
       .then((raw: Record<string, unknown>) => {
-        // /auth/me may return the user directly or wrapped in { user: ... }
         const userData = (raw["user"] ?? raw) as Record<string, unknown>;
         dispatch({ type: "LOGIN", payload: { user: normalizeUser(userData) } });
-        // If we validated a legacy token, the server should now have set
-        // the HttpOnly cookie. Clean up localStorage.
-        if (legacyToken) {
-          clearLegacyToken();
-        }
         fetchingRef.current = false;
       })
       .catch(() => {

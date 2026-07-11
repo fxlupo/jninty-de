@@ -9,8 +9,8 @@ import cron from "node-cron";
 import type { AppVariables } from "./types.ts";
 import { auth } from "./auth.ts";
 import { runMigrations, db } from "./db/client.ts";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { irrigationCommands, plantReminders, tasks } from "./db/schema.ts";
+import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { irrigationCommands, irrigationSensorReadings, plantReminders, tasks } from "./db/schema.ts";
 import { isOccurrenceToday, createTaskForReminder } from "./routes/plantReminders.ts";
 import usersRouter from "./routes/users.ts";
 import plantsRouter from "./routes/plants.ts";
@@ -113,8 +113,29 @@ async function runReminderCron() {
 
 cron.schedule("0 6 * * *", () => {
   void runReminderCron();
-});
-console.log("✓ Reminder-Cron eingerichtet (täglich 06:00)");
+}, { timezone: "Europe/Berlin" });
+console.log("✓ Reminder-Cron eingerichtet (täglich 06:00 CET/CEST)");
+
+// ─── Daily sensor-readings TTL cleanup (02:00 CET/CEST) ──────────────────────
+
+async function runSensorReadingsTtlCleanup() {
+  try {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const result = await db
+      .delete(irrigationSensorReadings)
+      .where(lt(irrigationSensorReadings.createdAt, cutoff));
+    if ((result.changes ?? 0) > 0) {
+      console.log(`✓ TTL-Cleanup: ${result.changes} alte Sensormesswerte gelöscht`);
+    }
+  } catch (err) {
+    console.error("Fehler im TTL-Cleanup:", err);
+  }
+}
+
+cron.schedule("0 2 * * *", () => {
+  void runSensorReadingsTtlCleanup();
+}, { timezone: "Europe/Berlin" });
+console.log("✓ Sensor-Readings TTL-Cleanup eingerichtet (täglich 02:00 CET/CEST, >90 Tage)");
 
 // Offene Bewässerungs-Commands beim Start abbrechen — der ESP soll nach einem
 // Neustart nie automatisch Ventile öffnen, sondern seinen aktuellen Zustand halten.

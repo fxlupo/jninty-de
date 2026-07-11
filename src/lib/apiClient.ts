@@ -1,13 +1,6 @@
 import { apiUrl } from "../config/cloud";
 import type { AuthUser } from "../types/auth";
 
-/**
- * localStorage key — kept temporarily for migration. Existing sessions that
- * still have a token in localStorage will continue to work until the fallback
- * is removed (~7 days after deploy).
- */
-const LEGACY_TOKEN_KEY = "jninty_auth_token";
-
 /** Maps API user shape (_id from CouchDB) to the AuthUser shape (id). */
 export function normalizeUser(raw: Record<string, unknown>): AuthUser {
   return {
@@ -46,28 +39,6 @@ export function setLogoutCallback(cb: () => void): void {
   logoutCallback = cb;
 }
 
-/**
- * Read the legacy localStorage token if it exists.
- * Used as a fallback during migration so existing sessions aren't invalidated.
- * TODO: Remove after migration period (~7 days post-deploy).
- */
-export function getLegacyToken(): string | null {
-  try {
-    return localStorage.getItem(LEGACY_TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-/** Remove the legacy localStorage token. */
-export function clearLegacyToken(): void {
-  try {
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 /** Check whether the non-HttpOnly companion cookie is set. */
 export function hasLoggedInCookie(): boolean {
   return document.cookie.split(";").some((c) => c.trim().startsWith("jninty_logged_in="));
@@ -97,15 +68,6 @@ async function request<T>(
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  // Migration fallback: only send Bearer header when the companion cookie
-  // is absent (i.e., user hasn't been migrated to cookie auth yet).
-  if (!hasLoggedInCookie()) {
-    const legacyToken = getLegacyToken();
-    if (legacyToken) {
-      headers["Authorization"] = `Bearer ${legacyToken}`;
-    }
-  }
-
   const res = await fetch(`${apiUrl}${path}`, {
     ...options,
     headers,
@@ -121,7 +83,6 @@ async function request<T>(
     } catch {
       // ignore parse error
     }
-    clearLegacyToken();
     logoutCallback?.();
     throw new ApiError(message, 401);
   }

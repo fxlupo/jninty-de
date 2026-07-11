@@ -14,7 +14,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { apiUrl } from "../config/cloud";
-import { getLegacyToken, hasLoggedInCookie } from "../lib/apiClient";
+import ConfirmModal from "../components/ui/ConfirmModal";
 
 // M5: Zod schemas validate user input before it reaches the API
 const ZoneDraftSchema = z.object({
@@ -242,13 +242,6 @@ async function irrigationRequest<T>(path: string, options: RequestInit = {}): Pr
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
   };
-
-  if (!hasLoggedInCookie()) {
-    const legacyToken = getLegacyToken();
-    if (legacyToken) {
-      headers["Authorization"] = `Bearer ${legacyToken}`;
-    }
-  }
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -774,6 +767,7 @@ export default function IrrigationPage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [pendingDeleteSchedule, setPendingDeleteSchedule] = useState<IrrigationSchedule | null>(null);
   const [historyDays, setHistoryDays] = useState(1);
   const [history, setHistory] = useState<IrrigationHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -1098,8 +1092,14 @@ export default function IrrigationPage() {
     }
   };
 
-  const deleteSchedule = async (schedule: IrrigationSchedule) => {
-    if (!window.confirm("Zeitplan wirklich löschen?")) return;
+  const deleteSchedule = (schedule: IrrigationSchedule) => {
+    setPendingDeleteSchedule(schedule);
+  };
+
+  const confirmDeleteSchedule = async () => {
+    if (!pendingDeleteSchedule) return;
+    const schedule = pendingDeleteSchedule;
+    setPendingDeleteSchedule(null);
     setSavingSchedule(true);
     try {
       await irrigationRequest<{ ok: boolean }>(`/irrigation/schedules/${schedule.id}`, {
@@ -1815,6 +1815,17 @@ export default function IrrigationPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={pendingDeleteSchedule !== null}
+        title="Zeitplan löschen"
+        message={`Zeitplan "${pendingDeleteSchedule?.program ?? ""} – ${pendingDeleteSchedule?.startTime ?? ""}" wirklich löschen?`}
+        confirmLabel="Löschen"
+        variant="danger"
+        isLoading={savingSchedule}
+        onConfirm={() => { void confirmDeleteSchedule(); }}
+        onCancel={() => setPendingDeleteSchedule(null)}
+      />
     </div>
   );
 }
