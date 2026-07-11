@@ -207,6 +207,10 @@ router.get("/weather-snapshot", requireAuth, async (c) => {
       soilTemp: s.soilTemp,
       createdAt: s.createdAt,
       zoneName: zones.find((z) => z.wh52Channel === s.channel)?.name ?? `Kanal ${String(s.channel)}`,
+      zones: zones
+        .filter((z) => z.wh52Channel === s.channel)
+        .map((z) => ({ valveNumber: z.valveNumber, name: z.name })),
+      shared: zones.filter((z) => z.wh52Channel === s.channel).length > 1,
     })),
   });
 });

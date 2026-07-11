@@ -128,6 +128,12 @@ type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
 type SensorField = "soilMoisture" | "soilTemp";
 type EventFilter = "all" | "open" | "close" | "skip" | "manual" | "scheduler" | "zone";
 
+interface SensorChannelDescriptor {
+  channel: number;
+  label: string;
+  shared: boolean;
+}
+
 interface NextScheduleRun {
   label: string;
   time: string;
@@ -478,6 +484,38 @@ function sensorColor(channel: number): string {
   return colors[(channel - 1) % colors.length] ?? "#60a5fa";
 }
 
+function sensorChannelDescriptors(sensors: IrrigationSensor[], zones: IrrigationZone[]): SensorChannelDescriptor[] {
+  const channels = new Set<number>();
+  for (const sensor of sensors) {
+    if (Number.isFinite(sensor.channel) && sensor.channel > 0) {
+      channels.add(sensor.channel);
+    }
+  }
+  for (const zone of zones) {
+    if (zone.wh52Channel != null && zone.wh52Channel > 0) {
+      channels.add(zone.wh52Channel);
+    }
+  }
+
+  return [...channels].sort((a, b) => a - b).map((channel) => {
+    const assignedZones = zones
+      .filter((zone) => zone.wh52Channel === channel)
+      .sort((a, b) => a.valveNumber - b.valveNumber);
+
+    if (assignedZones.length === 0) {
+      return { channel, label: `Kanal ${channel}`, shared: false };
+    }
+
+    if (assignedZones.length === 1) {
+      const zone = assignedZones[0]!;
+      return { channel, label: `V${zone.valveNumber} ${zone.name}`, shared: false };
+    }
+
+    const zoneNumbers = assignedZones.map((zone) => `V${zone.valveNumber}`).join("+");
+    return { channel, label: `Ch ${channel}: Freifläche / ${zoneNumbers}`, shared: true };
+  });
+}
+
 function chartTimeLabel(ms: number, days: number): string {
   const date = new Date(ms);
   if (days <= 1) {
@@ -524,11 +562,14 @@ function SensorLineChart({
     list.push(sensor);
     byChannel.set(sensor.channel, list);
   }
+  const channelDescriptors = sensorChannelDescriptors(sensors, zones).filter(
+    (descriptor) => (byChannel.get(descriptor.channel)?.length ?? 0) > 0,
+  );
 
   const x = (ms: number) => pad.left + ((ms - xMin) / Math.max(1, xMax - xMin)) * innerW;
   const y = (value: number) => pad.top + (1 - (value - min) / (max - min)) * innerH;
 
-  const channelLines = IRRIGATION_ZONE_NUMBERS.map((channel) => {
+  const channelLines = channelDescriptors.map(({ channel }) => {
     const points = (byChannel.get(channel) ?? [])
       .slice()
       .sort((a, b) => parseDateMs(a.createdAt) - parseDateMs(b.createdAt))
@@ -541,9 +582,6 @@ function SensorLineChart({
       .join(" ");
     return { channel, points };
   });
-
-  const zoneName = (channel: number) =>
-    zones.find((zone) => zone.wh52Channel === channel)?.name ?? `Kanal ${channel}`;
 
   return (
     <Card>
@@ -588,10 +626,11 @@ function SensorLineChart({
         </svg>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
-        {IRRIGATION_ZONE_NUMBERS.map((channel) => (
+        {channelDescriptors.map(({ channel, label, shared }) => (
           <div key={channel} className="flex items-center gap-2 text-text-secondary">
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: sensorColor(channel) }} />
-            <span className="truncate">{zoneName(channel)}</span>
+            <span className="truncate">{label}</span>
+            {shared && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">geteilt</span>}
           </div>
         ))}
       </div>
@@ -702,6 +741,14 @@ export default function IrrigationPage() {
     }
     return map;
   }, [dashboard?.sensors]);
+  const sharedSensorChannels = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const zone of dashboard?.zones ?? []) {
+      if (zone.wh52Channel == null) continue;
+      counts.set(zone.wh52Channel, (counts.get(zone.wh52Channel) ?? 0) + 1);
+    }
+    return counts;
+  }, [dashboard?.zones]);
 
   const valveStates = useMemo(
     () => parseValveStates(dashboard?.status?.valveStates),
@@ -945,6 +992,7 @@ export default function IrrigationPage() {
                 ? `${nextRun.label} ${nextRun.time} · ${nextRun.durationMin} min`
                 : "kein Programm";
               const hint = planHint(zone, sensor);
+              const sharedSensor = zone.wh52Channel != null && (sharedSensorChannels.get(zone.wh52Channel) ?? 0) > 1;
               return (
                 <Card
                   key={zone.id}
@@ -959,7 +1007,7 @@ export default function IrrigationPage() {
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
                       <div className={`hidden text-xs sm:mt-0.5 sm:block md:mt-1 ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>
-                        WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min
+                        WH52 Ch {zone.wh52Channel ?? "-"}{sharedSensor ? " geteilt" : ""} · Limit {zone.maxDurationMin} min
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1 md:gap-2">
@@ -1192,6 +1240,7 @@ export default function IrrigationPage() {
           <div className="grid gap-3 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const schedules = schedulesByZone.get(zone.id) ?? [];
+              const sharedSensor = zone.wh52Channel != null && (sharedSensorChannels.get(zone.wh52Channel) ?? 0) > 1;
               return (
                 <section key={zone.id} className="rounded-lg border border-border-default bg-surface-elevated p-3 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3 border-b border-border-default pb-2">
@@ -1200,7 +1249,9 @@ export default function IrrigationPage() {
                         <h3 className="truncate font-display text-base font-semibold text-text-heading">{zone.name}</h3>
                         <Badge variant={zone.active ? "success" : "default"}>V{zone.valveNumber}</Badge>
                       </div>
-                      <div className="mt-0.5 text-xs text-text-secondary">WH52 Ch {zone.wh52Channel ?? "-"} · Limit {zone.maxDurationMin} min</div>
+                      <div className="mt-0.5 text-xs text-text-secondary">
+                        WH52 Ch {zone.wh52Channel ?? "-"}{sharedSensor ? " geteilt" : ""} · Limit {zone.maxDurationMin} min
+                      </div>
                     </div>
                     <Badge variant={schedules.length > 0 ? "success" : "default"}>
                       {schedules.length > 0 ? `${schedules.length} ${schedules.length === 1 ? "Plan" : "Pläne"}` : "kein Plan"}
