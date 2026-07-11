@@ -6,6 +6,7 @@ import {
   ingestIrrigationEvents,
   ingestIrrigationSensors,
   ingestIrrigationStatus,
+  irrigationDeviceConfig,
 } from "./routes/irrigation.ts";
 
 type JsonObject = Record<string, unknown>;
@@ -14,6 +15,7 @@ type JsonPayload = JsonObject | JsonObject[];
 const COMMAND_FRESH_WINDOW_MS = 2 * 60 * 1000;
 const COMMAND_PUBLISH_INTERVAL_MS = 2000;
 const COMMAND_REPUBLISH_MS = 10000;
+const CONFIG_PUBLISH_INTERVAL_MS = 30000;
 
 function envBool(name: string): boolean {
   return (process.env[name] ?? "").toLowerCase() === "true";
@@ -53,6 +55,7 @@ export function startIrrigationMqtt() {
   const irrigationUserId = userId;
   const baseTopic = `${prefix}/${deviceId}`;
   const lastPublishedCommands = new Map<string, number>();
+  let lastConfigPayload = "";
   const client = mqtt.connect(url, {
     username,
     password,
@@ -70,9 +73,22 @@ export function startIrrigationMqtt() {
       `${baseTopic}/commands/+/result`,
     ], { qos: 0 }, (error) => {
       if (error) console.error("Fehler beim MQTT Subscribe für Bewässerung:", error);
-      else console.log(`✓ Bewässerung MQTT verbunden: ${baseTopic}`);
+      else {
+        console.log(`✓ Bewässerung MQTT verbunden: ${baseTopic}`);
+        void publishConfig().catch((configError) => {
+          console.error("Fehler beim Publizieren der Bewässerung-MQTT-Config:", configError);
+        });
+      }
     });
   });
+
+  async function publishConfig(force = false) {
+    if (!client.connected) return;
+    const payload = JSON.stringify(await irrigationDeviceConfig(irrigationUserId));
+    if (!force && payload === lastConfigPayload) return;
+    client.publish(`${baseTopic}/config`, payload, { qos: 0, retain: true });
+    lastConfigPayload = payload;
+  }
 
   async function publishPendingCommands() {
     if (!client.connected) return;
@@ -165,4 +181,10 @@ export function startIrrigationMqtt() {
       console.error("Fehler beim Publizieren von Bewässerung-MQTT-Commands:", error);
     });
   }, COMMAND_PUBLISH_INTERVAL_MS);
+
+  setInterval(() => {
+    void publishConfig().catch((error) => {
+      console.error("Fehler beim Publizieren der Bewässerung-MQTT-Config:", error);
+    });
+  }, CONFIG_PUBLISH_INTERVAL_MS);
 }

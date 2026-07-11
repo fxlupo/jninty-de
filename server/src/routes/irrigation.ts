@@ -652,8 +652,7 @@ router.post("/commands", requireAuth, async (c) => {
 
 deviceRouter.use("*", requireDeviceToken());
 
-deviceRouter.get("/config", async (c) => {
-  const userId = c.get("irrigationUserId");
+export async function irrigationDeviceConfig(userId: string) {
   const [zones, schedules, statusRows] = await Promise.all([
     ensureDefaultZones(userId),
     db
@@ -668,7 +667,12 @@ deviceRouter.get("/config", async (c) => {
     zoneNumber: valveNumberByZoneId.get(schedule.zoneId) ?? 0,
     startTime: normalizeDeviceStartTime(schedule.startTime),
   }));
-  return c.json({ zones, schedules: deviceSchedules, control: readControl(statusRows[0]?.raw) });
+  return { zones, schedules: deviceSchedules, control: readControl(statusRows[0]?.raw) };
+}
+
+deviceRouter.get("/config", async (c) => {
+  const userId = c.get("irrigationUserId");
+  return c.json(await irrigationDeviceConfig(userId));
 });
 
 deviceRouter.get("/commands", async (c) => {
