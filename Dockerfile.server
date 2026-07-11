@@ -6,7 +6,8 @@ ARG JNINTY_REF=main
 RUN git clone --depth 1 --branch ${JNINTY_REF} https://github.com/fxlupo/jninty-de.git .
 
 RUN npm ci
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R node:node /app/data
+USER node
 
 # Run pending DB migrations, then start the API server
 CMD ["sh", "-c", "npm run db:migrate && node_modules/.bin/tsx server/src/index.ts"]
