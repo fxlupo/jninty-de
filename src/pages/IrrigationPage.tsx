@@ -768,7 +768,7 @@ export default function IrrigationPage() {
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [pendingDeleteSchedule, setPendingDeleteSchedule] = useState<IrrigationSchedule | null>(null);
-  const [historyDays, setHistoryDays] = useState(1);
+  const [historyDays, setHistoryDays] = useState(7);
   const [history, setHistory] = useState<IrrigationHistory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
