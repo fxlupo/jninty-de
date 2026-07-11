@@ -1,4 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { z } from "zod";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -546,7 +556,7 @@ function planHint(zone: IrrigationZone, sensor: IrrigationSensor | undefined): {
 }
 
 function sensorColor(channel: number): string {
-  const colors = ["#4ade80", "#a78bfa", "#fbbf24", "#f472b6", "#38bdf8", "#fb7185"];
+  const colors = ["#16a34a", "#7c3aed", "#d97706", "#db2777", "#0284c7", "#e11d48"];
   return colors[(channel - 1) % colors.length] ?? "#60a5fa";
 }
 
@@ -590,6 +600,61 @@ function chartTimeLabel(ms: number, days: number): string {
   return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" }).format(date);
 }
 
+type SensorChartRow = {
+  ts: number;
+  [key: string]: number | null;
+};
+
+function sensorSeriesKey(channel: number): string {
+  return `ch${String(channel)}`;
+}
+
+function formatChartTooltipLabel(value: number | string): string {
+  const ms = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(ms)) return "";
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(ms));
+}
+
+function SensorTooltip({
+  active,
+  payload,
+  label,
+  unit,
+}: {
+  active?: boolean;
+  payload?: Array<{ color?: string; name?: string; value?: number | null }>;
+  label?: number | string;
+  unit: string;
+}) {
+  if (!active || !payload?.length || label == null) return null;
+  const values = payload.filter((item) => typeof item.value === "number");
+  if (values.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-border-default bg-surface px-3 py-2 text-xs shadow-lg">
+      <div className="mb-1 font-semibold text-text-heading">{formatChartTooltipLabel(label)}</div>
+      <div className="space-y-1">
+        {values.map((item) => (
+          <div key={item.name} className="flex items-center justify-between gap-4">
+            <span className="flex min-w-0 items-center gap-2 text-text-secondary">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: item.color ?? "#64748b" }} />
+              <span className="max-w-44 truncate">{item.name}</span>
+            </span>
+            <span className="font-semibold text-text-heading">
+              {item.value?.toFixed(unit === "°C" ? 1 : 0)} {unit}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SensorLineChart({
   title,
   sensors,
@@ -609,45 +674,23 @@ function SensorLineChart({
   max: number;
   days: number;
 }) {
-  const width = 720;
-  const height = 260;
-  const pad = { left: 42, right: 16, top: 18, bottom: 32 };
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
   const xMin = Date.now() - days * 24 * 60 * 60 * 1000;
   const xMax = Date.now();
-  const yTicks = [min, (min + max) / 2, max];
 
-  const byChannel = new Map<number, IrrigationSensor[]>();
+  const rowsByTs = new Map<number, SensorChartRow>();
   for (const sensor of sensors) {
     const value = sensor[field];
     const ms = parseDateMs(sensor.createdAt);
     if (value == null || Number.isNaN(value) || Number.isNaN(ms)) continue;
     if (ms < xMin || ms > xMax) continue;
-    const list = byChannel.get(sensor.channel) ?? [];
-    list.push(sensor);
-    byChannel.set(sensor.channel, list);
+    const row = rowsByTs.get(ms) ?? { ts: ms };
+    row[sensorSeriesKey(sensor.channel)] = value;
+    rowsByTs.set(ms, row);
   }
+  const rows = [...rowsByTs.values()].sort((a, b) => a.ts - b.ts);
   const channelDescriptors = sensorChannelDescriptors(sensors, zones).filter(
-    (descriptor) => (byChannel.get(descriptor.channel)?.length ?? 0) > 0,
+    (descriptor) => rows.some((row) => typeof row[sensorSeriesKey(descriptor.channel)] === "number"),
   );
-
-  const x = (ms: number) => pad.left + ((ms - xMin) / Math.max(1, xMax - xMin)) * innerW;
-  const y = (value: number) => pad.top + (1 - (value - min) / (max - min)) * innerH;
-
-  const channelLines = channelDescriptors.map(({ channel }) => {
-    const points = (byChannel.get(channel) ?? [])
-      .slice()
-      .sort((a, b) => parseDateMs(a.createdAt) - parseDateMs(b.createdAt))
-      .map((sensor) => {
-        const value = sensor[field];
-        if (value == null) return "";
-        return `${x(parseDateMs(sensor.createdAt)).toFixed(1)},${y(value).toFixed(1)}`;
-      })
-      .filter(Boolean)
-      .join(" ");
-    return { channel, points };
-  });
 
   return (
     <Card>
@@ -655,41 +698,52 @@ function SensorLineChart({
         <h3 className="font-display text-lg font-semibold text-text-heading">{title}</h3>
         <span className="text-sm text-text-secondary">{unit}</span>
       </div>
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full sm:h-64">
-          <rect x={pad.left} y={pad.top} width={innerW} height={innerH} fill="transparent" />
-          {yTicks.map((tick) => (
-            <g key={tick}>
-              <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} stroke="currentColor" className="text-border-default" strokeDasharray="4 4" />
-              <text x={8} y={y(tick) + 4} className="fill-text-secondary text-[11px]">
-                {tick.toFixed(0)}
-              </text>
-            </g>
-          ))}
-          {[0, 0.5, 1].map((ratio) => {
-            const ms = xMin + (xMax - xMin) * ratio;
-            return (
-              <text key={ratio} x={x(ms)} y={height - 8} textAnchor={ratio === 0 ? "start" : ratio === 1 ? "end" : "middle"} className="fill-text-secondary text-[11px]">
-                {chartTimeLabel(ms, days)}
-              </text>
-            );
-          })}
-          <line x1={pad.left} x2={pad.left} y1={pad.top} y2={pad.top + innerH} stroke="currentColor" className="text-border-strong" />
-          <line x1={pad.left} x2={pad.left + innerW} y1={pad.top + innerH} y2={pad.top + innerH} stroke="currentColor" className="text-border-strong" />
-          {channelLines.map(({ channel, points }) =>
-            points ? (
-              <polyline
+      <div className="h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 12, right: 18, bottom: 8, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(120, 113, 108, 0.22)" vertical={false} />
+            <XAxis
+              dataKey="ts"
+              type="number"
+              domain={[xMin, xMax]}
+              tickFormatter={(value: number) => chartTimeLabel(value, days)}
+              tick={{ fill: "#766957", fontSize: 11 }}
+              axisLine={{ stroke: "rgba(120, 113, 108, 0.35)" }}
+              tickLine={false}
+              minTickGap={24}
+            />
+            <YAxis
+              domain={[min, max]}
+              tickFormatter={(value: number) => `${String(Math.round(value))}${unit === "%" ? "%" : ""}`}
+              tick={{ fill: "#766957", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={42}
+            />
+            <Tooltip content={<SensorTooltip unit={unit} />} />
+            <Legend
+              verticalAlign="top"
+              align="left"
+              height={34}
+              iconType="plainline"
+              wrapperStyle={{ fontSize: 12, color: "#4b3828" }}
+            />
+            {channelDescriptors.map(({ channel, label }) => (
+              <Line
                 key={channel}
-                points={points}
-                fill="none"
+                type="monotone"
+                dataKey={sensorSeriesKey(channel)}
+                name={label}
                 stroke={sensorColor(channel)}
                 strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+                connectNulls
+                isAnimationActive={false}
               />
-            ) : null,
-          )}
-        </svg>
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
         {channelDescriptors.map(({ channel, label, shared }) => (
