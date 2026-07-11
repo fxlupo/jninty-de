@@ -15,7 +15,7 @@ services:
       IRRIGATION_DEVICE_TOKEN: "${IRRIGATION_DEVICE_TOKEN:-}"
       IRRIGATION_DEVICE_USER_ID: "${IRRIGATION_DEVICE_USER_ID:-}"
       IRRIGATION_MQTT_ENABLED: "${IRRIGATION_MQTT_ENABLED:-false}"
-      IRRIGATION_MQTT_URL: "${IRRIGATION_MQTT_URL:-mqtt://mqtt.example.com:1883}"
+      IRRIGATION_MQTT_URL: "${IRRIGATION_MQTT_URL:-mqtt://localhost:1883}"
       IRRIGATION_MQTT_USERNAME: "${IRRIGATION_MQTT_USERNAME:-}"
       IRRIGATION_MQTT_PASSWORD: "${IRRIGATION_MQTT_PASSWORD:-}"
       IRRIGATION_MQTT_DEVICE_ID: "${IRRIGATION_MQTT_DEVICE_ID:-esp32-01}"
@@ -41,7 +41,7 @@ services:
       - traefik.enable=true
       - traefik.docker.network=proxy
 
-      - traefik.http.routers.jninty.rule=Host(`your-domain.example.com`)
+      - traefik.http.routers.jninty.rule=Host(`<your-domain>`)
       - traefik.http.routers.jninty.entrypoints=https
       - traefik.http.routers.jninty.tls=true
       - traefik.http.routers.jninty.tls.certresolver=http
