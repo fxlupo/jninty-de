@@ -1,4 +1,7 @@
 import mqtt from "mqtt";
+import { and, desc, eq, gte } from "drizzle-orm";
+import { db } from "./db/client.ts";
+import { irrigationCommands } from "./db/schema.ts";
 import {
   ingestIrrigationEvents,
   ingestIrrigationSensors,
@@ -7,6 +10,10 @@ import {
 
 type JsonObject = Record<string, unknown>;
 type JsonPayload = JsonObject | JsonObject[];
+
+const COMMAND_FRESH_WINDOW_MS = 2 * 60 * 1000;
+const COMMAND_PUBLISH_INTERVAL_MS = 2000;
+const COMMAND_REPUBLISH_MS = 10000;
 
 function envBool(name: string): boolean {
   return (process.env[name] ?? "").toLowerCase() === "true";
@@ -43,7 +50,9 @@ export function startIrrigationMqtt() {
     return;
   }
 
+  const irrigationUserId = userId;
   const baseTopic = `${prefix}/${deviceId}`;
+  const lastPublishedCommands = new Map<string, number>();
   const client = mqtt.connect(url, {
     username,
     password,
@@ -54,23 +63,93 @@ export function startIrrigationMqtt() {
   });
 
   client.on("connect", () => {
-    client.subscribe([`${baseTopic}/status`, `${baseTopic}/events`, `${baseTopic}/sensors`], { qos: 0 }, (error) => {
+    client.subscribe([
+      `${baseTopic}/status`,
+      `${baseTopic}/events`,
+      `${baseTopic}/sensors`,
+      `${baseTopic}/commands/+/result`,
+    ], { qos: 0 }, (error) => {
       if (error) console.error("Fehler beim MQTT Subscribe für Bewässerung:", error);
       else console.log(`✓ Bewässerung MQTT verbunden: ${baseTopic}`);
     });
   });
+
+  async function publishPendingCommands() {
+    if (!client.connected) return;
+    const freshAfter = new Date(Date.now() - COMMAND_FRESH_WINDOW_MS).toISOString();
+    const rows = await db
+      .select()
+      .from(irrigationCommands)
+      .where(and(
+        eq(irrigationCommands.userId, irrigationUserId),
+        eq(irrigationCommands.status, "pending"),
+        gte(irrigationCommands.createdAt, freshAfter),
+      ))
+      .orderBy(desc(irrigationCommands.createdAt))
+      .limit(5);
+
+    const nowMs = Date.now();
+    for (const command of rows) {
+      const lastPublishedAt = lastPublishedCommands.get(command.id) ?? 0;
+      if (nowMs - lastPublishedAt < COMMAND_REPUBLISH_MS) continue;
+      const topic = `${baseTopic}/commands/${command.id}`;
+      const payload = JSON.stringify({
+        id: command.id,
+        zoneId: command.zoneId,
+        zoneNumber: command.zoneNumber,
+        command: command.command,
+        durationMin: command.durationMin,
+        requestedAt: command.requestedAt,
+      });
+      client.publish(topic, payload, { qos: 0, retain: false });
+      lastPublishedCommands.set(command.id, nowMs);
+    }
+  }
+
+  async function handleCommandResult(commandId: string, result: JsonObject) {
+    const ts = new Date().toISOString();
+    const status = typeof result["status"] === "string" ? result["status"] : "";
+    const ok = result["ok"] !== false;
+    const resultText = typeof result["result"] === "string" ? result["result"] : null;
+
+    if (status === "acked") {
+      await db
+        .update(irrigationCommands)
+        .set({ status: "acked", ackedAt: ts, updatedAt: ts, result: resultText })
+        .where(and(eq(irrigationCommands.id, commandId), eq(irrigationCommands.userId, irrigationUserId)));
+      lastPublishedCommands.delete(commandId);
+      return;
+    }
+
+    await db
+      .update(irrigationCommands)
+      .set({
+        status: ok ? "done" : "failed",
+        completedAt: ts,
+        updatedAt: ts,
+        result: resultText,
+      })
+      .where(and(eq(irrigationCommands.id, commandId), eq(irrigationCommands.userId, irrigationUserId)));
+    lastPublishedCommands.delete(commandId);
+  }
 
   client.on("message", (topic, payload) => {
     const parsed = parseJsonPayload(payload);
     if (!parsed) return;
 
     void (async () => {
+      const commandResultMatch = topic.match(new RegExp(`^${baseTopic}/commands/([^/]+)/result$`));
+      if (commandResultMatch?.[1] && !Array.isArray(parsed)) {
+        await handleCommandResult(commandResultMatch[1], parsed);
+        return;
+      }
+
       if (topic === `${baseTopic}/status` && !Array.isArray(parsed)) {
-        await ingestIrrigationStatus(userId, parsed);
+        await ingestIrrigationStatus(irrigationUserId, parsed);
       } else if (topic === `${baseTopic}/events`) {
-        await ingestIrrigationEvents(userId, parsed);
+        await ingestIrrigationEvents(irrigationUserId, parsed);
       } else if (topic === `${baseTopic}/sensors`) {
-        await ingestIrrigationSensors(userId, parsed);
+        await ingestIrrigationSensors(irrigationUserId, parsed);
       }
     })().catch((error) => {
       console.error("Fehler beim Verarbeiten einer Bewässerung-MQTT-Nachricht:", error);
@@ -80,4 +159,10 @@ export function startIrrigationMqtt() {
   client.on("error", (error) => {
     console.error("Bewässerung MQTT Fehler:", error.message);
   });
+
+  setInterval(() => {
+    void publishPendingCommands().catch((error) => {
+      console.error("Fehler beim Publizieren von Bewässerung-MQTT-Commands:", error);
+    });
+  }, COMMAND_PUBLISH_INTERVAL_MS);
 }
