@@ -1,9 +1,32 @@
 import { Hono } from "hono";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { lookup } from "node:dns/promises";
 import { db } from "../db/client.ts";
 import { userPlantKnowledge } from "../db/schema.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
 import type { AppVariables } from "../types.ts";
+
+// SSRF: block requests to private/loopback/link-local IP ranges
+const PRIVATE_IP_RE = [
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^0\./,
+  /^::1$/,
+  /^fc/i,
+  /^fe80/i,
+];
+
+async function isPrivateHost(hostname: string): Promise<boolean> {
+  try {
+    const { address } = await lookup(hostname);
+    return PRIVATE_IP_RE.some((re) => re.test(address));
+  } catch {
+    return true;
+  }
+}
 
 const router = new Hono<{ Variables: AppVariables }>();
 
@@ -96,6 +119,10 @@ router.post("/import-url", requireAuth, async (c) => {
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
     return c.json({ error: "Nur HTTP/HTTPS-URLs erlaubt." }, 400);
+  }
+
+  if (await isPrivateHost(parsed.hostname)) {
+    return c.json({ error: "Diese URL ist nicht erreichbar." }, 400);
   }
 
   // Fetch page HTML

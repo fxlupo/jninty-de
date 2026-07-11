@@ -13,6 +13,23 @@ const router = new Hono<{ Variables: AppVariables }>();
 // Uploads directory: <repo-root>/data/uploads/
 const UPLOADS_DIR = resolve(process.cwd(), "data", "uploads");
 
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+async function validateImageFile(file: File): Promise<string | null> {
+  if (!ALLOWED_MIME.has(file.type)) {
+    return `Ungültiger Dateityp (${file.type}). Erlaubt: JPEG, PNG, WebP.`;
+  }
+  const buf = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  const isPng  = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+  const isWebp = buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46
+              && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+  if (!isJpeg && !isPng && !isWebp) {
+    return "Dateiinhalt stimmt nicht mit dem Dateityp überein.";
+  }
+  return null;
+}
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -34,6 +51,19 @@ router.post("/upload", requireAuth, async (c) => {
 
   if (!thumbnailFile || !(thumbnailFile instanceof File)) {
     return c.json({ error: "thumbnail file required" }, 400);
+  }
+
+  const thumbErr = await validateImageFile(thumbnailFile);
+  if (thumbErr) return c.json({ error: thumbErr }, 400);
+
+  if (displayFile instanceof File) {
+    const displayErr = await validateImageFile(displayFile);
+    if (displayErr) return c.json({ error: displayErr }, 400);
+  }
+
+  if (originalFile instanceof File) {
+    const originalErr = await validateImageFile(originalFile);
+    if (originalErr) return c.json({ error: originalErr }, 400);
   }
 
   const widthRaw = body["width"];
