@@ -78,12 +78,28 @@ interface IrrigationSchedule {
   durationMin: number;
 }
 
+type RuntimeZoneState = "idle" | "running" | "queued";
+
+interface IrrigationRuntimeZone {
+  zone: number;
+  state: RuntimeZoneState;
+  remainingSec: number;
+}
+
+interface IrrigationRuntime {
+  queueLength: number;
+  zones: IrrigationRuntimeZone[];
+}
+
 interface IrrigationStatus {
   espOnline: boolean | null;
   wifiRssi: number | null;
   ecowittOk: boolean | null;
   valveStates: string | null;
   lastSeen: string | null;
+  raw?: {
+    runtime?: IrrigationRuntime;
+  } | null;
 }
 
 interface IrrigationDashboard {
@@ -364,6 +380,27 @@ function formatRemaining(ms: number): string {
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
   return `${String(min)}:${String(sec).padStart(2, "0")} min`;
+}
+
+function runtimeLabel(state: RuntimeZoneState | undefined): string {
+  if (state === "running") return "offen";
+  if (state === "queued") return "wartet";
+  return "zu";
+}
+
+function runtimeBadgeVariant(
+  runtime: IrrigationRuntimeZone | undefined,
+  command: IrrigationCommand | undefined,
+  isOpen: boolean,
+): "success" | "warning" | "default" {
+  if (command || runtime?.state === "queued") return "warning";
+  if (runtime?.state === "running" || isOpen) return "success";
+  return "default";
+}
+
+function runtimeRemainingMs(runtime: IrrigationRuntimeZone | undefined): number | null {
+  if (!runtime || runtime.remainingSec <= 0) return null;
+  return runtime.remainingSec * 1000;
 }
 
 function remainingRunMs(
@@ -754,6 +791,15 @@ export default function IrrigationPage() {
     () => parseValveStates(dashboard?.status?.valveStates),
     [dashboard?.status?.valveStates],
   );
+  const runtime = dashboard?.status?.raw?.runtime;
+  const runtimeByZone = useMemo(() => {
+    const map = new Map<number, IrrigationRuntimeZone>();
+    for (const zone of runtime?.zones ?? []) {
+      if (zone.zone > 0) map.set(zone.zone, zone);
+    }
+    return map;
+  }, [runtime?.zones]);
+  const runtimeQueueLength = runtime?.queueLength ?? 0;
   const online = isStatusOnline(dashboard?.status ?? null);
   const activeCommands = useMemo(() => {
     const byId = new Map<string, IrrigationCommand>();
@@ -980,7 +1026,8 @@ export default function IrrigationPage() {
           <section className="grid gap-2 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const sensor = zone.wh52Channel ? sensorsByChannel.get(zone.wh52Channel) : undefined;
-              const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+              const runtimeZone = runtimeByZone.get(zone.valveNumber);
+              const isOpen = runtimeZone?.state === "running" || (valveStates[zone.valveNumber - 1] ?? false);
               const zoneCommand = commandByZone.get(zone.valveNumber);
               const isEditing = editingZoneId === zone.id;
               const draft = isEditing ? zoneDraft : null;
@@ -1021,10 +1068,10 @@ export default function IrrigationPage() {
                         Bearbeiten
                       </Button>
                       <Badge
-                        variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
+                        variant={runtimeBadgeVariant(runtimeZone, zoneCommand, isOpen)}
                         className={isOpen ? OPEN_ZONE_BADGE_CLASS : ""}
                       >
-                        {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
+                        {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : runtimeLabel(runtimeZone?.state)}
                       </Badge>
                     </div>
                   </div>
@@ -1116,20 +1163,22 @@ export default function IrrigationPage() {
             <Card className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-text-heading">Ventile</div>
-                <Badge variant={pendingCount > 0 ? "warning" : "default"}>
-                  {pendingCount > 0 ? `${pendingCount} wartet` : "keine Befehle"}
+                <Badge variant={pendingCount > 0 || runtimeQueueLength > 0 ? "warning" : "default"}>
+                  {runtimeQueueLength > 0 ? `${runtimeQueueLength} Queue` : pendingCount > 0 ? `${pendingCount} wartet` : "keine Befehle"}
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 {IRRIGATION_ZONE_NUMBERS.map((valve) => {
-                  const isOpen = valveStates[valve - 1] ?? false;
+                  const runtimeZone = runtimeByZone.get(valve);
+                  const isOpen = runtimeZone?.state === "running" || (valveStates[valve - 1] ?? false);
+                  const isQueued = runtimeZone?.state === "queued";
                   const valveCommand = commandByZone.get(valve);
                   return (
                     <span
                       key={valve}
-                      className={valveCommand ? "font-semibold text-status-warning-text" : isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}
+                      className={valveCommand || isQueued ? "font-semibold text-status-warning-text" : isOpen ? "font-semibold text-status-success-text" : "text-text-secondary"}
                     >
-                      V{valve} {valveCommand ? "wartet" : isOpen ? "On" : "Off"}
+                      V{valve} {valveCommand ? "wartet" : runtimeZone?.state === "queued" ? "Queued" : isOpen ? "On" : "Off"}
                     </span>
                   );
                 })}
@@ -1305,16 +1354,17 @@ export default function IrrigationPage() {
         <div className="space-y-2 md:space-y-3">
           <section className="grid gap-1.5 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
-              const isOpen = valveStates[zone.valveNumber - 1] ?? false;
+              const runtimeZone = runtimeByZone.get(zone.valveNumber);
+              const isOpen = runtimeZone?.state === "running" || (valveStates[zone.valveNumber - 1] ?? false);
               const zoneCommand = commandByZone.get(zone.valveNumber);
               const commandKey = `open-${String(zone.valveNumber)}`;
               const closeKey = `close-${String(zone.valveNumber)}`;
-              const remainingMs = remainingRunMs(
-                zone.valveNumber,
-                [...(dashboard?.events ?? []), ...eventLog],
-                zoneCommand,
-                nowMs,
-              );
+              const remainingMs = runtimeRemainingMs(runtimeZone) ?? remainingRunMs(
+                  zone.valveNumber,
+                  [...(dashboard?.events ?? []), ...eventLog],
+                  zoneCommand,
+                  nowMs,
+                );
               return (
                 <Card
                   key={zone.id}
@@ -1331,10 +1381,10 @@ export default function IrrigationPage() {
                       <div className={`hidden text-xs sm:mt-1 sm:block ${isOpen ? OPEN_ZONE_MUTED_CLASS : "text-text-secondary"}`}>Max {zone.maxDurationMin} min</div>
                     </div>
                     <Badge
-                      variant={zoneCommand ? "warning" : isOpen ? "success" : "default"}
+                      variant={runtimeBadgeVariant(runtimeZone, zoneCommand, isOpen)}
                       className={isOpen ? OPEN_ZONE_BADGE_CLASS : ""}
                     >
-                      {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : isOpen ? "offen" : "zu"}
+                      {zoneCommand ? (zoneCommand.status === "acked" ? "übernommen" : "wartet") : runtimeLabel(runtimeZone?.state)}
                     </Badge>
                   </div>
                   {zoneCommand && (
@@ -1345,6 +1395,11 @@ export default function IrrigationPage() {
                   {isOpen && remainingMs != null && (
                     <div className="rounded-lg bg-status-success-bg px-2 py-1 text-xs font-semibold text-status-success-text md:px-3 md:py-2 md:text-sm">
                       Restlaufzeit {formatRemaining(remainingMs)}
+                    </div>
+                  )}
+                  {runtimeZone?.state === "queued" && remainingMs != null && (
+                    <div className="rounded-lg bg-status-warning-bg px-2 py-1 text-xs font-semibold text-status-warning-text md:px-3 md:py-2 md:text-sm">
+                      Wartet in Queue · Dauer {formatRemaining(remainingMs)}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-1.5 md:gap-2">
