@@ -119,7 +119,8 @@ interface IrrigationHistory {
 type CommandPayload =
   | { command: "open"; zoneId: string; zoneNumber: number; durationMin: number }
   | { command: "close"; zoneId: string; zoneNumber: number }
-  | { command: "close_all"; zoneNumber: 0 };
+  | { command: "close_all"; zoneNumber: 0 }
+  | { command: "run_once"; zoneNumber: 0; durationMin: number };
 
 interface ZoneDraft {
   name: string;
@@ -163,6 +164,7 @@ const FRESH_COMMAND_MS = 120000;
 const LOCAL_COMMAND_GRACE_MS = 15000;
 const IRRIGATION_ZONE_COUNT = 6;
 const IRRIGATION_ZONE_NUMBERS = Array.from({ length: IRRIGATION_ZONE_COUNT }, (_, index) => index + 1);
+const QUICK_TEST_SECONDS = [10, 20, 30];
 const API_BASE = apiUrl ?? "/api";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25";
@@ -277,6 +279,7 @@ function commandLabel(command: IrrigationCommand): string {
   if (command.command === "open") return `${prefix}: ${command.durationMin ?? "?"} min`;
   if (command.command === "close") return `${prefix}: schließen`;
   if (command.command === "close_all") return `${prefix}: alle stoppen`;
+  if (command.command === "run_once") return `${prefix}: Testlauf ${command.durationMin ?? "?"} s`;
   return prefix;
 }
 
@@ -300,6 +303,7 @@ function eventLabel(type: string): string {
     open: "Öffnen",
     close: "Schließen",
     close_all: "Alle Stop",
+    run_once: "Testlauf",
     skip: "Skip",
     manual: "Manuell",
     scheduler: "Scheduler",
@@ -800,6 +804,7 @@ export default function IrrigationPage() {
     return map;
   }, [runtime?.zones]);
   const runtimeQueueLength = runtime?.queueLength ?? 0;
+  const runtimeBusy = (runtime?.zones ?? []).some((zone) => zone.state === "running" || zone.state === "queued");
   const online = isStatusOnline(dashboard?.status ?? null);
   const activeCommands = useMemo(() => {
     const byId = new Map<string, IrrigationCommand>();
@@ -809,6 +814,7 @@ export default function IrrigationPage() {
     return [...byId.values()].sort((a, b) => commandTime(b) - commandTime(a));
   }, [dashboard?.commands, localCommands]);
   const pendingCount = activeCommands.length;
+  const runOnceCommand = activeCommands.find((command) => command.command === "run_once");
   useEffect(() => {
     if (pendingCount === 0) return;
     const timer = window.setInterval(() => {
@@ -1352,6 +1358,41 @@ export default function IrrigationPage() {
 
       {activeTab === "manual" && (
         <div className="space-y-2 md:space-y-3">
+          <Card className="space-y-2 p-2 md:p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-sm font-semibold text-text-heading sm:text-lg">Testlauf</h2>
+                <div className="text-xs text-text-secondary">Alle aktiven Zonen nacheinander</div>
+              </div>
+              <Badge variant={runtimeQueueLength > 0 || runOnceCommand ? "warning" : "default"}>
+                {runtimeQueueLength > 0 ? `${runtimeQueueLength} Queue` : runOnceCommand ? "wartet" : "bereit"}
+              </Badge>
+            </div>
+            {runOnceCommand && (
+              <div className="rounded-lg bg-status-warning-bg px-2 py-1 text-xs font-medium text-status-warning-text md:px-3 md:py-2 md:text-sm">
+                {commandLabel(runOnceCommand)}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5 md:gap-2">
+              {QUICK_TEST_SECONDS.map((durationSec) => (
+                <Button
+                  key={durationSec}
+                  size="sm"
+                  variant="secondary"
+                  disabled={pendingCommand != null || runOnceCommand != null || runtimeBusy}
+                  onClick={() =>
+                    void sendCommand({
+                      command: "run_once",
+                      zoneNumber: 0,
+                      durationMin: durationSec,
+                    })
+                  }
+                >
+                  {pendingCommand === "run_once-0" ? "Sendet..." : `${durationSec} s`}
+                </Button>
+              ))}
+            </div>
+          </Card>
           <section className="grid gap-1.5 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const runtimeZone = runtimeByZone.get(zone.valveNumber);

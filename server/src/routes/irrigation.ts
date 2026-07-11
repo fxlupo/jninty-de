@@ -20,7 +20,7 @@ type DeviceVariables = AppVariables & { irrigationUserId: string };
 const deviceRouter = new Hono<{ Variables: DeviceVariables }>();
 
 // K1: known command strings the frontend may send and the ESP understands
-const VALID_COMMANDS = ["open", "close", "close_all"] as const;
+const VALID_COMMANDS = ["open", "close", "close_all", "run_once"] as const;
 type IrrigationCommand = (typeof VALID_COMMANDS)[number];
 
 // K1: known event actions the ESP firmware may report
@@ -370,6 +370,12 @@ router.post("/commands", requireAuth, async (c) => {
     return c.json({ error: `Unknown command. Valid: ${VALID_COMMANDS.join(", ")}` }, 400);
   }
   const command = body.command as IrrigationCommand;
+  if (command === "run_once") {
+    const durationSec = body.durationMin ?? 0;
+    if (!Number.isInteger(durationSec) || durationSec < 1 || durationSec > 600) {
+      return c.json({ error: "run_once duration must be 1-600 seconds" }, 400);
+    }
+  }
 
   // K3: if a zoneId is supplied, verify it belongs to the requesting user
   if (body.zoneId) {
