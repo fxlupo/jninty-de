@@ -32,6 +32,13 @@ const LIMIT_DEVICE_EVENTS      = 12;   // events returned to the ESP per poll
 const LIMIT_HISTORY_SENSORS    = 60000; // enough for ≈ 30 days at 5 sensors / 5 min
 const COMMAND_FRESH_WINDOW_MS  = 2 * 60 * 1000; // commands older than 2 min are considered stale
 const IRRIGATION_ZONE_COUNT    = 6;
+const PREVIEW_DAYS             = 7;
+
+interface IrrigationControl {
+  controllerEnabled: boolean;
+  rainDelayUntil: string | null;
+  rainDelayUntilEpoch: number;
+}
 
 function now(): string {
   return new Date().toISOString();
@@ -53,6 +60,72 @@ function normalizeDeviceStartTime(value: string): string {
 // sorts differently from the ISO strings stored by now() (space < T in ASCII)
 function cutoffDate(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function readControl(raw: Record<string, unknown> | null | undefined): IrrigationControl {
+  const control = raw?.["control"];
+  const obj = control && typeof control === "object" && !Array.isArray(control)
+    ? (control as Record<string, unknown>)
+    : {};
+  const rainDelayUntil = typeof obj["rainDelayUntil"] === "string" ? obj["rainDelayUntil"] : null;
+  const rainDelayMs = rainDelayUntil ? Date.parse(rainDelayUntil) : NaN;
+  return {
+    controllerEnabled: typeof obj["controllerEnabled"] === "boolean" ? obj["controllerEnabled"] : true,
+    rainDelayUntil: rainDelayUntil && Number.isFinite(rainDelayMs) && rainDelayMs > Date.now() ? rainDelayUntil : null,
+    rainDelayUntilEpoch: rainDelayUntil && Number.isFinite(rainDelayMs) && rainDelayMs > Date.now()
+      ? Math.floor(rainDelayMs / 1000)
+      : 0,
+  };
+}
+
+function mergeControlRaw(raw: Record<string, unknown> | null | undefined, control: IrrigationControl): Record<string, unknown> {
+  return { ...(raw ?? {}), control };
+}
+
+function normalizeStartDate(base: Date, startTime: string): Date {
+  const [hour = "0", minute = "0"] = normalizeDeviceStartTime(startTime).split(":");
+  const date = new Date(base);
+  date.setHours(Number.parseInt(hour, 10), Number.parseInt(minute, 10), 0, 0);
+  return date;
+}
+
+function jsDayMatchesMask(jsDay: number, mask: number): boolean {
+  const bit = jsDay === 0 ? 6 : jsDay - 1;
+  return ((mask >> bit) & 1) === 1;
+}
+
+function evaluatePreview(
+  zone: typeof irrigationZones.$inferSelect,
+  schedule: typeof irrigationSchedules.$inferSelect,
+  sensor: typeof irrigationSensorReadings.$inferSelect | undefined,
+  status: typeof irrigationStatus.$inferSelect | null,
+  control: IrrigationControl,
+  startsAt: Date,
+) {
+  if (!control.controllerEnabled) return { action: "skip", detail: "System deaktiviert", durationMin: 0 };
+  if (control.rainDelayUntil && Date.parse(control.rainDelayUntil) > startsAt.getTime()) {
+    return { action: "skip", detail: "Rain Delay", durationMin: 0 };
+  }
+  if (!sensor) return { action: "run", detail: "ohne frische Sensordaten", durationMin: schedule.durationMin };
+  if (sensor.soilTemp != null && sensor.soilTemp < zone.tempMinimum) {
+    return { action: "skip", detail: `Boden zu kalt: ${sensor.soilTemp.toFixed(1)}°C`, durationMin: 0 };
+  }
+  if (sensor.soilMoisture != null && sensor.soilMoisture >= zone.moistureThreshold) {
+    return { action: "skip", detail: `Boden feucht: ${Math.round(sensor.soilMoisture)}%`, durationMin: 0 };
+  }
+  const raw = status?.raw;
+  const rain6h = raw && typeof raw["rain6h"] === "number" ? raw["rain6h"] : null;
+  if (rain6h != null && rain6h >= zone.rainThreshold6h) {
+    return { action: "skip", detail: `Regen: ${rain6h.toFixed(1)} mm/6h`, durationMin: 0 };
+  }
+  let durationMin = schedule.durationMin;
+  if (sensor.soilTemp != null && sensor.soilTemp > 25) durationMin *= 1.25;
+  durationMin = Math.min(zone.maxDurationMin, Math.max(1, Math.round(durationMin)));
+  return {
+    action: "run",
+    detail: sensor.soilMoisture != null ? `Feuchte ${Math.round(sensor.soilMoisture)}%` : "Sensor ok",
+    durationMin,
+  };
 }
 
 async function ensureDefaultZones(userId: string) {
@@ -213,6 +286,98 @@ router.get("/weather-snapshot", requireAuth, async (c) => {
       shared: zones.filter((z) => z.wh52Channel === s.channel).length > 1,
     })),
   });
+});
+
+router.get("/preview", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const [zones, schedules, sensors, statusRows] = await Promise.all([
+    ensureDefaultZones(userId),
+    db
+      .select()
+      .from(irrigationSchedules)
+      .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt))),
+    latestSensors(userId),
+    db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)),
+  ]);
+  const status = statusRows[0] ?? null;
+  const control = readControl(status?.raw);
+  const zoneById = new Map(zones.map((zone) => [zone.id, zone]));
+  const sensorByChannel = new Map(sensors.map((sensor) => [sensor.channel, sensor]));
+  const nowDate = new Date();
+  const items = [];
+
+  for (let dayOffset = 0; dayOffset < PREVIEW_DAYS; dayOffset++) {
+    const day = new Date(nowDate);
+    day.setDate(nowDate.getDate() + dayOffset);
+    for (const schedule of schedules) {
+      if (!schedule.active || !jsDayMatchesMask(day.getDay(), schedule.weekdays)) continue;
+      const zone = zoneById.get(schedule.zoneId);
+      if (!zone || !zone.active) continue;
+      const startsAt = normalizeStartDate(day, schedule.startTime);
+      if (startsAt.getTime() < nowDate.getTime()) continue;
+      const decision = evaluatePreview(
+        zone,
+        schedule,
+        sensorByChannel.get(zone.wh52Channel),
+        status,
+        control,
+        startsAt,
+      );
+      items.push({
+        id: `${schedule.id}-${startsAt.toISOString()}`,
+        startsAt: startsAt.toISOString(),
+        zoneId: zone.id,
+        valveNumber: zone.valveNumber,
+        zoneName: zone.name,
+        program: schedule.program,
+        scheduledDurationMin: schedule.durationMin,
+        durationMin: decision.durationMin,
+        action: decision.action,
+        detail: decision.detail,
+      });
+    }
+  }
+
+  items.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  return c.json({ days: PREVIEW_DAYS, control, items: items.slice(0, 80) });
+});
+
+router.patch("/control", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<Record<string, unknown>>();
+  const existing = await db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)).limit(1);
+  const current = readControl(existing[0]?.raw);
+  const rainDelayUntil = typeof body["rainDelayUntil"] === "string" ? body["rainDelayUntil"] : null;
+  const rainDelayMs = rainDelayUntil ? Date.parse(rainDelayUntil) : NaN;
+  const next: IrrigationControl = {
+    controllerEnabled: typeof body["controllerEnabled"] === "boolean" ? body["controllerEnabled"] : current.controllerEnabled,
+    rainDelayUntil: rainDelayUntil && Number.isFinite(rainDelayMs) && rainDelayMs > Date.now() ? rainDelayUntil : null,
+    rainDelayUntilEpoch: rainDelayUntil && Number.isFinite(rainDelayMs) && rainDelayMs > Date.now()
+      ? Math.floor(rainDelayMs / 1000)
+      : 0,
+  };
+  const ts = now();
+  const currentRaw = existing[0]?.raw ?? null;
+  const row = {
+    userId,
+    updatedAt: ts,
+    lastSeen: existing[0]?.lastSeen ?? ts,
+    wifiRssi: existing[0]?.wifiRssi ?? null,
+    ecowittOk: existing[0]?.ecowittOk ?? null,
+    outTempC: existing[0]?.outTempC ?? null,
+    outHumidity: existing[0]?.outHumidity ?? null,
+    valveStates: existing[0]?.valveStates ?? "0".repeat(IRRIGATION_ZONE_COUNT),
+    firmwareVersion: existing[0]?.firmwareVersion ?? null,
+    ipAddress: existing[0]?.ipAddress ?? null,
+    uptimeSec: existing[0]?.uptimeSec ?? null,
+    raw: mergeControlRaw(currentRaw, next),
+  };
+
+  await db
+    .insert(irrigationStatus)
+    .values(row)
+    .onConflictDoUpdate({ target: irrigationStatus.userId, set: row });
+  return c.json(next);
 });
 
 router.get("/zones", requireAuth, async (c) => {
@@ -414,18 +579,21 @@ deviceRouter.use("*", requireDeviceToken());
 
 deviceRouter.get("/config", async (c) => {
   const userId = c.get("irrigationUserId");
-  const zones = await ensureDefaultZones(userId);
-  const schedules = await db
-    .select()
-    .from(irrigationSchedules)
-    .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt)));
+  const [zones, schedules, statusRows] = await Promise.all([
+    ensureDefaultZones(userId),
+    db
+      .select()
+      .from(irrigationSchedules)
+      .where(and(eq(irrigationSchedules.userId, userId), isNull(irrigationSchedules.deletedAt))),
+    db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)),
+  ]);
   const valveNumberByZoneId = new Map(zones.map((zone) => [zone.id, zone.valveNumber]));
   const deviceSchedules = schedules.map((schedule) => ({
     ...schedule,
     zoneNumber: valveNumberByZoneId.get(schedule.zoneId) ?? 0,
     startTime: normalizeDeviceStartTime(schedule.startTime),
   }));
-  return c.json({ zones, schedules: deviceSchedules });
+  return c.json({ zones, schedules: deviceSchedules, control: readControl(statusRows[0]?.raw) });
 });
 
 deviceRouter.get("/commands", async (c) => {
@@ -450,6 +618,8 @@ deviceRouter.get("/commands", async (c) => {
 deviceRouter.post("/status", async (c) => {
   const userId = c.get("irrigationUserId");
   const body = await c.req.json<Record<string, unknown>>();
+  const existing = await db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)).limit(1);
+  const control = readControl(existing[0]?.raw);
   const ts = now();
   const row = {
     userId,
@@ -463,7 +633,7 @@ deviceRouter.post("/status", async (c) => {
     firmwareVersion: typeof body["firmwareVersion"] === "string" ? body["firmwareVersion"] : null,
     ipAddress: typeof body["ipAddress"] === "string" ? body["ipAddress"] : null,
     uptimeSec: typeof body["uptimeSec"] === "number" ? body["uptimeSec"] : null,
-    raw: body,
+    raw: mergeControlRaw(body, control),
   };
 
   await db

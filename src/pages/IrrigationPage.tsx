@@ -91,6 +91,12 @@ interface IrrigationRuntime {
   zones: IrrigationRuntimeZone[];
 }
 
+interface IrrigationControl {
+  controllerEnabled: boolean;
+  rainDelayUntil: string | null;
+  rainDelayUntilEpoch: number;
+}
+
 interface IrrigationStatus {
   espOnline: boolean | null;
   wifiRssi: number | null;
@@ -99,6 +105,7 @@ interface IrrigationStatus {
   lastSeen: string | null;
   raw?: {
     runtime?: IrrigationRuntime;
+    control?: IrrigationControl;
   } | null;
 }
 
@@ -114,6 +121,24 @@ interface IrrigationDashboard {
 interface IrrigationHistory {
   days: number;
   sensors: IrrigationSensor[];
+}
+
+interface IrrigationPreviewItem {
+  id: string;
+  startsAt: string;
+  valveNumber: number;
+  zoneName: string;
+  program: string;
+  scheduledDurationMin: number;
+  durationMin: number;
+  action: "run" | "skip";
+  detail: string;
+}
+
+interface IrrigationPreview {
+  days: number;
+  control: IrrigationControl;
+  items: IrrigationPreviewItem[];
 }
 
 type CommandPayload =
@@ -701,6 +726,9 @@ export default function IrrigationPage() {
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [eventLog, setEventLog] = useState<IrrigationEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [preview, setPreview] = useState<IrrigationPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [savingControl, setSavingControl] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
 
   const loadDashboard = useCallback(async () => {
@@ -775,6 +803,25 @@ export default function IrrigationPage() {
     }
   }, [activeTab, loadEvents]);
 
+  const loadPreview = useCallback(async () => {
+    setLoadingPreview(true);
+    try {
+      const data = await irrigationRequest<IrrigationPreview>("/irrigation/preview");
+      setPreview(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Programmvorschau konnte nicht geladen werden.");
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "programs") {
+      void loadPreview();
+    }
+  }, [activeTab, loadPreview]);
+
   const sensorsByChannel = useMemo(() => {
     const map = new Map<number, IrrigationSensor>();
     for (const sensor of dashboard?.sensors ?? []) {
@@ -796,6 +843,11 @@ export default function IrrigationPage() {
     [dashboard?.status?.valveStates],
   );
   const runtime = dashboard?.status?.raw?.runtime;
+  const control = preview?.control ?? dashboard?.status?.raw?.control ?? {
+    controllerEnabled: true,
+    rainDelayUntil: null,
+    rainDelayUntilEpoch: 0,
+  };
   const runtimeByZone = useMemo(() => {
     const map = new Map<number, IrrigationRuntimeZone>();
     for (const zone of runtime?.zones ?? []) {
@@ -862,6 +914,21 @@ export default function IrrigationPage() {
       setError(err instanceof Error ? err.message : "Befehl konnte nicht gesendet werden.");
     } finally {
       setPendingCommand(null);
+    }
+  };
+
+  const saveControl = async (patch: Partial<IrrigationControl>) => {
+    setSavingControl(true);
+    try {
+      await irrigationRequest<IrrigationControl>("/irrigation/control", {
+        method: "PATCH",
+        body: JSON.stringify({ ...control, ...patch }),
+      });
+      await Promise.all([loadDashboard(), loadPreview()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Betriebszustand konnte nicht gespeichert werden.");
+    } finally {
+      setSavingControl(false);
     }
   };
 
@@ -1224,6 +1291,87 @@ export default function IrrigationPage() {
             </Button>
           </div>
 
+          <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <section className="rounded-lg border border-border-default bg-surface-elevated p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-base font-semibold text-text-heading">Betrieb</h3>
+                  <div className="text-xs text-text-secondary">Scheduler und Rain Delay</div>
+                </div>
+                <Badge variant={control.controllerEnabled && !control.rainDelayUntil ? "success" : "warning"}>
+                  {control.controllerEnabled ? (control.rainDelayUntil ? "Rain Delay" : "aktiv") : "gesperrt"}
+                </Badge>
+              </div>
+              {control.rainDelayUntil && (
+                <div className="mb-3 rounded-lg bg-status-warning-bg px-3 py-2 text-sm font-medium text-status-warning-text">
+                  pausiert bis {formatDateTime(control.rainDelayUntil)}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={control.controllerEnabled ? "secondary" : "primary"}
+                  disabled={savingControl}
+                  onClick={() => void saveControl({ controllerEnabled: !control.controllerEnabled })}
+                >
+                  {control.controllerEnabled ? "Scheduler sperren" : "Scheduler aktivieren"}
+                </Button>
+                {[6, 24].map((hours) => (
+                  <Button
+                    key={hours}
+                    size="sm"
+                    variant="secondary"
+                    disabled={savingControl}
+                    onClick={() => {
+                      const until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+                      void saveControl({ rainDelayUntil: until });
+                    }}
+                  >
+                    Rain {hours}h
+                  </Button>
+                ))}
+                <Button size="sm" variant="secondary" disabled={savingControl || !control.rainDelayUntil} onClick={() => void saveControl({ rainDelayUntil: null })}>
+                  Rain aus
+                </Button>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border-default bg-surface-elevated p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-base font-semibold text-text-heading">Vorschau</h3>
+                  <div className="text-xs text-text-secondary">Nächste {preview?.days ?? 7} Tage</div>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => void loadPreview()} disabled={loadingPreview}>
+                  {loadingPreview ? "Lädt..." : "Aktualisieren"}
+                </Button>
+              </div>
+              <div className="max-h-72 space-y-2 overflow-auto pr-1">
+                {(preview?.items ?? []).slice(0, 12).map((item) => (
+                  <div key={item.id} className="grid gap-2 rounded-lg border border-border-default bg-surface-muted p-2 text-sm md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+                    <Badge variant={item.action === "run" ? "success" : "warning"} className="w-fit">
+                      {item.action === "run" ? "läuft" : "skip"}
+                    </Badge>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-text-heading">
+                        {formatDateTime(item.startsAt)} · V{item.valveNumber} {item.zoneName}
+                      </div>
+                      <div className="text-xs text-text-secondary">Prog {item.program} · {item.detail}</div>
+                    </div>
+                    <div className="text-xs font-semibold text-text-secondary md:text-right">
+                      {item.action === "run" ? `${item.durationMin} min` : "-"}
+                    </div>
+                  </div>
+                ))}
+                {!loadingPreview && (preview?.items.length ?? 0) === 0 && (
+                  <div className="rounded-lg border border-dashed border-border-default bg-surface-muted p-3 text-sm text-text-secondary">
+                    Keine geplanten Läufe in der Vorschau.
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
           {scheduleDraft && (
             <div className="mb-4 rounded-lg border border-border-default bg-surface-muted p-3">
               <div className="grid gap-3 md:grid-cols-6">
@@ -1358,41 +1506,6 @@ export default function IrrigationPage() {
 
       {activeTab === "manual" && (
         <div className="space-y-2 md:space-y-3">
-          <Card className="space-y-2 p-2 md:p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="font-display text-sm font-semibold text-text-heading sm:text-lg">Testlauf</h2>
-                <div className="text-xs text-text-secondary">Alle aktiven Zonen nacheinander</div>
-              </div>
-              <Badge variant={runtimeQueueLength > 0 || runOnceCommand ? "warning" : "default"}>
-                {runtimeQueueLength > 0 ? `${runtimeQueueLength} Queue` : runOnceCommand ? "wartet" : "bereit"}
-              </Badge>
-            </div>
-            {runOnceCommand && (
-              <div className="rounded-lg bg-status-warning-bg px-2 py-1 text-xs font-medium text-status-warning-text md:px-3 md:py-2 md:text-sm">
-                {commandLabel(runOnceCommand)}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-1.5 md:gap-2">
-              {QUICK_TEST_SECONDS.map((durationSec) => (
-                <Button
-                  key={durationSec}
-                  size="sm"
-                  variant="secondary"
-                  disabled={pendingCommand != null || runOnceCommand != null || runtimeBusy}
-                  onClick={() =>
-                    void sendCommand({
-                      command: "run_once",
-                      zoneNumber: 0,
-                      durationMin: durationSec,
-                    })
-                  }
-                >
-                  {pendingCommand === "run_once-0" ? "Sendet..." : `${durationSec} s`}
-                </Button>
-              ))}
-            </div>
-          </Card>
           <section className="grid gap-1.5 lg:grid-cols-2">
             {(dashboard?.zones ?? []).map((zone) => {
               const runtimeZone = runtimeByZone.get(zone.valveNumber);
@@ -1481,6 +1594,41 @@ export default function IrrigationPage() {
               );
             })}
           </section>
+          <Card className="space-y-2 p-2 md:p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-sm font-semibold text-text-heading sm:text-lg">Testlauf</h2>
+                <div className="text-xs text-text-secondary">Alle aktiven Zonen nacheinander</div>
+              </div>
+              <Badge variant={runtimeQueueLength > 0 || runOnceCommand ? "warning" : "default"}>
+                {runtimeQueueLength > 0 ? `${runtimeQueueLength} Queue` : runOnceCommand ? "wartet" : "bereit"}
+              </Badge>
+            </div>
+            {runOnceCommand && (
+              <div className="rounded-lg bg-status-warning-bg px-2 py-1 text-xs font-medium text-status-warning-text md:px-3 md:py-2 md:text-sm">
+                {commandLabel(runOnceCommand)}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5 md:gap-2">
+              {QUICK_TEST_SECONDS.map((durationSec) => (
+                <Button
+                  key={durationSec}
+                  size="sm"
+                  variant="secondary"
+                  disabled={pendingCommand != null || runOnceCommand != null || runtimeBusy}
+                  onClick={() =>
+                    void sendCommand({
+                      command: "run_once",
+                      zoneNumber: 0,
+                      durationMin: durationSec,
+                    })
+                  }
+                >
+                  {pendingCommand === "run_once-0" ? "Sendet..." : `${durationSec} s`}
+                </Button>
+              ))}
+            </div>
+          </Card>
           <div className="flex justify-end pt-1">
             <Button
               variant="danger"
