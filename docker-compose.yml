@@ -14,6 +14,12 @@ services:
       IRRIGATION_ENABLED: "false"
       IRRIGATION_DEVICE_TOKEN: ""
       IRRIGATION_DEVICE_USER_ID: ""
+      IRRIGATION_MQTT_ENABLED: "false"
+      IRRIGATION_MQTT_URL: "mqtt://mqtt.example.com:1883"
+      IRRIGATION_MQTT_USERNAME: ""
+      IRRIGATION_MQTT_PASSWORD: ""
+      IRRIGATION_MQTT_DEVICE_ID: "esp32-01"
+      IRRIGATION_MQTT_TOPIC_PREFIX: "irrigation"
     volumes:
       - jninty_data:/app/data
     networks:

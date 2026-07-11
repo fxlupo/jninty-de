@@ -89,6 +89,15 @@ function normalizeStartDate(base: Date, startTime: string): Date {
   return date;
 }
 
+function localDateTimeText(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + `T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+}
+
 function jsDayMatchesMask(jsDay: number, mask: number): boolean {
   const bit = jsDay === 0 ? 6 : jsDay - 1;
   return ((mask >> bit) & 1) === 1;
@@ -231,6 +240,71 @@ async function irrigationDashboard(userId: string) {
   };
 }
 
+export async function ingestIrrigationStatus(userId: string, body: Record<string, unknown>) {
+  const existing = await db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)).limit(1);
+  const control = readControl(existing[0]?.raw);
+  const ts = now();
+  const row = {
+    userId,
+    updatedAt: ts,
+    lastSeen: ts,
+    wifiRssi: typeof body["wifiRssi"] === "number" ? body["wifiRssi"] : null,
+    ecowittOk: typeof body["ecowittOk"] === "boolean" ? body["ecowittOk"] : null,
+    outTempC: typeof body["outTempC"] === "number" ? body["outTempC"] : null,
+    outHumidity: typeof body["outHumidity"] === "number" ? body["outHumidity"] : null,
+    valveStates: typeof body["valveStates"] === "string" ? body["valveStates"] : "0".repeat(IRRIGATION_ZONE_COUNT),
+    firmwareVersion: typeof body["firmwareVersion"] === "string" ? body["firmwareVersion"] : null,
+    ipAddress: typeof body["ipAddress"] === "string" ? body["ipAddress"] : null,
+    uptimeSec: typeof body["uptimeSec"] === "number" ? body["uptimeSec"] : null,
+    raw: mergeControlRaw(body, control),
+  };
+
+  await db
+    .insert(irrigationStatus)
+    .values(row)
+    .onConflictDoUpdate({ target: irrigationStatus.userId, set: row });
+}
+
+export async function ingestIrrigationEvents(userId: string, body: Record<string, unknown> | Record<string, unknown>[]) {
+  const events = Array.isArray(body) ? body : [body];
+  if (events.length === 0) return [];
+  const rows = events.map((event) => ({
+    id: crypto.randomUUID(),
+    userId,
+    // Always use the server's receive time; the ESP timestamp is preserved in raw.
+    createdAt: now(),
+    zoneId: typeof event["zoneId"] === "string" ? event["zoneId"] : null,
+    zoneNumber: typeof event["zoneNumber"] === "number" ? event["zoneNumber"] : null,
+    action:
+      typeof event["action"] === "string" && (VALID_ACTIONS as readonly string[]).includes(event["action"])
+        ? event["action"]
+        : "system",
+    reason: typeof event["reason"] === "string" ? event["reason"] : null,
+    detail: typeof event["detail"] === "string" ? event["detail"] : null,
+    durationSec: typeof event["durationSec"] === "number" ? event["durationSec"] : null,
+    raw: event,
+  }));
+  return db.insert(irrigationEvents).values(rows).returning();
+}
+
+export async function ingestIrrigationSensors(userId: string, body: Record<string, unknown> | Record<string, unknown>[]) {
+  const readings = Array.isArray(body) ? body : [body];
+  if (readings.length === 0) return [];
+  const rows = readings.map((reading) => ({
+    id: crypto.randomUUID(),
+    userId,
+    // Always use the server's receive time; the ESP timestamp is preserved in raw.
+    createdAt: now(),
+    channel: typeof reading["channel"] === "number" ? reading["channel"] : 0,
+    soilMoisture: typeof reading["soilMoisture"] === "number" ? reading["soilMoisture"] : null,
+    soilTemp: typeof reading["soilTemp"] === "number" ? reading["soilTemp"] : null,
+    soilEc: typeof reading["soilEc"] === "number" ? reading["soilEc"] : null,
+    batteryOk: typeof reading["batteryOk"] === "boolean" ? reading["batteryOk"] : null,
+    raw: reading,
+  }));
+  return db.insert(irrigationSensorReadings).values(rows).returning();
+}
+
 function requireDeviceToken() {
   return async (c: Context<{ Variables: DeviceVariables }>, next: Next) => {
     const expected = process.env["IRRIGATION_DEVICE_TOKEN"];
@@ -323,9 +397,10 @@ router.get("/preview", requireAuth, async (c) => {
         control,
         startsAt,
       );
+      const localStartsAt = localDateTimeText(startsAt);
       items.push({
-        id: `${schedule.id}-${startsAt.toISOString()}`,
-        startsAt: startsAt.toISOString(),
+        id: `${schedule.id}-${localStartsAt}`,
+        startsAt: localStartsAt,
         zoneId: zone.id,
         valveNumber: zone.valveNumber,
         zoneName: zone.name,
@@ -618,54 +693,14 @@ deviceRouter.get("/commands", async (c) => {
 deviceRouter.post("/status", async (c) => {
   const userId = c.get("irrigationUserId");
   const body = await c.req.json<Record<string, unknown>>();
-  const existing = await db.select().from(irrigationStatus).where(eq(irrigationStatus.userId, userId)).limit(1);
-  const control = readControl(existing[0]?.raw);
-  const ts = now();
-  const row = {
-    userId,
-    updatedAt: ts,
-    lastSeen: ts,
-    wifiRssi: typeof body["wifiRssi"] === "number" ? body["wifiRssi"] : null,
-    ecowittOk: typeof body["ecowittOk"] === "boolean" ? body["ecowittOk"] : null,
-    outTempC: typeof body["outTempC"] === "number" ? body["outTempC"] : null,
-    outHumidity: typeof body["outHumidity"] === "number" ? body["outHumidity"] : null,
-    valveStates: typeof body["valveStates"] === "string" ? body["valveStates"] : "0".repeat(IRRIGATION_ZONE_COUNT),
-    firmwareVersion: typeof body["firmwareVersion"] === "string" ? body["firmwareVersion"] : null,
-    ipAddress: typeof body["ipAddress"] === "string" ? body["ipAddress"] : null,
-    uptimeSec: typeof body["uptimeSec"] === "number" ? body["uptimeSec"] : null,
-    raw: mergeControlRaw(body, control),
-  };
-
-  await db
-    .insert(irrigationStatus)
-    .values(row)
-    .onConflictDoUpdate({ target: irrigationStatus.userId, set: row });
+  await ingestIrrigationStatus(userId, body);
   return c.json({ ok: true });
 });
 
 deviceRouter.post("/events", async (c) => {
   const userId = c.get("irrigationUserId");
   const body = await c.req.json<Record<string, unknown> | Record<string, unknown>[]>();
-  const events = Array.isArray(body) ? body : [body];
-  const rows = events.map((event) => ({
-    id: crypto.randomUUID(),
-    userId,
-    // K5: always use the server's receive time — the ESP RTC has no NTP sync and
-    //     can drift significantly; the ESP timestamp is preserved in raw.
-    createdAt: now(),
-    zoneId: typeof event["zoneId"] === "string" ? event["zoneId"] : null,
-    zoneNumber: typeof event["zoneNumber"] === "number" ? event["zoneNumber"] : null,
-    // K1: only store known action strings; unknown values fall back to "system"
-    action:
-      typeof event["action"] === "string" && (VALID_ACTIONS as readonly string[]).includes(event["action"])
-        ? event["action"]
-        : "system",
-    reason: typeof event["reason"] === "string" ? event["reason"] : null,
-    detail: typeof event["detail"] === "string" ? event["detail"] : null,
-    durationSec: typeof event["durationSec"] === "number" ? event["durationSec"] : null,
-    raw: event,
-  }));
-  const result = await db.insert(irrigationEvents).values(rows).returning();
+  const result = await ingestIrrigationEvents(userId, body);
   return c.json(result, 201);
 });
 
@@ -684,20 +719,7 @@ deviceRouter.get("/events", async (c) => {
 deviceRouter.post("/sensors", async (c) => {
   const userId = c.get("irrigationUserId");
   const body = await c.req.json<Record<string, unknown> | Record<string, unknown>[]>();
-  const readings = Array.isArray(body) ? body : [body];
-  const rows = readings.map((reading) => ({
-    id: crypto.randomUUID(),
-    userId,
-    // K5: always use the server's receive time (ESP RTC has no NTP sync)
-    createdAt: now(),
-    channel: typeof reading["channel"] === "number" ? reading["channel"] : 0,
-    soilMoisture: typeof reading["soilMoisture"] === "number" ? reading["soilMoisture"] : null,
-    soilTemp: typeof reading["soilTemp"] === "number" ? reading["soilTemp"] : null,
-    soilEc: typeof reading["soilEc"] === "number" ? reading["soilEc"] : null,
-    batteryOk: typeof reading["batteryOk"] === "boolean" ? reading["batteryOk"] : null,
-    raw: reading,
-  }));
-  const result = await db.insert(irrigationSensorReadings).values(rows).returning();
+  const result = await ingestIrrigationSensors(userId, body);
   return c.json(result, 201);
 });
 

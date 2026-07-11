@@ -29,6 +29,7 @@ import knowledgeRouter from "./routes/knowledge.ts";
 import photosRouter from "./routes/photos.ts";
 import gardenMapPinsRouter from "./routes/gardenMapPins.ts";
 import irrigationRouter from "./routes/irrigation.ts";
+import { startIrrigationMqtt } from "./irrigationMqtt.ts";
 import calendarEventsRouter from "./routes/calendarEvents.ts";
 import plantRemindersRouter from "./routes/plantReminders.ts";
 
@@ -123,6 +124,7 @@ const cancelled = db
   .where(inArray(irrigationCommands.status, ["pending", "acked"]))
   .run();
 console.log(`✓ ${cancelled.changes} offene Bewässerungs-Commands abgebrochen`);
+startIrrigationMqtt();
 
 // ─── Hono app ─────────────────────────────────────────────────────────────────
 
