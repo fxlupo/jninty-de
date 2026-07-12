@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { and, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, lte, sql } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import { tasks } from "../db/schema.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
@@ -27,20 +27,17 @@ router.get("/", requireAuth, async (c) => {
   const end = c.req.query("end");
   const overdue = c.req.query("overdue");
 
-  let rows = await db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)));
-
-  if (seasonId) rows = rows.filter((r) => r.seasonId === seasonId);
-  if (plantId) rows = rows.filter((r) => r.plantInstanceId === plantId);
-  if (start) rows = rows.filter((r) => r.dueDate >= start);
-  if (end) rows = rows.filter((r) => r.dueDate <= end);
+  const conditions = [eq(tasks.userId, userId), isNull(tasks.deletedAt)];
+  if (seasonId) conditions.push(eq(tasks.seasonId, seasonId));
+  if (plantId) conditions.push(eq(tasks.plantInstanceId, plantId));
+  if (start) conditions.push(gte(tasks.dueDate, start));
+  if (end) conditions.push(lte(tasks.dueDate, end));
   if (overdue === "1") {
     const today = new Date().toISOString().slice(0, 10);
-    rows = rows.filter((r) => r.dueDate < today && !r.isCompleted);
+    conditions.push(lt(tasks.dueDate, today), eq(tasks.isCompleted, false));
   }
 
+  const rows = await db.select().from(tasks).where(and(...conditions));
   return c.json(rows);
 });
 

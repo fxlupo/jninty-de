@@ -149,12 +149,14 @@ export function startIrrigationMqtt() {
     lastPublishedCommands.delete(commandId);
   }
 
+  const commandResultRe = new RegExp(`^${baseTopic}/commands/([^/]+)/result$`);
+
   client.on("message", (topic, payload) => {
     const parsed = parseJsonPayload(payload);
     if (!parsed) return;
 
     void (async () => {
-      const commandResultMatch = topic.match(new RegExp(`^${baseTopic}/commands/([^/]+)/result$`));
+      const commandResultMatch = topic.match(commandResultRe);
       if (commandResultMatch?.[1] && !Array.isArray(parsed)) {
         await handleCommandResult(commandResultMatch[1], parsed);
         return;
