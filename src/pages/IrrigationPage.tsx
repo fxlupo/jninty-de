@@ -178,6 +178,7 @@ interface ScheduleDraft {
 
 type IrrigationTab = "dashboard" | "programs" | "manual" | "events" | "history";
 type SensorField = "soilMoisture" | "soilTemp";
+type SensorZoomWindow = "6h" | "24h" | "7d" | "all";
 type EventFilter = "all" | "open" | "close" | "skip" | "manual" | "scheduler" | "zone";
 
 interface SensorChannelDescriptor {
@@ -618,11 +619,13 @@ function SensorTooltip({
   payload,
   label,
   unit,
+  smoothed,
 }: {
   active?: boolean;
   payload?: Array<{ color?: string; name?: string; value?: number | null }>;
   label?: number | string;
   unit: string;
+  smoothed: boolean;
 }) {
   if (!active || !payload?.length || label == null) return null;
   const values = payload.filter((item) => typeof item.value === "number");
@@ -630,7 +633,10 @@ function SensorTooltip({
 
   return (
     <div className="rounded-lg border border-border-default bg-surface px-3 py-2 text-xs shadow-lg">
-      <div className="mb-1 font-semibold text-text-heading">{formatChartTooltipLabel(label)}</div>
+      <div className="mb-1 flex items-center justify-between gap-4">
+        <span className="font-semibold text-text-heading">{formatChartTooltipLabel(label)}</span>
+        {smoothed && <span className="text-[11px] font-medium text-text-muted">geglättet</span>}
+      </div>
       <div className="space-y-1">
         {values.map((item) => (
           <div key={item.name} className="flex items-center justify-between gap-4">
@@ -646,6 +652,41 @@ function SensorTooltip({
       </div>
     </div>
   );
+}
+
+function smoothRows(rows: SensorChartRow[], channels: number[], windowSize: number): SensorChartRow[] {
+  if (windowSize <= 1 || rows.length === 0 || channels.length === 0) return rows;
+
+  const smoothedRows = rows.map((row) => ({ ...row }));
+  const radius = Math.floor(windowSize / 2);
+
+  for (const channel of channels) {
+    const key = sensorSeriesKey(channel);
+    const points = rows
+      .map((row, index) => ({ index, value: row[key] }))
+      .filter((point): point is { index: number; value: number } => typeof point.value === "number");
+
+    for (let i = 0; i < points.length; i++) {
+      const start = Math.max(0, i - radius);
+      const end = Math.min(points.length - 1, i + radius);
+      let sum = 0;
+      let count = 0;
+      for (let j = start; j <= end; j++) {
+        sum += points[j]!.value;
+        count++;
+      }
+      smoothedRows[points[i]!.index]![key] = count > 0 ? sum / count : points[i]!.value;
+    }
+  }
+
+  return smoothedRows;
+}
+
+function zoomWindowMs(window: SensorZoomWindow, days: number): number {
+  if (window === "6h") return 6 * 60 * 60 * 1000;
+  if (window === "24h") return 24 * 60 * 60 * 1000;
+  if (window === "7d") return 7 * 24 * 60 * 60 * 1000;
+  return days * 24 * 60 * 60 * 1000;
 }
 
 function SensorLineChart({
@@ -667,8 +708,14 @@ function SensorLineChart({
   max: number;
   days: number;
 }) {
-  const xMin = Date.now() - days * 24 * 60 * 60 * 1000;
+  const [visibleChannels, setVisibleChannels] = useState<Set<number>>(() => new Set());
+  const [smoothed, setSmoothed] = useState(field === "soilMoisture");
   const xMax = Date.now();
+  const [zoomWindow, setZoomWindow] = useState<SensorZoomWindow>("all");
+  const loadedWindowMs = days * 24 * 60 * 60 * 1000;
+  const selectedWindowMs = Math.min(zoomWindowMs(zoomWindow, days), loadedWindowMs);
+  const xMin = xMax - selectedWindowMs;
+  const visibleDays = selectedWindowMs / (24 * 60 * 60 * 1000);
 
   const rowsByTs = new Map<number, SensorChartRow>();
   for (const sensor of sensors) {
@@ -683,23 +730,148 @@ function SensorLineChart({
   const rows = [...rowsByTs.values()].sort((a, b) => a.ts - b.ts);
   const channelDescriptors = sensorChannelDescriptors(sensors, zones).filter(
     (descriptor) => rows.some((row) => typeof row[sensorSeriesKey(descriptor.channel)] === "number"),
-  );
+  ) as SensorChannelDescriptor[];
+  const allChannels = channelDescriptors.map((descriptor) => descriptor.channel);
+  const activeChannels = allChannels.filter((channel) => visibleChannels.has(channel));
+  const visibleDescriptors = channelDescriptors.filter((descriptor) => visibleChannels.has(descriptor.channel));
+  const smoothingWindow = field === "soilMoisture" ? 5 : 3;
+  const chartRows = smoothed ? smoothRows(rows, activeChannels, smoothingWindow) : rows;
+
+  useEffect(() => {
+    setVisibleChannels((current) => {
+      const available = new Set(allChannels);
+      const next = new Set<number>();
+      for (const channel of current) {
+        if (available.has(channel)) next.add(channel);
+      }
+      if (next.size === 0) {
+        for (const channel of allChannels) next.add(channel);
+      }
+      if (next.size === current.size && [...next].every((channel) => current.has(channel))) return current;
+      return next;
+    });
+  }, [allChannels.join("|")]);
+
+  useEffect(() => {
+    if (zoomWindow !== "all" && zoomWindowMs(zoomWindow, days) > loadedWindowMs) {
+      setZoomWindow("all");
+    }
+  }, [days, loadedWindowMs, zoomWindow]);
+
+  const setAllChannelsVisible = () => setVisibleChannels(new Set(allChannels));
+  const setNoChannelsVisible = () => setVisibleChannels(new Set());
+  const zoomOptions = [
+    { value: "6h" as const, label: "6h" },
+    { value: "24h" as const, label: "24h" },
+    { value: "7d" as const, label: "7T" },
+    { value: "all" as const, label: "Alles" },
+  ];
+  const toggleChannel = (channel: number) => {
+    setVisibleChannels((current) => {
+      const next = new Set(current);
+      if (next.has(channel)) next.delete(channel);
+      else next.add(channel);
+      return next;
+    });
+  };
 
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-display text-lg font-semibold text-text-heading">{title}</h3>
-        <span className="text-sm text-text-secondary">{unit}</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="inline-flex overflow-hidden rounded-lg border border-border-default bg-surface-muted p-0.5 text-xs">
+            {zoomOptions.map((option) => {
+              const active = zoomWindow === option.value;
+              const disabled = option.value !== "all" && zoomWindowMs(option.value, days) > loadedWindowMs;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`min-w-10 rounded-md px-2 py-1.5 font-medium transition ${
+                    active ? "bg-surface text-text-heading shadow-sm" : "text-text-secondary hover:text-text-heading"
+                  } disabled:cursor-not-allowed disabled:opacity-40`}
+                  onClick={() => setZoomWindow(option.value)}
+                  aria-pressed={active}
+                  disabled={disabled}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="inline-flex overflow-hidden rounded-lg border border-border-default bg-surface-muted p-0.5 text-xs">
+            <button
+              type="button"
+              className={`min-w-16 rounded-md px-2.5 py-1.5 font-medium transition ${
+                !smoothed ? "bg-surface text-text-heading shadow-sm" : "text-text-secondary hover:text-text-heading"
+              }`}
+              onClick={() => setSmoothed(false)}
+              aria-pressed={!smoothed}
+            >
+              Roh
+            </button>
+            <button
+              type="button"
+              className={`min-w-20 rounded-md px-2.5 py-1.5 font-medium transition ${
+                smoothed ? "bg-surface text-text-heading shadow-sm" : "text-text-secondary hover:text-text-heading"
+              }`}
+              onClick={() => setSmoothed(true)}
+              aria-pressed={smoothed}
+            >
+              Geglättet
+            </button>
+          </div>
+          <span className="text-sm text-text-secondary">{unit}</span>
+        </div>
       </div>
+      {channelDescriptors.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-surface-muted hover:text-text-heading"
+            onClick={setAllChannelsVisible}
+          >
+            Alle
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-surface-muted hover:text-text-heading"
+            onClick={setNoChannelsVisible}
+          >
+            Keine
+          </button>
+          {channelDescriptors.map(({ channel, label, shared }) => {
+            const active = visibleChannels.has(channel);
+            return (
+              <button
+                key={channel}
+                type="button"
+                className={`flex min-h-9 max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
+                  active
+                    ? "border-border-strong bg-surface-muted text-text-heading"
+                    : "border-border-default text-text-muted opacity-70 hover:bg-surface-muted hover:text-text-heading"
+                }`}
+                onClick={() => toggleChannel(channel)}
+                aria-pressed={active}
+              >
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: sensorColor(channel) }} />
+                <span className="truncate">{label}</span>
+                {shared && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-900">geteilt</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 12, right: 18, bottom: 8, left: 0 }}>
+          <LineChart data={chartRows} margin={{ top: 12, right: 18, bottom: 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120, 113, 108, 0.22)" vertical={false} />
             <XAxis
               dataKey="ts"
               type="number"
               domain={[xMin, xMax]}
-              tickFormatter={(value: number) => chartTimeLabel(value, days)}
+              tickFormatter={(value: number) => chartTimeLabel(value, visibleDays)}
               tick={{ fill: "#766957", fontSize: 11 }}
               axisLine={{ stroke: "rgba(120, 113, 108, 0.35)" }}
               tickLine={false}
@@ -713,7 +885,7 @@ function SensorLineChart({
               tickLine={false}
               width={42}
             />
-            <Tooltip content={<SensorTooltip unit={unit} />} />
+            <Tooltip content={<SensorTooltip unit={unit} smoothed={smoothed} />} />
             <Legend
               verticalAlign="top"
               align="left"
@@ -721,7 +893,7 @@ function SensorLineChart({
               iconType="plainline"
               wrapperStyle={{ fontSize: 12, color: "#4b3828" }}
             />
-            {channelDescriptors.map(({ channel, label }) => (
+            {visibleDescriptors.map(({ channel, label }) => (
               <Line
                 key={channel}
                 type="monotone"
@@ -738,8 +910,11 @@ function SensorLineChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
+      {channelDescriptors.length > 0 && activeChannels.length === 0 && (
+        <div className="mt-3 text-sm text-text-secondary">Keine Sensorlinie ausgewählt.</div>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
-        {channelDescriptors.map(({ channel, label, shared }) => (
+        {visibleDescriptors.map(({ channel, label, shared }) => (
           <div key={channel} className="flex items-center gap-2 text-text-secondary">
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: sensorColor(channel) }} />
             <span className="truncate">{label}</span>

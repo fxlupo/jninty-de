@@ -3,7 +3,7 @@
 # Jninty
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.3.7-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -281,6 +281,13 @@ TRUSTED_ORIGINS=http://localhost:5173
 ---
 
 ## Changelog
+
+### 2.0.0 (2026-07-12)
+
+**Bewässerung**
+- History-Graphen mit Kanalfilter, Roh-/Glättungsmodus und lokalen Zoomfenstern
+- Bodenfeuchte-History wird geglättet lesbarer, einzelne Sensorlinien lassen sich isoliert betrachten
+- Drizzle-Migrationsjournal enthält die vorhandene Status-Wetter-Migration `0014`
 
 ### 1.3.7 (2026-05-06)
 
