@@ -1974,7 +1974,7 @@ export default function IrrigationPage() {
               field="soilMoisture"
               unit="%"
               min={0}
-              max={100}
+              max={50}
               days={historyDays}
             />
             <SensorLineChart
