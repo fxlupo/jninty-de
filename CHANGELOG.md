@@ -10,6 +10,19 @@ Versioning-Regel: `feat:` → MINOR-Bump (0.x.0) · `fix:`/`chore:` → PATCH-Bu
 
 ---
 
+## [2.0.0] - 2026-07-12
+
+### Hinzugefügt
+
+- **Bewässerung History** — Kanalfilter, Roh-/Glättungsmodus und lokale Zoomfenster (`6h`, `24h`, `7T`, `Alles`) für Bodenfeuchte und Bodentemperatur.
+
+### Geändert
+
+- **Bodenfeuchte-Graph** — Y-Achse auf praxisnähere 0-50% skaliert, damit reale Bodenwerte besser lesbar sind.
+- **Release-Metadaten** — App-Version, README-Badge und Drizzle-Migrationsjournal auf den produktiven `2.0.0`-Stand gebracht.
+
+---
+
 ## [0.9.7] - 2026-04-16
 
 ### Geändert
